@@ -1,0 +1,10 @@
+language: python
+install:
+  - pip install -r reqs.txt
+  - pip install -U pytest
+  - pip install .
+  - pip install codecov
+script:
+  - python -m pytest --cov=logical_backup logical_backup/tests
+after_success:
+  - codecov

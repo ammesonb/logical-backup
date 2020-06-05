@@ -1,0 +1,8 @@
+Update device?
+
+Handle drive UUID/path/file mappings - sudo blkid /dev/sdc2 -o value | tail -1
+Alternatively, since BLKID may not be idempotent - udevadm info --query=all --name=/dev/sdc | grep ID_SERIAL_SHORT | sed 's/.*=//'
+
+Threaded additions/restorations
+  Change parallelization
+  Reorganize queue priorities
