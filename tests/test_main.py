@@ -24,6 +24,14 @@ def test_missing_action():
     assert result["exit_code"] == 2, "Result should fail if missing the acton"
 
 
+def test_unrecognized_action():
+    """
+    Test an action which isn't in the command set
+    """
+    result = run_command(["python3", "logical_backup_script.py", "unrecognized"])
+    assert result["exit_code"] == 2, "Result should fail if the action is unrecognized"
+
+
 def test_invalid_command():
     """
     Test an invalid command

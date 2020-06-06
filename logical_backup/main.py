@@ -9,6 +9,7 @@ are maintained
 """
 
 import argparse
+from os.path import isfile, isdir
 import sys
 
 from logical_backup.db import initialize_database
@@ -79,7 +80,7 @@ def __validate_arguments(arguments: dict) -> bool:
     # Exactly one of each sub-array must be specified for the given action
     required_parameter_set_by_action = {
         "add": [["file", "folder"]],
-        "move": [["file", "folder"], ["move-path"]],
+        "move": [["file", "folder"], ["move_path"]],
         "remove": [["file", "folder"]],
         "restore": [["file", "folder", "all"]],
         "verify": [["file", "folder", "all"]],
@@ -89,17 +90,21 @@ def __validate_arguments(arguments: dict) -> bool:
     # Check at least one of each command set required is in the arguments
     for command_set in required_parameter_set_by_action[arguments["action"]]:
 
-        command_in_set_found = False
+        commands_in_set_found = 0
         for command in command_set:
             if arguments[command]:
-                command_in_set_found = True
-                break
+                commands_in_set_found += 1
 
-        if not command_in_set_found:
+        if commands_in_set_found != 1:
             command_valid = False
             break
 
-    return command_valid
+    path_exists = True
+    if arguments["file"]:
+        path_exists = isfile(arguments["file"])
+    elif arguments["folder"]:
+        path_exists = isdir(arguments["folder"])
+    return command_valid and path_exists
 
 
 def __dispatch_command(arguments: dict) -> str:
