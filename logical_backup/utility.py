@@ -2,6 +2,7 @@
 Some helper functions
 """
 from os import getenv, environ
+from subprocess import run, PIPE
 from pytest import fixture
 
 TEST_VARIABLE = "IS_TEST"
@@ -32,6 +33,25 @@ def remove_testing() -> None:
     Remove the testing environment variable
     """
     del environ[TEST_VARIABLE]
+
+
+def run_command(command: list) -> dict:
+    """
+    Executes a simple command
+
+    Parameters
+    ----------
+    command : list
+        The command to execute, grouped by parameters
+
+    Returns
+    -------
+    dict
+        With "exit_code", "stdout" and "stderr" properties
+    """
+    process = run(command, stdout=PIPE, stderr=PIPE, check=False)
+    stdout, stderr = process.stdout, process.stderr
+    return {"exit_code": process.returncode, "stdout": stdout, "stderr": stderr}
 
 
 @fixture(autouse=True)

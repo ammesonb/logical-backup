@@ -9,6 +9,7 @@ are maintained
 """
 
 import argparse
+import sys
 
 from logical_backup.db import initialize_database
 
@@ -24,13 +25,14 @@ def __prepare():
     # TODO: provide output for that
 
 
-def __parse_arguments() -> argparse.ArgumentParser:
+def __parse_arguments() -> tuple:
     """
     Parses command line arguments
 
     Returns
     -------
-        An ArgumentParser instance
+    dict
+        arguments
     """
     parser = argparse.ArgumentParser(
         description="Back up and restore files across multiple hard drives"
@@ -48,8 +50,14 @@ def __parse_arguments() -> argparse.ArgumentParser:
         action="store_true",
         required=False,
     )
-    parser.parse_args()
-    return parser
+    parser.add_argument(
+        "--move-path",
+        dest="move_path",
+        help="Target for move operation",
+        required=False,
+    )
+    args = parser.parse_args()
+    return vars(args)
 
 
 # pylint: disable=unused-argument
@@ -68,24 +76,55 @@ def __validate_arguments(arguments: dict) -> bool:
     bool
         True if argument combination is valid
     """
-    return True
+    # Exactly one of each sub-array must be specified for the given action
+    required_parameter_set_by_action = {
+        "add": [["file", "folder"]],
+        "move": [["file", "folder"], ["move-path"]],
+        "remove": [["file", "folder"]],
+        "restore": [["file", "folder", "all"]],
+        "verify": [["file", "folder", "all"]],
+    }
+
+    command_valid = True
+    # Check at least one of each command set required is in the arguments
+    for command_set in required_parameter_set_by_action[arguments["action"]]:
+
+        command_in_set_found = False
+        for command in command_set:
+            if arguments[command]:
+                command_in_set_found = True
+                break
+
+        if not command_in_set_found:
+            command_valid = False
+            break
+
+    return command_valid
 
 
-def __dispatch_command(arguments: argparse.ArgumentParser):
+def __dispatch_command(arguments: dict) -> str:
     """
     Actually process the command
 
     Parameters
     ----------
-    arguments : argparse.ArgumentParser
-        -
+    arguments : dict
+        The command-line arguments
+
+    Returns
+    -------
+    str
+        The command being called
     """
-    if not __validate_arguments(vars(arguments)):
-        return
+    if not __validate_arguments(arguments):
+        sys.exit(1)
 
     # TODO: this
 
 
-if __name__ == "__main__":
+def process():
+    """
+    Run the process
+    """
     args = __parse_arguments()
     __dispatch_command(args)
