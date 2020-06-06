@@ -6,6 +6,10 @@ from os.path import exists
 
 from logical_backup.db import initialize_database, SQLiteCursor, DEV_FILE
 
+# This is an auto-run fixture, so importing is sufficient
+# pylint: disable=unused-import
+from logical_backup.utility import auto_set_testing
+
 
 def test_initialization():
     """
@@ -14,12 +18,12 @@ def test_initialization():
     if exists(DEV_FILE):
         remove(DEV_FILE)
 
-    with SQLiteCursor(True) as cursor:
+    with SQLiteCursor() as cursor:
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = cursor.fetchall()
         assert len(tables) == 0, "New testing database already has tables"
 
-        initialize_database(True)
+        initialize_database()
 
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = cursor.fetchall()

@@ -10,7 +10,7 @@ are maintained
 
 import argparse
 
-from db import initialize_database
+from logical_backup.db import initialize_database
 
 
 def __prepare():

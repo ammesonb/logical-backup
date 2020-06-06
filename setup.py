@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="logical-gackup",
+    name="logical-backup",
     version="1.0.0",
     author="Brett Ammeson",
     author_email="ammesonb@gmail.com",

@@ -4,6 +4,8 @@ Database interactions for the utility
 
 import sqlite3
 
+from logical_backup.utility import is_test
+
 DB_FILE = "files.db"
 DEV_FILE = "files.db.test"
 
@@ -13,21 +15,19 @@ class SQLiteCursor(sqlite3.Cursor):
     A wrapper around the SQLite cursor
     """
 
-    def __init__(self, for_testing: bool = False, commit_on_close: bool = True):
+    def __init__(self, commit_on_close: bool = True):
         """
         Initialize the object
 
         Parameters
         ----------
-        for_testing : bool
-            True if being used for testing
         commit_on_close : bool
             Whether to automatically commit on close
         """
         super()
         self.__connection = None
         self.__commit_on_close = commit_on_close
-        self.__db_file = DEV_FILE if for_testing else DB_FILE
+        self.__db_file = DEV_FILE if is_test() else DB_FILE
 
     def __enter__(self):
         self.__connection = sqlite3.connect(self.__db_file)
@@ -40,16 +40,11 @@ class SQLiteCursor(sqlite3.Cursor):
         self.__connection.close()
 
 
-def initialize_database(for_testing: bool = False):
+def initialize_database():
     """
     Initialize the database for use
-
-    Parameters
-    ----------
-    for_testing : bool
-        True if being used for testing
     """
-    with SQLiteCursor(for_testing) as cursor:
+    with SQLiteCursor() as cursor:
         cursor.execute("PRAGMA foreign_keys = ON;")
 
         cursor.execute(
