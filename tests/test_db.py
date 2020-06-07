@@ -3,21 +3,33 @@ Tests for the database files
 """
 from os import remove
 from os.path import exists
+from pytest import fixture
 
-from logical_backup.db import initialize_database, SQLiteCursor, DEV_FILE
+from logical_backup.db import initialize_database, SQLiteCursor, DEV_FILE, get_devices
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
 from logical_backup.utility import auto_set_testing
 
 
-def test_initialization():
+@fixture(autouse=True)
+def auto_clear_db():
     """
-    Test database initialization
+    Remove the dev database file if needed, and recreate it
     """
     if exists(DEV_FILE):
         remove(DEV_FILE)
 
+    yield "Running test"
+
+    if exists(DEV_FILE):
+        remove(DEV_FILE)
+
+
+def test_initialization():
+    """
+    Test database initialization
+    """
     with SQLiteCursor() as cursor:
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = cursor.fetchall()
@@ -36,3 +48,37 @@ def test_initialization():
         names = [name[0] for name in names]
         for name in ["System UUID", "Device Serial"]:
             assert name in names, "Missing device identifier type: " + name
+
+
+def test_get_devices():
+    """
+    Test device retrieval
+    """
+    initialize_database()
+
+    assert get_devices() == [], "No devices by default"
+
+    with SQLiteCursor() as cursor:
+        cursor.execute(
+            "INSERT INTO tblDevice ("
+            "  DeviceName, "
+            "  DevicePath, "
+            "  DeviceIdentifierID, "
+            "  DeviceIdentifier"
+            ")"
+            "VALUES ("
+            "  'Test-Device', "
+            "  '/mnt', "
+            "  1, "
+            "  'ABCDEF'"
+            ")"
+        )
+
+    assert get_devices() == [
+        {
+            "device_name": "Test-Device",
+            "device_path": "/mnt",
+            "identifier_name": "Device Serial",
+            "device_identifier": "ABCDEF",
+        }
+    ]

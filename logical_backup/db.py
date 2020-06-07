@@ -56,16 +56,17 @@ def initialize_database():
 
         cursor.execute(
             "INSERT INTO tblplDeviceIdentifier (IdentifierName)"
-            "SELECT *"
+            "SELECT Name "
             "FROM ("
-            "  SELECT 'System UUID'"
+            "  SELECT 'System UUID' AS Name"
             "  UNION"
             "  SELECT 'Device Serial'"
             " ) t "
             "WHERE NOT EXISTS ("
             "  SELECT *"
             "  FROM   tblplDeviceIdentifier"
-            ");"
+            ")"
+            "ORDER BY t.Name;"
         )
 
         cursor.execute(
@@ -93,3 +94,36 @@ def initialize_database():
             "  FOREIGN KEY (FileDeviceID) REFERENCES tblDevice (DeviceID)"
             ");"
         )
+
+
+def get_devices() -> list:
+    """
+    Return configured devices
+    """
+    with SQLiteCursor() as cursor:
+        cursor.execute(
+            "SELECT     d.DeviceName, "
+            "           d.DevicePath, "
+            "           i.IdentifierName, "
+            "           d.DeviceIdentifier "
+            "FROM       tblDevice d "
+            "INNER JOIN tblplDeviceIdentifier i "
+            "ON         i.IdentifierID = d.DeviceIdentifierID"
+        )
+        rows = cursor.fetchall()
+        devices = []
+        for row in rows:
+            columns = [
+                "device_name",
+                "device_path",
+                "identifier_name",
+                "device_identifier",
+            ]
+            device = {}
+            index = 0
+            for column in columns:
+                device.update({column: row[index]})
+                index += 1
+            devices.append(device)
+
+        return devices

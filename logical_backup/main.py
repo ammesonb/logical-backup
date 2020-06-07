@@ -12,7 +12,8 @@ import argparse
 from os.path import isfile, isdir
 import sys
 
-from logical_backup.db import initialize_database
+import logical_backup.db as db
+from logical_backup.pretty_print import pprint, pprint_start, pprint_complete, Color
 
 
 def __prepare():
@@ -20,7 +21,7 @@ def __prepare():
     Set up database if needed, and check if hard drives are present
     """
     # This is non-destructive; will only create tables if needed
-    initialize_database()
+    db.initialize_database()
 
     # TODO: get existing hard drives, see if any are present
     # TODO: provide output for that
@@ -45,6 +46,7 @@ def __parse_arguments() -> tuple:
     )
     parser.add_argument("--file", help="The file to take action on", required=False)
     parser.add_argument("--folder", help="The file to take action on", required=False)
+    parser.add_argument("--device", help="Mount path for a device", required=False)
     parser.add_argument(
         "--all",
         help="Perform operation on all files",
@@ -59,6 +61,54 @@ def __parse_arguments() -> tuple:
     )
     args = parser.parse_args()
     return vars(args)
+
+
+def __check_devices(args: dict):
+    """
+    Check if any devices are defined, and if not, ensure command is adding one
+
+    Parameters
+    ----------
+    arguments : dict
+        Configured arguments from the command line,
+        in dictionary form for easier injection with testing
+    """
+    message = "Checking for devices..."
+    pprint_start(message, Color.BLUE)
+
+    devices = db.get_devices()
+    print(devices)
+    if not devices:
+        if args["action"] != "add" or not args["device"]:
+            pprint_complete(message + "None", False, Color.ERROR)
+            pprint(
+                "A device must be added before any other actions can occur", Color.ERROR
+            )
+            sys.exit(3)
+        else:
+            pprint_complete(message + "Adding", True, Color.YELLOW)
+    else:
+        for device in devices:
+            device["found"] = isdir(device["device_path"])
+
+        if all([device["found"] for device in devices]):
+            pprint_complete(message + "All devices found", True, Color.GREEN)
+        else:
+            pprint_complete(message + "Found some devices:", True, Color.YELLOW)
+            for device in devices:
+                message = (
+                    "{device_name} (Path: {device_path})\n"
+                    "  {identifier_name}: {device_identifier}"
+                ).format(**device)
+                if device["found"]:
+                    pprint_complete(message, True, Color.GREEN)
+                else:
+                    pprint_complete(message, False, Color.ERROR)
+
+            confirm = input("Proceed? (y/N) ")
+            if confirm != "y":
+                sys.exit(3)
+            pprint("Continuing without all devices", Color.YELLOW)
 
 
 # pylint: disable=unused-argument
@@ -79,7 +129,7 @@ def __validate_arguments(arguments: dict) -> bool:
     """
     # Exactly one of each sub-array must be specified for the given action
     required_parameter_set_by_action = {
-        "add": [["file", "folder"]],
+        "add": [["file", "folder", "device"]],
         "move": [["file", "folder"], ["move_path"]],
         "remove": [["file", "folder"]],
         "restore": [["file", "folder", "all"]],
@@ -131,5 +181,7 @@ def process():
     """
     Run the process
     """
+    __prepare()
     args = __parse_arguments()
+    __check_devices(args)
     __dispatch_command(args)

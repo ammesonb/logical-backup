@@ -10,7 +10,30 @@ from pytest import fixture
 
 from logical_backup.main import __validate_arguments
 
+# This is an auto-run fixture, so importing is sufficient
+# pylint: disable=unused-import
+from logical_backup.utility import auto_set_testing
+
 MOCK_FILE = "mock.test"
+
+
+def make_arguments(action: str) -> dict:
+    """
+    Make an argument dictionary
+
+    Parameters
+    ----------
+    action : string
+        The action to execute
+    """
+    return {
+        "action": action,
+        "file": None,
+        "folder": None,
+        "device": None,
+        "all": None,
+        "move_path": None,
+    }
 
 
 def make_mock_file():
@@ -55,13 +78,8 @@ def check_generic_file_folder(action: str):
     action : str
         The action to check
     """
-    arguments = {
-        "action": action,
-        "file": None,
-        "folder": None,
-        "all": None,
-        "move_path": None,
-    }
+
+    arguments = make_arguments(action)
 
     assert not __validate_arguments(arguments), "Nothing except action should fail"
     arguments["file"] = "foo"
@@ -100,13 +118,7 @@ def check_generic_all(action: str):
     action : str
         The action to check
     """
-    arguments = {
-        "action": action,
-        "file": None,
-        "folder": None,
-        "all": None,
-        "move_path": None,
-    }
+    arguments = make_arguments(action)
 
     arguments["all"] = True
     assert __validate_arguments(arguments), "Only 'all' should be valid"
@@ -134,13 +146,12 @@ def test_add():
     """
     check_generic_file_folder("add")
 
-    arguments = {
-        "action": "remove",
-        "file": MOCK_FILE,
-        "folder": None,
-        "all": None,
-        "move_path": None,
-    }
+    arguments = make_arguments("add")
+    arguments["device"] = "/mnt"
+    assert __validate_arguments(arguments), "Device should pass"
+    arguments["file"] = MOCK_FILE
+    assert not __validate_arguments(arguments), "Device with file should fail"
+    arguments["device"] = None
 
     make_mock_file()
 
@@ -160,13 +171,8 @@ def test_remove():
     """
     check_generic_file_folder("remove")
 
-    arguments = {
-        "action": "remove",
-        "file": MOCK_FILE,
-        "folder": None,
-        "all": None,
-        "move_path": None,
-    }
+    arguments = make_arguments("remove")
+    arguments["file"] = MOCK_FILE
 
     make_mock_file()
 
@@ -200,13 +206,7 @@ def test_move():
     """
     Test the move functionality
     """
-    arguments = {
-        "action": "move",
-        "file": None,
-        "folder": None,
-        "all": None,
-        "move_path": None,
-    }
+    arguments = make_arguments("move")
 
     assert not __validate_arguments(arguments), "Only specifying action should fail"
     make_mock_file()
