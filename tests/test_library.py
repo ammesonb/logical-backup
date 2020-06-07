@@ -1,7 +1,7 @@
 """
 Test less-complex library functions
 """
-from logical_backup.library import list_devices
+from logical_backup.main import __dispatch_command
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
@@ -10,6 +10,7 @@ from logical_backup.utility import auto_set_testing
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
 from tests.test_db import auto_clear_db
+from tests.test_arguments import make_arguments
 from tests.mock_db import mock_devices
 
 
@@ -17,8 +18,9 @@ def test_list_devices(monkeypatch, capsys):
     """
     Test listing of devices
     """
+    arguments = make_arguments("list-devices")
     mock_devices(monkeypatch, [])
-    list_devices()
+    __dispatch_command(arguments)
     output = capsys.readouterr()
     assert "No devices saved!" in output.out, "No devices should be present in list"
 
@@ -39,7 +41,7 @@ def test_list_devices(monkeypatch, capsys):
             },
         ],
     )
-    list_devices()
+    __dispatch_command(arguments)
     output = capsys.readouterr()
     assert (
         "| test_device   | /mnt/dev1   | Device Serial   | ABCDEF1234" in output.out
