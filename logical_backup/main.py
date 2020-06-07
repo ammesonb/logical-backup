@@ -77,7 +77,6 @@ def __check_devices(args: dict):
     pprint_start(message, Color.BLUE)
 
     devices = db.get_devices()
-    print(devices)
     if not devices:
         if args["action"] != "add" or not args["device"]:
             pprint_complete(message + "None", False, Color.ERROR)
