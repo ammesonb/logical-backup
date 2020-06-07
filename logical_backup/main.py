@@ -69,6 +69,12 @@ def __parse_arguments() -> tuple:
     parser.add_argument("--folder", help="The file to take action on", required=False)
     parser.add_argument("--device", help="Mount path for a device", required=False)
     parser.add_argument(
+        "--from-device",
+        dest="from_device",
+        help="Use to restrict moves to a specific origin device",
+        required=False,
+    )
+    parser.add_argument(
         "--all",
         help="Perform operation on all files",
         action="store_true",
@@ -130,6 +136,9 @@ def __validate_arguments(arguments: dict) -> bool:
 
     if arguments["device"]:
         path_exists = path_exists and path.ismount(arguments["device"])
+
+    if arguments["from_device"]:
+        path_exists = path_exists and path.ismount(arguments["from_device"])
 
     return command_valid and path_exists
 

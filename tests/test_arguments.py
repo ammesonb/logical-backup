@@ -34,6 +34,7 @@ def make_arguments(action: str) -> dict:
         "device": None,
         "all": None,
         "move_path": None,
+        "from_device": None,
     }
 
 
@@ -239,5 +240,13 @@ def test_move(monkeypatch):
     assert not __validate_arguments(arguments), "Unmounted device path should fail"
     monkeypatch.setattr(path, "ismount", lambda path: True)
     assert __validate_arguments(arguments), "Mounted device path should pass"
+
+    arguments["from_device"] = "/mnt2"
+    monkeypatch.setattr(path, "ismount", lambda path: False)
+    assert not __validate_arguments(
+        arguments
+    ), "Unmounted 'from' device path should fail"
+    monkeypatch.setattr(path, "ismount", lambda path: True)
+    assert __validate_arguments(arguments), "Mounted 'from' device path should pass"
 
     remove_mock()
