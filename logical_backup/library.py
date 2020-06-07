@@ -2,6 +2,10 @@
 """
 Library files for adding, moving, verifying files ,etc
 """
+from texttable import Texttable
+
+import logical_backup.db as db
+from logical_backup.pretty_print import pprint, Color, Background, Format
 
 
 # pylint: disable=unused-argument
@@ -206,3 +210,25 @@ def restore_file(file_path: str) -> bool:
           - copied file checksum mismatches
           - device unavailable
     """
+
+
+def list_devices():
+    """
+    List all the devices registered
+    """
+    devices = db.get_devices()
+    if devices:
+
+        table = Texttable()
+        headers = devices[0].keys()
+        table.add_row(headers)
+
+        for device in devices:
+            row = []
+            for header in headers:
+                row.append(device[header])
+            table.add_row(row)
+
+        print(table.draw())
+    else:
+        pprint("No devices saved!", Color.ERROR, Background.BLACK, [Format.BOLD])

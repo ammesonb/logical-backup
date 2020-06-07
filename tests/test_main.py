@@ -7,7 +7,6 @@ from pytest import raises
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
 from logical_backup.utility import run_command, auto_set_testing
-import logical_backup.db as db
 import logical_backup.main as main  # for input mocking
 from logical_backup.main import __check_devices
 from tests.test_arguments import (
@@ -16,6 +15,7 @@ from tests.test_arguments import (
     make_mock_folder,
     remove_mock,
 )
+from tests.mock_db import mock_devices
 
 
 # This is an auto-run fixture, so importing is sufficient
@@ -55,7 +55,7 @@ def test_check_devices(capsys, monkeypatch):
     Test device checking code
     """
     # DB should return nothing, to start
-    monkeypatch.setattr(db, "get_devices", lambda: [])
+    mock_devices(monkeypatch, [])
     arguments = make_arguments("verify")
     with raises(SystemExit) as pytest_exception:
         __check_devices(arguments)
@@ -88,14 +88,15 @@ def test_check_devices(capsys, monkeypatch):
 
     __check_devices(arguments)
     output = capsys.readouterr()
-    assert "devices...Adding" in output.out, "Adding device message did not print"
+    assert (
+        "devices...Missing, but OK" in output.out
+    ), "Adding device message did not print"
 
     make_mock_folder()
     monkeypatch.setattr(os.path, "ismount", lambda path: path == MOCK_FILE)
-    monkeypatch.setattr(
-        db,
-        "get_devices",
-        lambda: [
+    mock_devices(
+        monkeypatch,
+        [
             {
                 "device_name": "test1",
                 "device_path": MOCK_FILE,
@@ -110,10 +111,9 @@ def test_check_devices(capsys, monkeypatch):
         "All devices found" in output.out
     ), "All devices found did not print expected message"
 
-    monkeypatch.setattr(
-        db,
-        "get_devices",
-        lambda: [
+    mock_devices(
+        monkeypatch,
+        [
             {
                 "device_name": "test1",
                 "device_path": MOCK_FILE,

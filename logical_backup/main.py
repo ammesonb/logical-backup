@@ -14,6 +14,7 @@ from os.path import isfile, isdir
 import sys
 
 import logical_backup.db as db
+from logical_backup.library import list_devices
 from logical_backup.pretty_print import pprint, pprint_start, pprint_complete, Color
 
 
@@ -40,6 +41,16 @@ def __parse_arguments() -> tuple:
     parser = argparse.ArgumentParser(
         description=(
             "Back up and restore files across multiple hard drives\n\n"
+            "Actions:\n"
+            "         add: add a file or folder to the backup selection\n"
+            "      remove: remove a file or folder from the backup selection\n"
+            "        move: move a file or folder in the backup selection, "
+            "OR files/folders between devices\n"
+            "     restore: restore a file/folder/all files to their original location\n"
+            "      verify: check a backed-up file/folder/all files for integrity "
+            "(this will NOT check the local filesystem copy, "
+            "as that is assumed to be correct)\n"
+            "list-devices: list all the registered backup devices\n"
             "Example uses:\n"
             "  # Will add a new device\n"
             "  add --device /mnt/dev1\n"
@@ -63,7 +74,15 @@ def __parse_arguments() -> tuple:
     parser.add_argument(
         "action",
         help="The action to take",
-        choices=["add", "move", "remove", "verify", "restore"],
+        choices=[
+            "add",
+            "move",
+            "remove",
+            "verify",
+            "restore",
+            "list-devices",
+            "search",
+        ],
     )
     parser.add_argument("--file", help="The file to take action on", required=False)
     parser.add_argument("--folder", help="The file to take action on", required=False)
@@ -71,7 +90,7 @@ def __parse_arguments() -> tuple:
     parser.add_argument(
         "--from-device",
         dest="from_device",
-        help="Use to restrict moves to a specific origin device",
+        help="Use to restrict operation to a specific device",
         required=False,
     )
     parser.add_argument(
@@ -116,8 +135,9 @@ def __validate_arguments(arguments: dict) -> bool:
     }
 
     command_valid = True
+    path_exists = True
     # Check at least one of each command set required is in the arguments
-    for command_set in required_parameter_set_by_action[arguments["action"]]:
+    for command_set in required_parameter_set_by_action.get(arguments["action"], []):
 
         commands_in_set_found = 0
         for command in command_set:
@@ -128,7 +148,6 @@ def __validate_arguments(arguments: dict) -> bool:
             command_valid = False
             break
 
-    path_exists = True
     if arguments["file"]:
         path_exists = isfile(arguments["file"])
     elif arguments["folder"]:
@@ -158,14 +177,17 @@ def __check_devices(args: dict):
 
     devices = db.get_devices()
     if not devices:
-        if args["action"] != "add" or not args["device"]:
+        # pylint: disable=bad-continuation
+        if (args["action"] != "add" or not args["device"]) and args[
+            "action"
+        ] != "list-devices":
             pprint_complete(message + "None", False, Color.ERROR)
             pprint(
                 "A device must be added before any other actions can occur", Color.ERROR
             )
             sys.exit(3)
         else:
-            pprint_complete(message + "Adding", True, Color.YELLOW)
+            pprint_complete(message + "Missing, but OK", True, Color.YELLOW)
     else:
         for device in devices:
             device["found"] = path.ismount(device["device_path"])
@@ -207,7 +229,37 @@ def __dispatch_command(arguments: dict) -> str:
     if not __validate_arguments(arguments):
         sys.exit(1)
 
-    # TODO: this
+    command = ""
+    if arguments["action"] == "add":
+        command = "add-"
+
+    elif arguments["action"] == "remove":
+        command = "remove-"
+
+    elif arguments["action"] == "move":
+        command = "move-"
+
+    elif arguments["action"] == "restore":
+        command = "restore-"
+
+    elif arguments["action"] == "verify":
+        command = "verify-"
+
+    elif arguments["action"] == "list-devices":
+        command = "list-devices"
+        list_devices()
+
+    # If command is targeting a specific set of things,
+    # add the thing it is targeting
+    if command[-1] == "-":
+        if arguments["file"]:
+            command += "file"
+        elif arguments["folder"]:
+            command += "folder"
+        elif arguments["all"]:
+            command += "all"
+
+    return command
 
 
 def process():
