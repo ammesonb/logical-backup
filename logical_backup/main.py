@@ -38,7 +38,27 @@ def __parse_arguments() -> tuple:
         arguments
     """
     parser = argparse.ArgumentParser(
-        description="Back up and restore files across multiple hard drives"
+        description=(
+            "Back up and restore files across multiple hard drives\n\n"
+            "Example uses:\n"
+            "  # Will add a new device\n"
+            "  add --device /mnt/dev1\n"
+            "  # Will add this file to the backup set\n"
+            "  add --file /home/user/foo.txt\n"
+            "  # Will remove the /etc folder recursively from backup\n"
+            "  remove --folder /etc\n"
+            "  # Will check all backed up files for integrity\n"
+            "  verify --all\n"
+            "  # Will restore the documents folder from backup\n"
+            "  restore /home/user/documents\n"
+            "  # Will rehome the file, "
+            "updating the backup archive with the new location\n"
+            "  move --file /backups/large.bak --move-path /backups/archive/\n"
+            "  # Will move the backed up folder from its current drive to another, "
+            "if one particular drive is too full to take a needed operation\n"
+            "  move --file /backups --device dev2\n"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "action",
@@ -62,6 +82,56 @@ def __parse_arguments() -> tuple:
     )
     args = parser.parse_args()
     return vars(args)
+
+
+# pylint: disable=unused-argument
+def __validate_arguments(arguments: dict) -> bool:
+    """
+    Determines if the given command-line arguments are valid
+
+    Parameters
+    ----------
+    arguments : dict
+        Configured arguments from the command line,
+        in dictionary form for easier injection with testing
+
+    Returns
+    -------
+    bool
+        True if argument combination is valid
+    """
+    # Exactly one of each sub-array must be specified for the given action
+    required_parameter_set_by_action = {
+        "add": [["file", "folder", "device"]],
+        "move": [["file", "folder"], ["move_path", "device"]],
+        "remove": [["file", "folder"]],
+        "restore": [["file", "folder", "all"]],
+        "verify": [["file", "folder", "all"]],
+    }
+
+    command_valid = True
+    # Check at least one of each command set required is in the arguments
+    for command_set in required_parameter_set_by_action[arguments["action"]]:
+
+        commands_in_set_found = 0
+        for command in command_set:
+            if arguments[command]:
+                commands_in_set_found += 1
+
+        if commands_in_set_found != 1:
+            command_valid = False
+            break
+
+    path_exists = True
+    if arguments["file"]:
+        path_exists = isfile(arguments["file"])
+    elif arguments["folder"]:
+        path_exists = isdir(arguments["folder"])
+
+    if arguments["device"]:
+        path_exists = path_exists and path.ismount(arguments["device"])
+
+    return command_valid and path_exists
 
 
 def __check_devices(args: dict):
@@ -109,52 +179,6 @@ def __check_devices(args: dict):
             if confirm != "y":
                 sys.exit(3)
             pprint("Continuing without all devices", Color.YELLOW)
-
-
-# pylint: disable=unused-argument
-def __validate_arguments(arguments: dict) -> bool:
-    """
-    Determines if the given command-line arguments are valid
-
-    Parameters
-    ----------
-    arguments : dict
-        Configured arguments from the command line,
-        in dictionary form for easier injection with testing
-
-    Returns
-    -------
-    bool
-        True if argument combination is valid
-    """
-    # Exactly one of each sub-array must be specified for the given action
-    required_parameter_set_by_action = {
-        "add": [["file", "folder", "device"]],
-        "move": [["file", "folder"], ["move_path"]],
-        "remove": [["file", "folder"]],
-        "restore": [["file", "folder", "all"]],
-        "verify": [["file", "folder", "all"]],
-    }
-
-    command_valid = True
-    # Check at least one of each command set required is in the arguments
-    for command_set in required_parameter_set_by_action[arguments["action"]]:
-
-        commands_in_set_found = 0
-        for command in command_set:
-            if arguments[command]:
-                commands_in_set_found += 1
-
-        if commands_in_set_found != 1:
-            command_valid = False
-            break
-
-    path_exists = True
-    if arguments["file"]:
-        path_exists = isfile(arguments["file"])
-    elif arguments["folder"]:
-        path_exists = isdir(arguments["folder"])
-    return command_valid and path_exists
 
 
 def __dispatch_command(arguments: dict) -> str:

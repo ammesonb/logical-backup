@@ -3,6 +3,7 @@ Test main script entry point
 """
 
 from os import mkdir, remove, rmdir
+import os.path as path
 from os.path import isdir, isfile
 from pathlib import Path
 
@@ -140,7 +141,7 @@ def check_generic_all(action: str):
     ), "'All' plus folder (even if existing) should fail"
 
 
-def test_add():
+def test_add(monkeypatch):
     """
     Test the "add" action branch of arguments
     """
@@ -148,7 +149,10 @@ def test_add():
 
     arguments = make_arguments("add")
     arguments["device"] = "/mnt"
-    assert __validate_arguments(arguments), "Device should pass"
+    monkeypatch.setattr(path, "ismount", lambda path: False)
+    assert not __validate_arguments(arguments), "Unmounted path for device should fail"
+    monkeypatch.setattr(path, "ismount", lambda path: True)
+    assert __validate_arguments(arguments), "Mounted device path should pass"
     arguments["file"] = MOCK_FILE
     assert not __validate_arguments(arguments), "Device with file should fail"
     arguments["device"] = None
@@ -202,7 +206,7 @@ def test_verify():
     check_generic_all("verify")
 
 
-def test_move():
+def test_move(monkeypatch):
     """
     Test the move functionality
     """
@@ -228,4 +232,12 @@ def test_move():
     remove_mock()
     make_mock_folder()
     assert __validate_arguments(arguments), "Folder and destination should pass"
+
+    arguments["move_path"] = None
+    arguments["device"] = "/mnt"
+    monkeypatch.setattr(path, "ismount", lambda path: False)
+    assert not __validate_arguments(arguments), "Unmounted device path should fail"
+    monkeypatch.setattr(path, "ismount", lambda path: True)
+    assert __validate_arguments(arguments), "Mounted device path should pass"
+
     remove_mock()
