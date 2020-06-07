@@ -1,6 +1,7 @@
 """
 Test main script entry point
 """
+import os.path
 from pytest import raises
 
 # This is an auto-run fixture, so importing is sufficient
@@ -90,6 +91,7 @@ def test_check_devices(capsys, monkeypatch):
     assert "devices...Adding" in output.out, "Adding device message did not print"
 
     make_mock_folder()
+    monkeypatch.setattr(os.path, "ismount", lambda path: path == MOCK_FILE)
     monkeypatch.setattr(
         db,
         "get_devices",

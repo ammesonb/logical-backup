@@ -9,6 +9,7 @@ are maintained
 """
 
 import argparse
+import os.path as path
 from os.path import isfile, isdir
 import sys
 
@@ -88,7 +89,7 @@ def __check_devices(args: dict):
             pprint_complete(message + "Adding", True, Color.YELLOW)
     else:
         for device in devices:
-            device["found"] = isdir(device["device_path"])
+            device["found"] = path.ismount(device["device_path"])
 
         if all([device["found"] for device in devices]):
             pprint_complete(message + "All devices found", True, Color.GREEN)
