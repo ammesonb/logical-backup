@@ -84,7 +84,7 @@ def pprint(
         print_string += "".join([style.value for style in formats])
     print_string += message + Format.END.value
 
-    print(print_string, end=line_ending)
+    print(print_string, end=line_ending, flush=True)
 
 
 # pylint: disable=bad-continuation
@@ -136,7 +136,7 @@ def pprint_complete(
         One or more formats to apply, e.g. bold or underlined
     """
     pprint(
-        "{0}{1}".format(CHECK_UNICODE if succeeded else CROSS_UNICODE, message),
+        "{0}{1}".format((CHECK_UNICODE + " ") if succeeded else CROSS_UNICODE, message),
         color,
         background,
         formats,

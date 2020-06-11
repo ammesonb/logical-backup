@@ -4,8 +4,17 @@ Library files for adding, moving, verifying files ,etc
 """
 from texttable import Texttable
 
+from logical_backup.db import DatabaseError
 import logical_backup.db as db
-from logical_backup.pretty_print import pprint, Color, Background, Format
+import logical_backup.utility as utility
+from logical_backup.pretty_print import (
+    pprint,
+    Color,
+    Background,
+    Format,
+    pprint_start,
+    pprint_complete,
+)
 
 
 # pylint: disable=unused-argument
@@ -91,26 +100,14 @@ def move_file(original_path: str, new_path: str) -> bool:
 
 
 # pylint: disable=unused-argument
-# pylint: disable=bad-continuation
-def add_device(
-    device_path: str,
-    device_name: str,
-    device_identifier_type: str,
-    device_identifier: str,
-) -> bool:
+def add_device(mount_point: str) -> bool:
     """
     Adds a device to the database
 
     Parameters
     ----------
-    device_path : str
-        The mounted path to the device
-    device_name : str
-        A friendly name for the device
-    device_identifier_type : str
-        The type of identifier for the device
-    device_identifier : str
-        The actual identifier of the device
+    mount_point : str
+        The path to where the device is mounted
 
     Returns
     -------
@@ -118,6 +115,58 @@ def add_device(
         True if added, False otherwise
           - due to database failure, or if it path does not exist
     """
+    device_name = input("Device name: ")
+    identifier = utility.get_device_serial(mount_point)
+    identifier_type = "Device Serial"
+    if not identifier:
+        identifier = utility.get_device_uuid(mount_point)
+        identifier_type = "System UUID"
+
+    if not identifier:
+        identifier = input(
+            "Unable to find systemic identifier. "
+            "Please provide a unique identifier for the device: "
+        )
+        identifier_type = "User Specified"
+
+    message = "Saving device..."
+    pprint_start(message)
+    result = db.add_device(device_name, mount_point, identifier_type, identifier)
+    if result == DatabaseError.SUCCESS:
+        pprint_complete(message + "Done", True, Color.GREEN)
+    else:
+        message += "Failed. "
+        if result == DatabaseError.INVALID_IDENTIFIER_TYPE:
+            pprint_complete(
+                message + "Unrecognized device identifier!", False, Color.ERROR
+            )
+        elif result == DatabaseError.DEVICE_NAME_EXISTS:
+            pprint_complete(message + "Name already taken!", False, Color.ERROR)
+        elif result == DatabaseError.DEVICE_PATH_EXISTS:
+            pprint_complete(
+                message + "Device already registered at mount point!",
+                False,
+                Color.ERROR,
+            )
+        elif result == DatabaseError.DEVICE_IDENTIFIER_EXISTS:
+            pprint_complete(
+                message + "Serial already registered for another device!",
+                False,
+                Color.ERROR,
+            )
+        elif result == DatabaseError.UNKNOWN_ERROR:
+            pprint_complete(message + "Unknown error occurred!", False, Color.ERROR)
+        else:
+            pprint_complete(
+                message + "Super-unknown error occurred!",
+                False,
+                Color.ERROR,
+                formats=[Format.UNDERLINE],
+            )
+
+        return False
+
+    return True
 
 
 # pylint: disable=unused-argument

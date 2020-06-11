@@ -2,12 +2,26 @@
 Database interactions for the utility
 """
 
+from enum import Enum
 import sqlite3
 
 from logical_backup.utility import is_test
 
 DB_FILE = "files.db"
 DEV_FILE = "files.db.test"
+
+
+class DatabaseError(Enum):
+    """
+    Database error codes
+    """
+
+    UNKNOWN_ERROR = -1
+    SUCCESS = 0
+    DEVICE_NAME_EXISTS = 1
+    DEVICE_PATH_EXISTS = 2
+    DEVICE_IDENTIFIER_EXISTS = 3
+    INVALID_IDENTIFIER_TYPE = 4
 
 
 class SQLiteCursor(sqlite3.Cursor):
@@ -61,6 +75,8 @@ def initialize_database():
             "  SELECT 'System UUID' AS Name"
             "  UNION"
             "  SELECT 'Device Serial'"
+            "  UNION"
+            "  SELECT 'User Specified'"
             " ) t "
             "WHERE NOT EXISTS ("
             "  SELECT *"
@@ -127,3 +143,59 @@ def get_devices() -> list:
             devices.append(device)
 
         return devices
+
+
+def add_device(name: str, path: str, identifier_name: str, identifier: str) -> int:
+    """
+    Add a device
+
+    Parameters
+    ----------
+    name : string
+        The name of the device
+    path: string
+        The mount path of the device
+    identifier_name : string
+        Friendly description of the identifier - must be in picklist
+    identifier : string
+        The identifier for the device
+
+    Returns
+    -------
+    integer
+        True if added, False if it already exists
+    """
+    with SQLiteCursor() as cursor:
+        result = DatabaseError.UNKNOWN_ERROR
+        try:
+            cursor.execute(
+                "INSERT INTO tblDevice ("
+                "  DeviceName, "
+                "  DevicePath, "
+                "  DeviceIdentifierID, "
+                "  DeviceIdentifier"
+                ") "
+                "SELECT ?, "
+                "       ?, "
+                "       i.IdentifierID, "
+                "       ? "
+                "FROM   tblplDeviceIdentifier i "
+                "WHERE  i.IdentifierName = ?",
+                (name, path, identifier, identifier_name),
+            )
+            result = (
+                DatabaseError.SUCCESS
+                if cursor.rowcount > 0
+                else DatabaseError.INVALID_IDENTIFIER_TYPE
+            )
+        except sqlite3.IntegrityError as error:
+            if "DevicePath" in error.args[0]:
+                result = DatabaseError.DEVICE_PATH_EXISTS
+            elif "DeviceName" in error.args[0]:
+                result = DatabaseError.DEVICE_NAME_EXISTS
+            elif "DeviceIdentifier" in error.args[0]:
+                result = DatabaseError.DEVICE_IDENTIFIER_EXISTS
+            else:
+                result = DatabaseError.UNKNOWN_ERROR
+
+        return result

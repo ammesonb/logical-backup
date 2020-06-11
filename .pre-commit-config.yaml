@@ -9,3 +9,5 @@ repos:
     hooks:
     - id: pylint
       language: system
+      args:
+        - --fail-under=9
