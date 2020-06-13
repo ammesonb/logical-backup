@@ -5,6 +5,10 @@ Database interactions for the utility
 from enum import Enum
 import sqlite3
 
+from logical_backup.objects.device import Device
+from logical_backup.objects.file import File
+
+
 from logical_backup.utility import is_test
 
 DB_FILE = "files.db"
@@ -22,6 +26,7 @@ class DatabaseError(Enum):
     DEVICE_PATH_EXISTS = 2
     DEVICE_IDENTIFIER_EXISTS = 3
     INVALID_IDENTIFIER_TYPE = 4
+    NONEXISTENT_DEVICE = 5
 
 
 class SQLiteCursor(sqlite3.Cursor):
@@ -120,6 +125,7 @@ def get_devices() -> list:
         cursor.execute(
             "SELECT     d.DeviceName, "
             "           d.DevicePath, "
+            "           i.IdentifierID, "
             "           i.IdentifierName, "
             "           d.DeviceIdentifier "
             "FROM       tblDevice d "
@@ -129,36 +135,21 @@ def get_devices() -> list:
         rows = cursor.fetchall()
         devices = []
         for row in rows:
-            columns = [
-                "device_name",
-                "device_path",
-                "identifier_name",
-                "device_identifier",
-            ]
-            device = {}
-            index = 0
-            for column in columns:
-                device.update({column: row[index]})
-                index += 1
+            device = Device()
+            device.set(row[0], row[1], row[3], row[4], row[2])
             devices.append(device)
 
         return devices
 
 
-def add_device(name: str, path: str, identifier_name: str, identifier: str) -> int:
+def add_device(device: Device) -> int:
     """
     Add a device
 
     Parameters
     ----------
-    name : string
-        The name of the device
-    path: string
-        The mount path of the device
-    identifier_name : string
-        Friendly description of the identifier - must be in picklist
-    identifier : string
-        The identifier for the device
+    device : Device
+        The device to add
 
     Returns
     -------
@@ -181,7 +172,12 @@ def add_device(name: str, path: str, identifier_name: str, identifier: str) -> i
                 "       ? "
                 "FROM   tblplDeviceIdentifier i "
                 "WHERE  i.IdentifierName = ?",
-                (name, path, identifier, identifier_name),
+                (
+                    device.device_name,
+                    device.device_path,
+                    device.identifier,
+                    device.identifier_type,
+                ),
             )
             result = (
                 DatabaseError.SUCCESS
@@ -199,3 +195,67 @@ def add_device(name: str, path: str, identifier_name: str, identifier: str) -> i
                 result = DatabaseError.UNKNOWN_ERROR
 
         return result
+
+
+def file_exists(file_path: str) -> bool:
+    """
+    Check if a file already exists
+
+    Parameters
+    ----------
+    file_path : str
+        File path to check
+
+    Returns
+    -------
+    bool
+        True if file exists
+    """
+    with SQLiteCursor() as cursor:
+        cursor.execute(
+            "SELECT 1 " "FROM   tblFile " "WHERE  FilePath = ?", (file_path,)
+        )
+        result = cursor.fetchone()
+        return bool(result)
+
+
+def add_file(file_obj: File) -> bool:
+    """
+    Add a file
+    """
+    with SQLiteCursor() as cursor:
+        cursor.execute(
+            "INSERT INTO tblFile ("
+            "  FileName, "
+            "  FilePath, "
+            "  FilePermissions, "
+            "  FileOwnerName, "
+            "  FileGroupName, "
+            "  FileChecksum, "
+            "  FileDeviceID "
+            ")"
+            "SELECT ?, "
+            "       ?, "
+            "       ?, "
+            "       ?, "
+            "       ?, "
+            "       ?, "
+            "       d.DeviceID "
+            "FROM   tblDevice d "
+            "WHERE  d.DeviceName = ?",
+            (
+                file_obj.file_name,
+                file_obj.file_path,
+                file_obj.permissions,
+                file_obj.owner,
+                file_obj.group,
+                file_obj.checksum,
+                file_obj.device_name,
+            ),
+        )
+        return (
+            DatabaseError.SUCCESS
+            if cursor.rowcount > 0
+            else DatabaseError.NONEXISTENT_DEVICE
+        )
+        # TODO: try/catch error handling

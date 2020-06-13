@@ -15,6 +15,7 @@ import sys
 
 import logical_backup.db as db
 import logical_backup.library as library
+import logical_backup.utility as utility
 from logical_backup.pretty_print import pprint, pprint_start, pprint_complete, Color
 
 
@@ -24,9 +25,6 @@ def __prepare():
     """
     # This is non-destructive; will only create tables if needed
     db.initialize_database()
-
-    # TODO: get existing hard drives, see if any are present
-    # TODO: provide output for that
 
 
 def __parse_arguments() -> tuple:
@@ -106,7 +104,10 @@ def __parse_arguments() -> tuple:
         required=False,
     )
     args = parser.parse_args()
-    return vars(args)
+    arguments = vars(args)
+    arguments["file"] = utility.get_abs_path(arguments["file"])
+    arguments["folder"] = utility.get_abs_path(arguments["folder"])
+    arguments["device"] = utility.get_abs_path(arguments["device"])
 
 
 # pylint: disable=unused-argument
@@ -226,9 +227,6 @@ def __dispatch_command(arguments: dict) -> str:
     str
         The command being called
     """
-    if not __validate_arguments(arguments):
-        sys.exit(1)
-
     command = ""
     if arguments["action"] == "add":
         command = "add-"
@@ -276,5 +274,8 @@ def process():
     """
     __prepare()
     args = __parse_arguments()
+    if not __validate_arguments(arguments):
+        sys.exit(1)
+
     __check_devices(args)
     __dispatch_command(args)

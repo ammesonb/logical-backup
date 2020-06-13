@@ -210,3 +210,15 @@ def get_file_size(path: str) -> int:
 
     else:
         return os.stat(path).st_size
+
+
+def get_abs_path(path: str) -> str:
+    """
+    Returns absolute path
+
+    Parameters
+    ----------
+    path : str
+        .
+    """
+    return os_path.abspath(path) if path else None

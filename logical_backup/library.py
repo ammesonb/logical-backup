@@ -4,6 +4,7 @@ Library files for adding, moving, verifying files ,etc
 """
 from texttable import Texttable
 
+from logical_backup.objects.device import Device
 from logical_backup.db import DatabaseError
 import logical_backup.db as db
 import logical_backup.utility as utility
@@ -14,6 +15,7 @@ from logical_backup.pretty_print import (
     Format,
     pprint_start,
     pprint_complete,
+    readable_bytes,
 )
 
 
@@ -68,6 +70,48 @@ def add_file(
           - due to database failure, hard drive failure, etc
           - or if it already exists
     """
+    if db.file_exists(file_path):
+        pprint("File is already backed up!", Color.ERROR)
+        return False
+
+    if mount_point and not size_checked:
+        message = "Checking drive space..."
+        pprint_start(message)
+        file_size = utility.get_file_size(file_path)
+        drive_space = utility.get_device_space(mount_point)
+        if file_size >= drive_space:
+            pprint_complete(message + "Insufficient space!", False, Color.ERROR)
+            confirm = input("Switch drive? (Y/n, n exits) ")
+            if confirm == "n":
+                return False
+            else:
+                mount_point = None
+        else:
+            pprint_complete(message + "Done.", True, Color.BLUE)
+
+    message = "Getting file size..."
+    pprint_start(message)
+    file_size = utility.get_file_size(file_path)
+    pprint_complete(message + "Read. File is " + readable_bytes(file_size), True)
+
+    # This also needs to happen if we unset it due to space problems
+    if not mount_point:
+        message = "Auto-selecting device to use..."
+        pprint_start(message)
+
+        devices = db.get_devices()
+        for device in devices:
+            path = device.device_path
+            space = utility.get_device_space(path)
+            if space > file_size:
+                pprint_complete("Selected " + device.device_name, True)
+                mount_point = path
+                break
+
+    # TODO: checksum file
+    # TODO: copy to directory
+    # TODO: checksum file again
+    # TODO: save to database
 
 
 # pylint: disable=unused-argument
@@ -141,7 +185,11 @@ def add_device(mount_point: str) -> bool:
 
     message = "Saving device..."
     pprint_start(message)
-    result = db.add_device(device_name, mount_point, identifier_type, identifier)
+
+    device = Device()
+    device.set(device_name, mount_point, identifier_type, identifier)
+    result = db.add_device(device)
+
     if result == DatabaseError.SUCCESS:
         pprint_complete(message + "Done", True, Color.GREEN)
     else:

@@ -135,3 +135,17 @@ def test_get_file_size(monkeypatch):
 
     result = utility.get_file_size("exists")
     assert result == 36864, "File size should be returned"
+
+
+def test_get_abs_path(monkeypatch):
+    """
+    .
+    """
+    result = utility.get_abs_path(None)
+    assert not result, "None should return None"
+
+    # NOTE: this is an internal use of getcwd by abspath, and may change
+    # NOTE: if it does, this will require a different mock, possibly of abspath itself
+    monkeypatch.setattr(os, "getcwd", lambda: "/home/foo")
+    result = utility.get_abs_path("test")
+    assert result == "/home/foo/test", "Test directory returned"
