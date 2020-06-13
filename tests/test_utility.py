@@ -2,12 +2,19 @@
 Tests for utility functions
 """
 from collections import namedtuple
+import os
+import os.path as os_path
 import psutil
 
 from logical_backup.utility import __get_device_path
 import logical_backup.utility as utility
 
 DiskPartition = namedtuple("sdiskpart", "device mountpoint fstype opts")
+DiskUsage = namedtuple("diskusage", "total used free percent")
+StatResult = namedtuple(
+    "stat_result",
+    "st_mode st_ino st_dev st_nlink st_uid st_gid st_size st_atime st_mtime st_ctime",
+)
 
 
 def test_is_test():
@@ -89,3 +96,42 @@ def test_get_device_uuid(capsys, monkeypatch):
     output = capsys.readouterr()
     assert result == "12345-ABCDEF-98765", "UUID returned for device"
     assert "Found 12345-ABCDEF-98765" in output.out, "UUID printed for device"
+
+
+def test_get_disk_space(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(psutil, "disk_usage", lambda path: DiskUsage(125, 25, 100, 80))
+    result = utility.get_device_space("/test")
+    assert result == 100, "Available disk space wasn't returned correctly"
+
+
+def test_get_file_size(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(os_path, "isfile", lambda x: False)
+    result = utility.get_file_size("nonexistent")
+    assert not result, "File size should fail if not a file"
+
+    monkeypatch.setattr(os_path, "isfile", lambda x: True)
+    monkeypatch.setattr(
+        os,
+        "stat",
+        lambda path: StatResult(
+            33188,
+            7738624,
+            65028,
+            1,
+            1000,
+            1000,
+            36864,
+            1591838246,
+            1591838131,
+            1591838131,
+        ),
+    )
+
+    result = utility.get_file_size("exists")
+    assert result == 36864, "File size should be returned"

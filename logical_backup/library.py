@@ -18,11 +18,13 @@ from logical_backup.pretty_print import (
 
 
 # pylint: disable=unused-argument
-def add_directory(folder_path: str) -> bool:
+def add_directory(folder_path: str, mount_point: str = None) -> bool:
     """
     Adds a directory to the backup
     See add_file
     """
+    # Note: if want to proceed with specific device, will need to null that out
+    # after capacity is consumed
 
 
 # pylint: disable=unused-argument
@@ -42,7 +44,9 @@ def move_directory(current_path: str, new_path: str) -> bool:
 
 
 # pylint: disable=unused-argument
-def add_file(file_path: str) -> bool:
+def add_file(
+    file_path: str, mount_point: str = None, size_checked: bool = False
+) -> bool:
     """
     Will add a file to the backup archive
 
@@ -50,6 +54,12 @@ def add_file(file_path: str) -> bool:
     ----------
     file_path : str
         The file path to add
+    mount_point : str
+        Optionally, the mount point to prefer
+    size_checked : bool
+        Used for folder addition to specific device
+        True if the size of the specified device has already been checked
+        for required capacity of file/s
 
     Returns
     -------

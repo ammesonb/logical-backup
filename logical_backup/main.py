@@ -14,7 +14,7 @@ from os.path import isfile, isdir
 import sys
 
 import logical_backup.db as db
-from logical_backup.library import list_devices, add_device
+import logical_backup.library as library
 from logical_backup.pretty_print import pprint, pprint_start, pprint_complete, Color
 
 
@@ -232,8 +232,12 @@ def __dispatch_command(arguments: dict) -> str:
     command = ""
     if arguments["action"] == "add":
         command = "add-"
-        if arguments["device"]:
-            add_device(arguments["device"])
+        if arguments["file"]:
+            library.add_file(arguments["file"], arguments["device"])
+        elif arguments["folder"]:
+            library.add_folder(arguments["file"], arguments["device"])
+        elif arguments["device"]:
+            library.add_device(arguments["device"])
 
     elif arguments["action"] == "remove":
         command = "remove-"
@@ -249,7 +253,7 @@ def __dispatch_command(arguments: dict) -> str:
 
     elif arguments["action"] == "list-devices":
         command = "list-devices"
-        list_devices()
+        library.list_devices()
 
     # If command is targeting a specific set of things,
     # add the thing it is targeting

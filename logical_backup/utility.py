@@ -2,6 +2,8 @@
 Some helper functions
 """
 from os import getenv, environ
+import os
+import os.path as os_path
 from subprocess import run, Popen, PIPE
 from pytest import fixture
 
@@ -169,3 +171,42 @@ def get_device_uuid(mount_point: str) -> str:
         pprint_complete(message + "No UUID found!", False, Color.ERROR)
 
     return uuid
+
+
+def get_device_space(mount_point: str) -> int:
+    """
+    Return available drive space, in bytes
+
+    Parameters
+    ----------
+    mount_point : str
+        The mount point
+
+    Returns
+    -------
+    float
+        Bytes of available space
+    """
+    available = psutil.disk_usage(mount_point)
+    return available.free
+
+
+def get_file_size(path: str) -> int:
+    """
+    Get file size, in bytes
+    Returns None if not a file
+
+    Parameters
+    ----------
+    path : str
+        Path to check
+
+    Returns
+    -------
+    int
+    """
+    if not os_path.isfile(path):
+        return None
+
+    else:
+        return os.stat(path).st_size
