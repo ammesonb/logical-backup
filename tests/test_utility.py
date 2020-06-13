@@ -2,6 +2,7 @@
 Tests for utility functions
 """
 from collections import namedtuple
+import hashlib
 import os
 import os.path as os_path
 import psutil
@@ -149,3 +150,41 @@ def test_get_abs_path(monkeypatch):
     monkeypatch.setattr(os, "getcwd", lambda: "/home/foo")
     result = utility.get_abs_path("test")
     assert result == "/home/foo/test", "Test directory returned"
+
+
+def test_get_checksum(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(
+        utility,
+        "run_piped_command",
+        lambda command: {"exit_code": 1, "stdout": "", "stderr": ""},
+    )
+    output = utility.checksum_file("test")
+    assert not output, "Checksum fail should be empty"
+
+    monkeypatch.setattr(
+        utility,
+        "run_piped_command",
+        lambda command: {"exit_code": 0, "stdout": "abc123", "stderr": ""},
+    )
+    output = utility.checksum_file("test")
+    assert output == "abc123", "Faux checksum should match"
+
+
+def test_create_backup_name(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(hashlib, "sha256", lambda text: "abc123")
+    name = utility.create_backup_name("test")
+    assert name == "abc123_test", "Basic file name should match"
+    name = utility.create_backup_name("/foo/test")
+    assert name == "abc123_test", "Test file name with path should match"
+
+
+def test_get_file_security(monkeypatch):
+    """
+    .
+    """

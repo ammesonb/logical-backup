@@ -2,9 +2,12 @@
 """
 Library files for adding, moving, verifying files ,etc
 """
+import os
+import os.path as os_path
 from texttable import Texttable
 
 from logical_backup.objects.device import Device
+from logical_backup.objects.file import File
 from logical_backup.db import DatabaseError
 import logical_backup.db as db
 import logical_backup.utility as utility
@@ -17,6 +20,8 @@ from logical_backup.pretty_print import (
     pprint_complete,
     readable_bytes,
 )
+
+import shutil
 
 
 # pylint: disable=unused-argument
@@ -108,10 +113,36 @@ def add_file(
                 mount_point = path
                 break
 
-    # TODO: checksum file
-    # TODO: copy to directory
-    # TODO: checksum file again
-    # TODO: save to database
+    security_details = utility.get_file_security(file_path)
+    checksum = utility.checksum_file(file_path)
+    if not checksum:
+        return False
+
+    new_name = utility.create_backup_name(file_path)
+    new_path = os_path.join(mount_point, new_name)
+    shutil.copyfile(file_path, new_path)
+
+    checksum2 = utility.checksum_file(new_path)
+
+    if checksum != checksum2:
+        pprint("Checksum mismatch after copy!", Color.ERROR)
+        os.remove(new_path)
+        return False
+
+    file_obj = File()
+    file_obj.set_properties(os_path.basename(file_path), file_path, checksum)
+    file_obj.set_security(**security_details)
+
+    message = "Saving file record to DB..."
+    pprint_start(message)
+    succeeded = db.add_file(file_obj)
+    if succeeded:
+        pprint_complete(message + "Done.", True, Color.GREEN)
+    else:
+        pprint_complete(message + "Failed!", False, Color.ERROR)
+        os.remove(new_path)
+
+    return succeeded
 
 
 # pylint: disable=unused-argument

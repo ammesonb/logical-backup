@@ -1,11 +1,15 @@
 """
 Some helper functions
 """
+import grp
+import hashlib
 from os import getenv, environ
 import os
 import os.path as os_path
+import pwd
 from subprocess import run, Popen, PIPE
 from pytest import fixture
+from time import time
 
 import psutil
 
@@ -222,3 +226,75 @@ def get_abs_path(path: str) -> str:
         .
     """
     return os_path.abspath(path) if path else None
+
+
+def checksum_file(path: str) -> str:
+    """
+    Gets the checksum of a file
+
+    Parameters
+    ----------
+    path : str
+        The path to checksum
+
+    Returns
+    -------
+    string
+        Checksum
+    """
+    pprint_start("Getting MD5 hash...")
+    result = run_piped_command([["md5sum", path], ["awk", "'{ print $1 }'"]])
+    if result["exit_code"]:
+        pprint_complete(
+            "Failed! Exit code: {0}".format(result["exit_code"]), False, Color.ERROR
+        )
+        checksum = None
+    else:
+        pprint_complete("Complete", True)
+        checksum = result["stdout"].strip()
+
+    return checksum
+
+
+def create_backup_name(path: str) -> str:
+    """
+    Creates a unique name to back up a file to
+
+    Parameters
+    ----------
+    path : str
+        Path to creat a unique name for
+
+    Returns
+    -------
+    string
+        A unique name
+    """
+    # Include time to guarantee uniqueness
+    path_hash = hashlib.sha256(path + str(time))
+    file_name = os_path.basename(path)
+    return path_hash + "_" + file_name
+
+
+def get_file_security(path: str) -> dict:
+    """
+    Get security details for a file
+
+    Parameters
+    ----------
+    path : str
+        File path to get details about
+
+    Returns
+    -------
+    dict
+        Containing owner, group, and permissions
+    """
+    pprint_start("Checking file permissions...")
+    file_stats = os.stat(path)
+    permission_mask = oct(file_stats.st_mode)[-3:]
+    owner = pwd.getpwuid(file_stats.st_uid).pw_name
+    group = grp.getgrgid(file_stats.st_gid)
+    pprint_complete("Done.", True)
+
+    return {"permissions": permission_mask, "owner": owner, "group": group}
