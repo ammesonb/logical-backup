@@ -93,10 +93,10 @@ class Device:
             What to compare against
         """
         if type(other) is dict:
-            print("dict")
             for key, value in other.items():
                 if getattr(self, key) != value:
                     return False
+            return True
         elif type(other) is Device:
             return (
                 self.device_name == other.device_name

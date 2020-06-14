@@ -5,7 +5,8 @@ from os import path
 
 from logical_backup.main import __dispatch_command
 from logical_backup import library
-from logical_backup.db import initialize_database
+from logical_backup.db import initialize_database, DatabaseError
+import logical_backup.db as db
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
@@ -150,3 +151,32 @@ def test_add_device(capsys, monkeypatch):
     assert (
         "Serial already registered" in output.out
     ), "Sixth device should fail due to serial conflict"
+
+    # Invalid identifier, should only happen on DB corruption
+    monkeypatch.setattr(
+        db, "add_device", lambda device: DatabaseError.INVALID_IDENTIFIER_TYPE
+    )
+    command = __dispatch_command(arguments)
+    assert command == "add-device", "Command called should be add device"
+    output = capsys.readouterr()
+    assert (
+        "Unrecognized device identifier" in output.out
+    ), "Invalid identifier for device should fail to add"
+
+    # Unknown error can occur in weird circumstances
+    monkeypatch.setattr(db, "add_device", lambda device: DatabaseError.UNKNOWN_ERROR)
+    command = __dispatch_command(arguments)
+    assert command == "add-device", "Command called should be add device"
+    output = capsys.readouterr()
+    assert (
+        "Unknown error occurred" in output.out
+    ), "Unknown error should cause a failure"
+
+    # Some bizarre return value
+    monkeypatch.setattr(db, "add_device", lambda device: -999)
+    command = __dispatch_command(arguments)
+    assert command == "add-device", "Command called should be add device"
+    output = capsys.readouterr()
+    assert (
+        "Super-unknown error occurred" in output.out
+    ), "Bizarre return value should cause a failure"

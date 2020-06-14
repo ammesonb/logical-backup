@@ -155,7 +155,7 @@ def readable_bytes(bytes, suffix="B") -> str:
         What to print after the SI prefix
     """
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
-        if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
-        num /= 1024.0
-    return "%.1f%s%s" % (num, "Yi", suffix)
+        if abs(bytes) < 1024.0:
+            return "%3.1f%s%s" % (bytes, unit, suffix)
+        bytes /= 1024.0
+    return "%.1f%s%s" % (bytes, "Yi", suffix)

@@ -6,9 +6,12 @@ import hashlib
 import os
 import os.path as os_path
 import psutil
+import pwd
+import grp
 
 from logical_backup.utility import __get_device_path
 import logical_backup.utility as utility
+from logical_backup.pretty_print import readable_bytes
 
 DiskPartition = namedtuple("sdiskpart", "device mountpoint fstype opts")
 DiskUsage = namedtuple("diskusage", "total used free percent")
@@ -16,6 +19,11 @@ StatResult = namedtuple(
     "stat_result",
     "st_mode st_ino st_dev st_nlink st_uid st_gid st_size st_atime st_mtime st_ctime",
 )
+
+PwUID = namedtuple(
+    "struct_passwd", "pw_dir pw_gecos pw_gid pw_name pw_passw pw_shell pw_uid"
+)
+GrID = namedtuple("struct_group", "gr_name gr_passwd gr_gid gr_mem")
 
 
 def test_is_test():
@@ -29,6 +37,30 @@ def test_is_test():
     ), "Test utility does not return test environment, what has the world come to"
     utility.remove_testing()
     assert not utility.is_test(), "Test variable should have been cleared"
+
+
+def test_run_command():
+    """
+    .
+    """
+    result = utility.run_command(["echo", "hello world"])
+    assert result["stdout"] == b"hello world\n", "Echo should output hello world"
+    assert result["exit_code"] == 0, "Echo should not fail"
+
+    result = utility.run_command(["cat", "no_such_file"])
+    assert result["exit_code"] != 0, "Can't cat non-existent file"
+
+
+def test_run_piped_command():
+    """
+    .
+    """
+    result = utility.run_piped_command([["echo", "hello_world"], ["sed", "s/_/ /"]])
+    assert result["stdout"] == b"hello world\n", "Echo should output hello world"
+    assert result["exit_code"] == 0, "Echo should not fail"
+
+    result = utility.run_piped_command([["echo", "hello_world"], ["cat", "no_file"]])
+    assert result["exit_code"] != 0, "Can't cat non-existent file"
 
 
 def test_get_device_path(monkeypatch):
@@ -184,7 +216,47 @@ def test_create_backup_name(monkeypatch):
     assert name == "abc123_test", "Test file name with path should match"
 
 
-def test_get_file_security(monkeypatch):
+def test_byte_printing():
+    """
+    Check printing library output
+    """
+    assert readable_bytes(100) == "100.0B", "Bytes output"
+    assert readable_bytes(2 * 1024) == "2.0KiB", "KiloBytes output"
+    assert readable_bytes(3 * 1024 * 1024) == "3.0MiB", "MegaBytes output"
+    assert readable_bytes(4.056 * 1024 * 1024) == "4.1MiB", "MegaBytes output"
+
+
+def test_get_file_security(monkeypatch, capsys):
     """
     .
     """
+    monkeypatch.setattr(
+        os,
+        "stat",
+        lambda path: StatResult(
+            33188,
+            7738624,
+            65028,
+            1,
+            1000,
+            1000,
+            36864,
+            1591838246,
+            1591838131,
+            1591838131,
+        ),
+    )
+
+    user = PwUID("/home/user", "user,,,,", 1000, "user", "x", "/usr/zsh", 1000)
+    group = GrID("group", "x", 1000, [])
+    monkeypatch.setattr(pwd, "getpwuid", lambda uid: user)
+    monkeypatch.setattr(grp, "getgrgid", lambda gid: group)
+
+    result = utility.get_file_security("/test")
+    output = capsys.readouterr()
+    assert result == {
+        "permissions": "644",
+        "owner": "user",
+        "group": "group",
+    }, "Expected permissions were returned"
+    assert "Checking file permissions...Done" in output.out, "Expected text was printed"

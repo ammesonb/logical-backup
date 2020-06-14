@@ -290,11 +290,12 @@ def get_file_security(path: str) -> dict:
     dict
         Containing owner, group, and permissions
     """
-    pprint_start("Checking file permissions...")
+    message = "Checking file permissions..."
+    pprint_start(message)
     file_stats = os.stat(path)
     permission_mask = oct(file_stats.st_mode)[-3:]
     owner = pwd.getpwuid(file_stats.st_uid).pw_name
-    group = grp.getgrgid(file_stats.st_gid)
-    pprint_complete("Done.", True)
+    group = grp.getgrgid(file_stats.st_gid).gr_name
+    pprint_complete(message + "Done.", True)
 
     return {"permissions": permission_mask, "owner": owner, "group": group}

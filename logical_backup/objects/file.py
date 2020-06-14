@@ -10,7 +10,7 @@ class File:
         self.__file_name = None
         self.__file_path = None
         self.__permissions = None
-        self.__user = None
+        self.__owner = None
         self.__group = None
         self.__checksum = None
         self.__device_name = None
@@ -58,18 +58,18 @@ class File:
         self.__permissions = permissions
 
     @property
-    def user(self) -> str:
+    def owner(self) -> str:
         """
         .
         """
-        return self.__user
+        return self.__owner
 
-    @user.setter
-    def user(self, user: str):
+    @owner.setter
+    def owner(self, owner: str):
         """
         .
         """
-        self.__user = user
+        self.__owner = owner
 
     @property
     def group(self) -> str:
