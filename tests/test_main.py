@@ -206,6 +206,16 @@ def test_parse_arguments():
     assert parsed == expected, "Move file should match"
 
 
+def test_invalid_arguments():
+    """
+    Check system exits on invalid arguments
+    """
+    # Add requires, something to add
+    with raises(SystemExit) as pytest_exception:
+        main.process(["add"])
+        assert pytest_exception.value.code == 1, "Invalid arguments should exit 1"
+
+
 def test_command_run(monkeypatch, capsys):
     """
     Checks which command was run, end-to-end analysis
@@ -237,6 +247,12 @@ def test_command_run(monkeypatch, capsys):
 
     arguments = ["remove", "--folder", "foo"]
     assert main.process(arguments) == "remove-folder", "Remove folder"
+
+    arguments = ["update", "--file", "foo"]
+    assert main.process(arguments) == "update-file", "Update file"
+
+    arguments = ["update", "--folder", "foo"]
+    assert main.process(arguments) == "update-folder", "Update folder"
 
     arguments = ["restore", "--file", "foo"]
     assert main.process(arguments) == "restore-file", "Restore file"
