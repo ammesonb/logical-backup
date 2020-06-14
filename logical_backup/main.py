@@ -27,9 +27,14 @@ def __prepare():
     db.initialize_database()
 
 
-def __parse_arguments() -> tuple:
+def __parse_arguments(command_line_arguments: list) -> tuple:
     """
     Parses command line arguments
+
+    Parameters
+    ----------
+    command_line_arguments : list
+        Command line arguments, in list form
 
     Returns
     -------
@@ -76,6 +81,7 @@ def __parse_arguments() -> tuple:
             "add",
             "move",
             "remove",
+            "update",
             "verify",
             "restore",
             "list-devices",
@@ -103,11 +109,12 @@ def __parse_arguments() -> tuple:
         help="Target for move operation",
         required=False,
     )
-    args = parser.parse_args()
+    args = parser.parse_args(command_line_arguments)
     arguments = vars(args)
     arguments["file"] = utility.get_abs_path(arguments["file"])
     arguments["folder"] = utility.get_abs_path(arguments["folder"])
     arguments["device"] = utility.get_abs_path(arguments["device"])
+    return arguments
 
 
 # pylint: disable=unused-argument
@@ -133,6 +140,7 @@ def __validate_arguments(arguments: dict) -> bool:
         "remove": [["file", "folder"]],
         "restore": [["file", "folder", "all"]],
         "verify": [["file", "folder", "all"]],
+        "update": [["file", "folder"]],
     }
 
     command_valid = True
@@ -229,53 +237,75 @@ def __dispatch_command(arguments: dict) -> str:
     """
     command = ""
     if arguments["action"] == "add":
-        command = "add-"
         if arguments["file"]:
+            command = "add-file"
             library.add_file(arguments["file"], arguments["device"])
         elif arguments["folder"]:
-            library.add_folder(arguments["file"], arguments["device"])
+            command = "add-folder"
+            library.add_directory(arguments["file"], arguments["device"])
         elif arguments["device"]:
+            command = "add-device"
             library.add_device(arguments["device"])
 
-    elif arguments["action"] == "remove":
-        command = "remove-"
-
     elif arguments["action"] == "move":
-        command = "move-"
+        if arguments["file"]:
+            command = "move-file"
+        elif arguments["folder"]:
+            command = "move-folder"
+
+    elif arguments["action"] == "remove":
+        if arguments["file"]:
+            command = "remove-file"
+        elif arguments["folder"]:
+            command = "remove-folder"
+
+    elif arguments["action"] == "update":
+        if arguments["file"]:
+            command = "update-file"
+        elif arguments["folder"]:
+            command = "update-folder"
 
     elif arguments["action"] == "restore":
-        command = "restore-"
+        if arguments["file"]:
+            command = "restore-file"
+        elif arguments["folder"]:
+            command = "restore-folder"
+        elif arguments["all"]:
+            command = "restore-all"
 
     elif arguments["action"] == "verify":
-        command = "verify-"
+        if arguments["file"]:
+            command = "verify-file"
+        elif arguments["folder"]:
+            command = "verify-folder"
+        elif arguments["all"]:
+            command = "verify-all"
 
     elif arguments["action"] == "list-devices":
         command = "list-devices"
         library.list_devices()
 
-    # If command is targeting a specific set of things,
-    # add the thing it is targeting
-    if command[-1] == "-":
-        if arguments["file"]:
-            command += "file"
-        elif arguments["folder"]:
-            command += "folder"
-        elif arguments["device"]:
-            command += "device"
-        elif arguments["all"]:
-            command += "all"
-
     return command
 
 
-def process():
+def process(arguments: list = []) -> str:
     """
     Run the process
+
+    Parameters
+    ----------
+    arguments : list
+        Injectable arguments to execute
+
+    Returns
+    -------
+    str
+        The name of the library command to execute
     """
     __prepare()
-    args = __parse_arguments()
-    if not __validate_arguments(arguments):
+    args = __parse_arguments(arguments if arguments else sys.argv[1:])
+    if not __validate_arguments(args):
         sys.exit(1)
 
     __check_devices(args)
-    __dispatch_command(args)
+    return __dispatch_command(args)

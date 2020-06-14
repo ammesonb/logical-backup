@@ -32,7 +32,7 @@ def make_arguments(action: str) -> dict:
         "file": None,
         "folder": None,
         "device": None,
-        "all": None,
+        "all": False,
         "move_path": None,
         "from_device": None,
     }
@@ -188,6 +188,19 @@ def test_remove():
         arguments
     ), "Irrelevant arguments should be ignored, and pass"
 
+    remove_mock()
+
+
+def test_update():
+    """
+    .
+    """
+    check_generic_file_folder("update")
+    arguments = make_arguments("update")
+    arguments["file"] = MOCK_FILE
+    arguments["device"] = "/foo"
+    make_mock_file()
+    assert not __validate_arguments(arguments), "Device is not valid for update"
     remove_mock()
 
 

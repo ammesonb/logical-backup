@@ -2,12 +2,14 @@
 Test main script entry point
 """
 import os.path
+from types import FunctionType
 from pytest import raises
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
 from logical_backup.utility import run_command, auto_set_testing
 import logical_backup.main as main  # for input mocking
+import logical_backup.library as library  # for input mocking
 from logical_backup.main import __check_devices
 from tests.test_arguments import (
     make_arguments,
@@ -160,3 +162,114 @@ def test_check_devices(capsys, monkeypatch):
         "Continuing without all devices" in output.out
     ), "Some devices found (y) did not print expected continuation message"
     remove_mock()
+
+
+def test_parse_arguments():
+    """
+    .
+    """
+    parsed = main.__parse_arguments(["add", "--device", "/mnt"])
+    expected = make_arguments("add")
+    expected["device"] = "/mnt"
+    assert parsed == expected, "Add device arguments should match"
+
+    parsed = main.__parse_arguments(["add", "--file", "/mnt"])
+    expected["device"] = None
+    expected["file"] = "/mnt"
+    assert parsed == expected, "Add file arguments should match"
+
+    parsed = main.__parse_arguments(["remove", "--folder", "/mnt"])
+    expected["action"] = "remove"
+    expected["file"] = None
+    expected["folder"] = "/mnt"
+    assert parsed == expected, "Remove folder arguments should match"
+
+    parsed = main.__parse_arguments(["verify", "--folder", "/mnt", "--device", "/foo"])
+    expected["action"] = "verify"
+    expected["folder"] = "/mnt"
+    expected["device"] = "/foo"
+    assert parsed == expected, "Verify folder on device should match"
+
+    parsed = main.__parse_arguments(["update", "--folder", "/home/foo/test",])
+    expected["action"] = "update"
+    expected["folder"] = "/home/foo/test"
+    expected["device"] = None
+    assert parsed == expected, "Update folder should match"
+
+    parsed = main.__parse_arguments(
+        ["move", "--file", "/root/bar.txt", "--move-path", "/home/user/"]
+    )
+    expected["action"] = "move"
+    expected["file"] = "/root/bar.txt"
+    expected["folder"] = None
+    expected["move_path"] = "/home/user/"
+    assert parsed == expected, "Move file should match"
+
+
+def test_command_run(monkeypatch, capsys):
+    """
+    Checks which command was run, end-to-end analysis
+    """
+    library_attrs = library.__dict__.keys()
+    for attr in library_attrs:
+        if type(getattr(library, attr) is FunctionType):
+            monkeypatch.setattr(library, attr, lambda *args, **kwargs: None)
+
+    # Pretend everything is valid, because it should be for this test
+    monkeypatch.setattr(main, "__validate_arguments", lambda args: True)
+    # Bypass device check
+    monkeypatch.setattr(main, "__check_devices", lambda args: True)
+
+    arguments = ["add", "--device", "/mnt"]
+    assert main.process(arguments) == "add-device", "Add device"
+
+    arguments = ["add", "--file", "foo"]
+    assert main.process(arguments) == "add-file", "Add file"
+
+    arguments = ["add", "--file", "foo", "--device", "/mnt"]
+    assert main.process(arguments) == "add-file", "Add file with device"
+
+    arguments = ["add", "--folder", "foo"]
+    assert main.process(arguments) == "add-folder", "Add folder"
+
+    arguments = ["remove", "--file", "foo"]
+    assert main.process(arguments) == "remove-file", "Remove file"
+
+    arguments = ["remove", "--folder", "foo"]
+    assert main.process(arguments) == "remove-folder", "Remove folder"
+
+    arguments = ["restore", "--file", "foo"]
+    assert main.process(arguments) == "restore-file", "Restore file"
+
+    arguments = ["restore", "--folder", "foo"]
+    assert main.process(arguments) == "restore-folder", "Restore folder"
+
+    arguments = ["restore", "--file", "foo"]
+    assert main.process(arguments) == "restore-file", "Restore file"
+
+    arguments = ["restore", "--folder", "foo"]
+    assert main.process(arguments) == "restore-folder", "Restore folder"
+
+    arguments = ["restore", "--all"]
+    assert main.process(arguments) == "restore-all", "Restore all"
+
+    arguments = ["verify", "--file", "foo"]
+    assert main.process(arguments) == "verify-file", "Verify file"
+
+    arguments = ["verify", "--folder", "foo"]
+    assert main.process(arguments) == "verify-folder", "Verify folder"
+
+    arguments = ["verify", "--all"]
+    assert main.process(arguments) == "verify-all", "Verify all"
+
+    arguments = ["move", "--file", "foo", "--move-path", "/root"]
+    assert main.process(arguments) == "move-file", "Move file"
+
+    arguments = ["move", "--folder", "foo", "--device", "/mnt"]
+    assert main.process(arguments) == "move-folder", "Move folder"
+
+    arguments = ["move", "--folder", "foo", "--move-path", "/home/user/"]
+    assert main.process(arguments) == "move-folder", "Move folder"
+
+    arguments = ["list-devices"]
+    assert main.process(arguments) == "list-devices", "List devices"

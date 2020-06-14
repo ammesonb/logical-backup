@@ -224,6 +224,9 @@ def test_byte_printing():
     assert readable_bytes(2 * 1024) == "2.0KiB", "KiloBytes output"
     assert readable_bytes(3 * 1024 * 1024) == "3.0MiB", "MegaBytes output"
     assert readable_bytes(4.056 * 1024 * 1024) == "4.1MiB", "MegaBytes output"
+    assert readable_bytes(4.056 * 1024 * 1024) == "4.1MiB", "MegaBytes output"
+    assert readable_bytes(1 * 1024 ** 8) == "1.0YiB", "Super huge output"
+    assert readable_bytes(1 * 1024 ** 9) == "1024.0YiB", "Super super huge output"
 
 
 def test_get_file_security(monkeypatch, capsys):
