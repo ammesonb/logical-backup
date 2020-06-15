@@ -1,13 +1,13 @@
 <h2 align="center">Logical Backup</h2>
 
 <p align="center">
-  <a href="https://travis-ci.com/ammesonb/logical-backup"><img alt="Build Status" src="https://travis-ci.com/ammesonb/logical-backup.svg?branch=master"></a>
+  <a href="https://travis-ci.com/ammesonb/logical-backup"><img alt="Build Status" src="https://travis-ci.com/ammesonb/logical-backup.svg?branch=trunk"></a>
   <a href="https://codecov.io/gh/ammesonb/logical-backup">
-    <img src="https://codecov.io/gh/ammesonb/logical-backup/branch/master/graph/badge.svg" />
+    <img src="https://codecov.io/gh/ammesonb/logical-backup/branch/trunk/graph/badge.svg" />
   </a>
   <a href="https://pyup.io/repos/github/ammesonb/logical-backup/"><img src="https://pyup.io/repos/github/ammesonb/logical-backup/shield.svg" alt="Updates" /></a>
   <a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
-  <a href="https://github.com/ammesonb/logical-backup/blob/master/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-purple.svg"></a>
+  <a href="https://github.com/ammesonb/logical-backup/blob/trunk/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-purple.svg"></a>
 </p>
 
 <hr>
