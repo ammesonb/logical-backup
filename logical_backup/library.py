@@ -52,7 +52,7 @@ def move_directory(current_path: str, new_path: str) -> bool:
 # pylint: disable=bad-continuation
 def __get_device_with_space(
     file_size: int, mount_point: str = None, size_checked: bool = False
-) -> str:
+) -> tuple:
     """
     Finds a device with given amount of space
 
@@ -69,8 +69,8 @@ def __get_device_with_space(
 
     Returns
     -------
-    str
-        Name of the device to use
+    tuple
+        Name of the device to use, and mount point
     """
     if mount_point and not size_checked:
         message = "Checking drive space..."
@@ -82,7 +82,7 @@ def __get_device_with_space(
             if confirm != "n":
                 mount_point = None
             else:
-                return False
+                return None, None
         else:
             pprint_complete(message + "Done.", True, Color.BLUE)
 
@@ -103,12 +103,10 @@ def __get_device_with_space(
     else:
         devices = db.get_devices()
         device_name = [
-            device.device_name
-            for device in devices
-            if device.device_path == mount_point
+            device for device in devices if device.device_path == mount_point
         ][0]
 
-    return device_name
+    return device_name, mount_point
 
 
 # pylint: disable=bad-continuation
@@ -140,17 +138,22 @@ def add_file(
         pprint("File is already backed up!", Color.ERROR)
         return False
 
+    security_details = utility.get_file_security(file_path)
+    checksum = utility.checksum_file(file_path)
+    if not checksum:
+        pprint("Failed to get checksum!", Color.ERROR)
+        return False
+
     message = "Getting file size..."
     pprint_start(message)
     file_size = utility.get_file_size(file_path)
     pprint_complete(message + "Read. File is " + readable_bytes(file_size), True)
 
-    device_name = __get_device_with_space(file_size, mount_point, size_checked)
-
-    security_details = utility.get_file_security(file_path)
-    checksum = utility.checksum_file(file_path)
-    if not checksum:
-        pprint("Failed to get checksum!", Color.ERROR)
+    device_name, mount_point = __get_device_with_space(
+        file_size, mount_point, size_checked
+    )
+    if not device_name:
+        pprint("No device with space available!", Color.ERROR)
         return False
 
     new_name = utility.create_backup_name(file_path)

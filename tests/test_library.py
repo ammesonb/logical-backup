@@ -222,6 +222,27 @@ def test_add_device(capsys, monkeypatch):
     ), "Bizarre return value should cause a failure"
 
 
+def test_get_device_with_space(monkeypatch, capsys):
+    """
+    Check device resolution for given space constraints
+    """
+    db.initialize_database()
+
+    # Path has insufficient space, and user exits
+    monkeypatch.setattr(db, "file_exists", lambda path: False)
+    monkeypatch.setattr(utility, "get_device_space", lambda path: 0)
+    # Builtins should be patchable
+    # pylint: disable=no-member
+    monkeypatch.setitem(library.__builtins__, "input", lambda text: "n")
+
+    name, path = library.__get_device_with_space(1, "/mnt")
+    output = capsys.readouterr()
+    assert not name and not path, "Insufficient space with exit should be empty"
+    assert (
+        "Checking drive space...Insufficient space" in output.out
+    ), "insufficient space message printed"
+
+
 def test_add_file_success(monkeypatch, capsys):
     """
     Test successful adding of file
@@ -243,6 +264,11 @@ def test_add_file_success(monkeypatch, capsys):
             "owner": "test-owner",
             "group": "test-group",
         },
+    )
+    monkeypatch.setattr(
+        library,
+        "__get_device_with_space",
+        lambda size, mount=None, checked=False: ("test-device-1", test_mount_1),
     )
 
     test_file, test_checksum = __make_temp_file()
@@ -284,22 +310,8 @@ def test_add_file_failures(monkeypatch, capsys):
         "File is already backed up" in output.out
     ), "Existing path output should be printed"
 
-    # Path has insufficient space, and user exits
-    monkeypatch.setattr(db, "file_exists", lambda path: False)
-    monkeypatch.setattr(utility, "get_file_size", lambda path: 1)
-    monkeypatch.setattr(utility, "get_device_space", lambda path: 0)
-    # Builtins should be patchable
-    # pylint: disable=no-member
-    monkeypatch.setitem(library.__builtins__, "input", lambda text: "n")
-
-    added = library.add_file("/file", "/mnt")
-    output = capsys.readouterr()
-    assert not added, "Insufficient space with exit should fail"
-    assert (
-        "Checking drive space...Insufficient space" in output.out
-    ), "insufficient space message printed"
-
     # Check a failed checksum exits
+    monkeypatch.setattr(db, "file_exists", lambda path: False)
     monkeypatch.setattr(utility, "get_file_security", lambda path: "unimportant")
     monkeypatch.setattr(utility, "checksum_file", lambda path: "")
 
@@ -310,14 +322,12 @@ def test_add_file_failures(monkeypatch, capsys):
         "Failed to get checksum" in output.out
     ), "Failed checksum should print message"
 
-    # Adding a file to a device should work, with only one available device
-    monkeypatch.undo()
-
 
 def test_add_file_device_fallbacks(monkeypatch, capsys):
     """
     .
     """
+    # No device with sufficient space should fail
     # Specified device doesn't have enough space and drops back to auto selection
     # Device without enough space is skipped for one that does, stops at second of three devices
     # Specified device is used, even if it isn't first in the list
