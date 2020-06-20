@@ -32,8 +32,8 @@ def __row_to_dict(row: list, column_names: list) -> dict:
         Row data, as dictionary
     """
     row_dict = {}
-    for column in range(len(column_names)):
-        row_dict[column_names[column][0]] = row[column]
+    for column, data in zip(column_names, row):
+        row_dict[column[0]] = data
 
     return row_dict
 
@@ -50,6 +50,13 @@ class DatabaseError(Enum):
     DEVICE_IDENTIFIER_EXISTS = 3
     INVALID_IDENTIFIER_TYPE = 4
     NONEXISTENT_DEVICE = 5
+    NONEXISTENT_FILE = 6
+
+    def __bool__(self):
+        """
+        .
+        """
+        return self == self.SUCCESS
 
 
 class SQLiteCursor(sqlite3.Cursor):
@@ -334,3 +341,26 @@ def get_files() -> list:
             files.append(file_obj)
 
         return files
+
+
+def remove_file(path: str) -> bool:
+    """
+    Removes a file
+
+    Parameters
+    ----------
+    path : str
+        Path to remove
+
+    Returns
+    -------
+    bool
+        True if removed, false if failed or doesn't exist
+    """
+    with SQLiteCursor() as cursor:
+        cursor.execute("DELETE " "FROM   tblFile " "WHERE  FilePath = ? ", (path,))
+        return (
+            DatabaseError.SUCCESS
+            if cursor.rowcount > 0
+            else DatabaseError.NONEXISTENT_FILE
+        )

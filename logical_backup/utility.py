@@ -8,9 +8,9 @@ import os
 import os.path as os_path
 import pwd
 from subprocess import run, Popen, PIPE
-from pytest import fixture
 from time import time
 
+from pytest import fixture
 import psutil
 
 from logical_backup.pretty_print import pprint_start, pprint_complete, Color
@@ -209,11 +209,7 @@ def get_file_size(path: str) -> int:
     -------
     int
     """
-    if not os_path.isfile(path):
-        return None
-
-    else:
-        return os.stat(path).st_size
+    return None if not os_path.isfile(path) else os.stat(path).st_size
 
 
 def get_abs_path(path: str) -> str:

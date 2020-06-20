@@ -143,19 +143,19 @@ def pprint_complete(
     )
 
 
-def readable_bytes(bytes, suffix="B") -> str:
+def readable_bytes(size: int, suffix: str = "B") -> str:
     """
     Prints size of file
 
     Parameters
     ----------
-    bytes
+    size : int
         Bytes to format
-    suffix='B'
+    suffix='B' : str
         What to print after the SI prefix
     """
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
-        if abs(bytes) < 1024.0:
-            return "%3.1f%s%s" % (bytes, unit, suffix)
-        bytes /= 1024.0
-    return "%.1f%s%s" % (bytes, "Yi", suffix)
+        if abs(size) < 1024.0:
+            return "%3.1f%s%s" % (size, unit, suffix)
+        size /= 1024.0
+    return "%.1f%s%s" % (size, "Yi", suffix)

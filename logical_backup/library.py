@@ -4,6 +4,7 @@ Library files for adding, moving, verifying files ,etc
 """
 import os
 import os.path as os_path
+import shutil
 from texttable import Texttable
 
 from logical_backup.objects.device import Device
@@ -20,8 +21,6 @@ from logical_backup.pretty_print import (
     pprint_complete,
     readable_bytes,
 )
-
-import shutil
 
 
 # pylint: disable=unused-argument
@@ -50,7 +49,69 @@ def move_directory(current_path: str, new_path: str) -> bool:
     """
 
 
-# pylint: disable=unused-argument
+# pylint: disable=bad-continuation
+def __get_device_with_space(
+    file_size: int, mount_point: str = None, size_checked: bool = False
+) -> str:
+    """
+    Finds a device with given amount of space
+
+    Parameters
+    ----------
+    file_size : int
+        Size of the file
+    mount_point : str
+        Optional mount point to prefer
+    size_checked : bool
+        Used for folder addition to specific device
+        True if the size of the specified device has already been checked
+        for required capacity of file/s
+
+    Returns
+    -------
+    str
+        Name of the device to use
+    """
+    if mount_point and not size_checked:
+        message = "Checking drive space..."
+        pprint_start(message)
+        drive_space = utility.get_device_space(mount_point)
+        if file_size >= drive_space:
+            pprint_complete(message + "Insufficient space!", False, Color.ERROR)
+            confirm = input("Switch drive? (Y/n, n exits) ")
+            if confirm != "n":
+                mount_point = None
+            else:
+                return False
+        else:
+            pprint_complete(message + "Done.", True, Color.BLUE)
+
+    device_name = None
+    # This also needs to happen if we unset it due to space problems
+    if not mount_point:
+        message = "Auto-selecting device..."
+        pprint_start(message)
+
+        devices = db.get_devices()
+        for device in devices:
+            space = utility.get_device_space(device.device_path)
+            if space > file_size:
+                pprint_complete(message + "Selected " + device.device_name, True)
+                mount_point = device.device_path
+                device_name = device.device_name
+                break
+    else:
+        devices = db.get_devices()
+        device_name = [
+            device.device_name
+            for device in devices
+            if device.device_path == mount_point
+        ][0]
+
+    return device_name
+
+
+# pylint: disable=bad-continuation
 def add_file(
     file_path: str, mount_point: str = None, size_checked: bool = False
 ) -> bool:
@@ -79,47 +140,12 @@ def add_file(
         pprint("File is already backed up!", Color.ERROR)
         return False
 
-    if mount_point and not size_checked:
-        message = "Checking drive space..."
-        pprint_start(message)
-        file_size = utility.get_file_size(file_path)
-        drive_space = utility.get_device_space(mount_point)
-        if file_size >= drive_space:
-            pprint_complete(message + "Insufficient space!", False, Color.ERROR)
-            confirm = input("Switch drive? (Y/n, n exits) ")
-            if confirm == "n":
-                return False
-            else:
-                mount_point = None
-        else:
-            pprint_complete(message + "Done.", True, Color.BLUE)
-
     message = "Getting file size..."
     pprint_start(message)
     file_size = utility.get_file_size(file_path)
     pprint_complete(message + "Read. File is " + readable_bytes(file_size), True)
 
-    device_name = None
-    # This also needs to happen if we unset it due to space problems
-    if not mount_point:
-        message = "Auto-selecting device..."
-        pprint_start(message)
-
-        devices = db.get_devices()
-        for device in devices:
-            space = utility.get_device_space(device.device_path)
-            if space > file_size:
-                pprint_complete(message + "Selected " + device.device_name, True)
-                mount_point = device.device_path
-                device_name = device.device_name
-                break
-    else:
-        devices = db.get_devices()
-        device_name = [
-            device.device_name
-            for device in devices
-            if device.device_path == mount_point
-        ][0]
+    device_name = __get_device_with_space(file_size, mount_point, size_checked)
 
     security_details = utility.get_file_security(file_path)
     checksum = utility.checksum_file(file_path)

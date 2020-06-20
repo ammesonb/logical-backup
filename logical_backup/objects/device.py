@@ -1,3 +1,8 @@
+"""
+A device for backing up files
+"""
+
+# pylint: disable=too-many-instance-attributes
 class Device:
     """
     Represents a backup device
@@ -16,14 +21,14 @@ class Device:
     @property
     def device_name(self) -> str:
         """
-        .
+        Returns name of device
         """
         return self.__device_name
 
     @device_name.setter
     def device_name(self, device_name: str):
         """
-        .
+        Sets name of device
         """
         self.__device_name = device_name
 
@@ -92,13 +97,14 @@ class Device:
         other : dict|Device
             What to compare against
         """
-        if type(other) is dict:
-            for key, value in other.items():
-                if getattr(self, key) != value:
-                    return False
-            return True
-        elif type(other) is Device:
-            return (
+        equal = False
+        if isinstance(other, dict):
+            # Use "not any" to exit early on a mismatch
+            equal = not any(
+                [getattr(self, key) != value for key, value in other.items()]
+            )
+        elif isinstance(other, Device):
+            equal = (
                 self.device_name == other.device_name
                 and self.device_path == other.device_path
                 and self.identifier_type == other.identifier_type
@@ -106,6 +112,9 @@ class Device:
                 and self.identifier == other.identifier
             )
 
+        return equal
+
+    # pylint: disable=bad-continuation,too-many-arguments
     def set(
         self,
         name: str,

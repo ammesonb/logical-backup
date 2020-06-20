@@ -1,6 +1,10 @@
+"""
+A backed-up file
+"""
+
 from logical_backup.objects.device import Device
 
-
+# pylint: disable=too-many-instance-attributes
 class File:
     """
     Represents a backup file
@@ -106,14 +110,14 @@ class File:
     @property
     def device_name(self) -> str:
         """
-        .
+        Returns file's device name
         """
         return self.__device_name
 
     @device_name.setter
     def device_name(self, device_name: str):
         """
-        .
+        Sets file's device name
         """
         self.__device_name = device_name
 

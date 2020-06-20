@@ -246,6 +246,8 @@ def __dispatch_command(arguments: dict) -> str:
     str
         The command being called
     """
+    # The chain of if's is what this function does, unfortunately
+    # pylint: disable=too-many-branches
     command = ""
     if arguments["action"] == "add":
         if arguments["file"]:
@@ -299,7 +301,7 @@ def __dispatch_command(arguments: dict) -> str:
     return command
 
 
-def process(arguments: list = []) -> str:
+def process(arguments: list = None) -> str:
     """
     Run the process
 
@@ -313,6 +315,8 @@ def process(arguments: list = []) -> str:
     str
         The name of the library command to execute
     """
+    if not arguments:
+        arguments = []
     __prepare()
     args = __parse_arguments(arguments if arguments else sys.argv[1:])
     if not __validate_arguments(args):

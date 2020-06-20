@@ -59,6 +59,15 @@ def test_initialization():
             assert name in names, "Missing device identifier type: " + name
 
 
+def test_database_errors():
+    """
+    .
+    """
+    assert DatabaseError.SUCCESS, "Success should be truthy"
+    assert not DatabaseError.UNKNOWN_ERROR, "Unknown error should be falsy"
+    assert not DatabaseError.DEVICE_NAME_EXISTS, "Device name error should be falsy"
+
+
 def test_get_devices():
     """
     Test device retrieval
@@ -67,24 +76,9 @@ def test_get_devices():
 
     assert db.get_devices() == [], "No devices by default"
 
-    with SQLiteCursor() as cursor:
-        cursor.execute(
-            "INSERT INTO tblDevice ("
-            "  DeviceName, "
-            "  DevicePath, "
-            "  DeviceIdentifierID, "
-            "  DeviceIdentifier"
-            ")"
-            "VALUES ("
-            "  'Test-Device', "
-            "  '/mnt', "
-            "  1, "
-            "  'ABCDEF'"
-            ")"
-        )
-
     device = Device()
     device.set("Test-Device", "/mnt", "Device Serial", "ABCDEF", 1)
+    db.add_device(device)
     assert db.get_devices() == [device]
 
 

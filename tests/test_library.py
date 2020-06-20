@@ -2,7 +2,7 @@
 Test less-complex library functions
 """
 import hashlib
-from os import path, urandom
+from os import path, urandom, remove
 import tempfile
 
 from logical_backup.main import __dispatch_command
@@ -222,13 +222,60 @@ def test_add_device(capsys, monkeypatch):
     ), "Bizarre return value should cause a failure"
 
 
-def test_add_file(monkeypatch, capsys):
+def test_add_file_success(monkeypatch, capsys):
+    """
+    Test successful adding of file
+    """
+    db.initialize_database()
+
+    test_mount_1 = __make_temp_directory()
+    monkeypatch.setattr(utility, "get_device_serial", lambda path: "test-serial-1")
+    # Builtins should be patchable
+    # pylint: disable=no-member
+    monkeypatch.setitem(utility.__builtins__, "input", lambda prompt: "test-device-1")
+    assert library.add_device(test_mount_1), "Making test device should succeed"
+
+    monkeypatch.setattr(
+        utility,
+        "get_file_security",
+        lambda path: {
+            "permissions": "644",
+            "owner": "test-owner",
+            "group": "test-group",
+        },
+    )
+
+    test_file, test_checksum = __make_temp_file()
+    # Use actual sizes/checksum, since that will be fine
+    # If temp runs out of space, that would be an actual issue for system stability
+    # so don't mock that
+    assert library.add_file(test_file), "Test file should be added"
+    files = db.get_files()
+    assert len(files) == 1, "Exactly one file should be in the database"
+
+    hashlib.md5()
+    expected = File()
+    expected.set_properties(path.basename(test_file), test_file, test_checksum)
+    expected.set_security("644", "test-owner", "test-group")
+    expected.device_name = "test-device-1"
+    assert files[0] == expected, "Only one file is added so far"
+
+    test_output_path = path.join(test_mount_1, test_file)
+    assert path.isfile(test_output_path), "Output path should be a file"
+    assert test_checksum == utility.checksum_file(
+        test_output_path
+    ), "Output checksum should match input"
+
+    remove(test_file)
+    assert db.remove_file(test_file), "Test file should be removed"
+
+
+def test_add_file_failures(monkeypatch, capsys):
     """
     .
     """
     db.initialize_database()
 
-    # Path is already added
     monkeypatch.setattr(db, "file_exists", lambda path: True)
     added = library.add_file("/file")
     output = capsys.readouterr()
@@ -241,6 +288,8 @@ def test_add_file(monkeypatch, capsys):
     monkeypatch.setattr(db, "file_exists", lambda path: False)
     monkeypatch.setattr(utility, "get_file_size", lambda path: 1)
     monkeypatch.setattr(utility, "get_device_space", lambda path: 0)
+    # Builtins should be patchable
+    # pylint: disable=no-member
     monkeypatch.setitem(library.__builtins__, "input", lambda text: "n")
 
     added = library.add_file("/file", "/mnt")
@@ -264,42 +313,12 @@ def test_add_file(monkeypatch, capsys):
     # Adding a file to a device should work, with only one available device
     monkeypatch.undo()
 
-    test_mount_1 = __make_temp_directory()
-    monkeypatch.setattr(utility, "get_device_serial", lambda path: "test-serial-1")
-    monkeypatch.setitem(utility.__builtins__, "input", lambda prompt: "test-device-1")
-    assert library.add_device(test_mount_1), "Making test device should succeed"
 
-    monkeypatch.setattr(
-        utility,
-        "get_file_security",
-        lambda path: {
-            "permissions": "644",
-            "owner": "test-owner",
-            "group": "test-group",
-        },
-    )
-
-    test_file, test_checksum = __make_temp_file()
-    # Use actual sizes/checksum, since that will be fine
-    # If temp runs out of space, that would be an actual issue for system stability
-    # so don't mock that
-    assert library.add_file(test_file), "Test file should be added"
-    files = db.get_files()
-    assert 1 == len(files), "Exactly one file should be in the database"
-
-    hashlib.md5()
-    expected = File()
-    expected.set_properties(path.basename(test_file), test_file, test_checksum)
-    expected.set_security("644", "test-owner", "test-group")
-    expected.device_name = "test-device-1"
-    assert files[0] == expected, "Only one file is added so far"
-
-    test_output_path = path.join(test_mount_1, test_file)
-    assert path.isfile(test_output_path), "Output path should be a file"
-    assert test_checksum == utility.checksum_file(
-        test_output_path
-    ), "Output checksum should match input"
-
-    # Device doesn't have enough space and drops back to auto selection
+def test_add_file_device_fallbacks(monkeypatch, capsys):
+    """
+    .
+    """
+    # Specified device doesn't have enough space and drops back to auto selection
     # Device without enough space is skipped for one that does, stops at second of three devices
+    # Specified device is used, even if it isn't first in the list
     # Checksum mismatch after copy - file should be removed
