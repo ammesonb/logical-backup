@@ -162,11 +162,22 @@ def __validate_arguments(arguments: dict) -> bool:
     elif arguments["folder"]:
         path_exists = isdir(arguments["folder"])
 
+    if arguments["device"] or arguments["from_device"]:
+        devices = db.get_devices()
+
     if arguments["device"]:
         path_exists = path_exists and path.ismount(arguments["device"])
+        path_exists = path_exists and [
+            device for device in devices if device.device_path == arguments["device"]
+        ]
 
     if arguments["from_device"]:
         path_exists = path_exists and path.ismount(arguments["from_device"])
+        path_exists = path_exists and [
+            device
+            for device in devices
+            if device.device_path == arguments["from_device"]
+        ]
 
     return command_valid and path_exists
 

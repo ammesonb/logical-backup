@@ -10,6 +10,9 @@ from pathlib import Path
 from pytest import fixture
 
 from logical_backup.main import __validate_arguments
+from logical_backup.objects.device import Device
+import logical_backup.library as library
+import logical_backup.db as db
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
@@ -67,6 +70,8 @@ def auto_clear_mock():
     """
     Auto-clear the mock before each test
     """
+    remove_mock()
+    yield
     remove_mock()
 
 
@@ -146,6 +151,8 @@ def test_add(monkeypatch):
     """
     Test the "add" action branch of arguments
     """
+    monkeypatch.setattr(library, "add_file", lambda path: True)
+    monkeypatch.setattr(db, "get_devices", lambda: [])
     check_generic_file_folder("add")
 
     arguments = make_arguments("add")
@@ -153,6 +160,10 @@ def test_add(monkeypatch):
     monkeypatch.setattr(path, "ismount", lambda path: False)
     assert not __validate_arguments(arguments), "Unmounted path for device should fail"
     monkeypatch.setattr(path, "ismount", lambda path: True)
+    assert not __validate_arguments(arguments), "Unregistered device should fail"
+    device = Device()
+    device.set("test", "/mnt", "blank", "fake", 1)
+    monkeypatch.setattr(db, "get_devices", lambda: [device])
     assert __validate_arguments(arguments), "Mounted device path should pass"
     arguments["file"] = MOCK_FILE
     assert not __validate_arguments(arguments), "Device with file should fail"
@@ -191,10 +202,12 @@ def test_remove():
     remove_mock()
 
 
-def test_update():
+def test_update(monkeypatch):
     """
     .
     """
+    monkeypatch.setattr(db, "get_devices", lambda: [])
+
     check_generic_file_folder("update")
     arguments = make_arguments("update")
     arguments["file"] = MOCK_FILE
@@ -225,6 +238,7 @@ def test_move(monkeypatch):
     Test the move functionality
     """
     arguments = make_arguments("move")
+    monkeypatch.setattr(db, "get_devices", lambda: [])
 
     assert not __validate_arguments(arguments), "Only specifying action should fail"
     make_mock_file()
@@ -251,7 +265,13 @@ def test_move(monkeypatch):
     arguments["device"] = "/mnt"
     monkeypatch.setattr(path, "ismount", lambda path: False)
     assert not __validate_arguments(arguments), "Unmounted device path should fail"
+
     monkeypatch.setattr(path, "ismount", lambda path: True)
+    assert not __validate_arguments(arguments), "Unregistered device path should fail"
+
+    device = Device()
+    device.set("test", "/mnt", "blank", "fake", 1)
+    monkeypatch.setattr(db, "get_devices", lambda: [device])
     assert __validate_arguments(arguments), "Mounted device path should pass"
 
     arguments["from_device"] = "/mnt2"
@@ -259,7 +279,15 @@ def test_move(monkeypatch):
     assert not __validate_arguments(
         arguments
     ), "Unmounted 'from' device path should fail"
+
     monkeypatch.setattr(path, "ismount", lambda path: True)
+    assert not __validate_arguments(
+        arguments
+    ), "Unregistered 'from' device path should fail"
+
+    device2 = Device()
+    device2.set("test", "/mnt2", "blank", "fake", 1)
+    monkeypatch.setattr(db, "get_devices", lambda: [device, device2])
     assert __validate_arguments(arguments), "Mounted 'from' device path should pass"
 
     remove_mock()

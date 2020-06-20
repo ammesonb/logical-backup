@@ -99,23 +99,32 @@ def add_file(
     file_size = utility.get_file_size(file_path)
     pprint_complete(message + "Read. File is " + readable_bytes(file_size), True)
 
+    device_name = None
     # This also needs to happen if we unset it due to space problems
     if not mount_point:
-        message = "Auto-selecting device to use..."
+        message = "Auto-selecting device..."
         pprint_start(message)
 
         devices = db.get_devices()
         for device in devices:
-            path = device.device_path
-            space = utility.get_device_space(path)
+            space = utility.get_device_space(device.device_path)
             if space > file_size:
-                pprint_complete("Selected " + device.device_name, True)
-                mount_point = path
+                pprint_complete(message + "Selected " + device.device_name, True)
+                mount_point = device.device_path
+                device_name = device.device_name
                 break
+    else:
+        devices = db.get_devices()
+        device_name = [
+            device.device_name
+            for device in devices
+            if device.device_path == mount_point
+        ][0]
 
     security_details = utility.get_file_security(file_path)
     checksum = utility.checksum_file(file_path)
     if not checksum:
+        pprint("Failed to get checksum!", Color.ERROR)
         return False
 
     new_name = utility.create_backup_name(file_path)
@@ -130,13 +139,14 @@ def add_file(
         return False
 
     file_obj = File()
+    file_obj.device_name = device_name
     file_obj.set_properties(os_path.basename(file_path), file_path, checksum)
     file_obj.set_security(**security_details)
 
     message = "Saving file record to DB..."
     pprint_start(message)
     succeeded = db.add_file(file_obj)
-    if succeeded:
+    if succeeded == DatabaseError.SUCCESS:
         pprint_complete(message + "Done.", True, Color.GREEN)
     else:
         pprint_complete(message + "Failed!", False, Color.ERROR)

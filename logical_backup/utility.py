@@ -242,16 +242,19 @@ def checksum_file(path: str) -> str:
     string
         Checksum
     """
-    pprint_start("Getting MD5 hash...")
-    result = run_piped_command([["md5sum", path], ["awk", "'{ print $1 }'"]])
+    message = "Getting MD5 hash..."
+    pprint_start(message)
+    result = run_piped_command([["md5sum", path], ["awk", "{ print $1 }"]])
     if result["exit_code"]:
         pprint_complete(
-            "Failed! Exit code: {0}".format(result["exit_code"]), False, Color.ERROR
+            message + "Failed! Exit code: {0}".format(result["exit_code"]),
+            False,
+            Color.ERROR,
         )
         checksum = None
     else:
-        pprint_complete("Complete", True)
-        checksum = result["stdout"].strip()
+        pprint_complete(message + "Complete", True)
+        checksum = result["stdout"].strip().decode()
 
     return checksum
 
@@ -271,9 +274,9 @@ def create_backup_name(path: str) -> str:
         A unique name
     """
     # Include time to guarantee uniqueness
-    path_hash = hashlib.sha256(path + str(time))
+    path_hash = hashlib.sha256((path + str(time)).encode())
     file_name = os_path.basename(path)
-    return path_hash + "_" + file_name
+    return path_hash.hexdigest() + "_" + file_name
 
 
 def get_file_security(path: str) -> dict:

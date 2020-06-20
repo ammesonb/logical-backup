@@ -15,6 +15,29 @@ DB_FILE = "files.db"
 DEV_FILE = "files.db.test"
 
 
+def __row_to_dict(row: list, column_names: list) -> dict:
+    """
+    Converts a row from the database to a dictionary
+
+    Parameters
+    ----------
+    row : list
+        Data to convert
+    column_names : list
+        Ordered list of column headers
+
+    Returns
+    -------
+    dict
+        Row data, as dictionary
+    """
+    row_dict = {}
+    for column in range(len(column_names)):
+        row_dict[column_names[column][0]] = row[column]
+
+    return row_dict
+
+
 class DatabaseError(Enum):
     """
     Database error codes
@@ -259,3 +282,55 @@ def add_file(file_obj: File) -> bool:
             else DatabaseError.NONEXISTENT_DEVICE
         )
         # TODO: try/catch error handling
+
+
+def get_files() -> list:
+    """
+    .
+    """
+    with SQLiteCursor() as cursor:
+        cursor.execute(
+            "SELECT FileName, "
+            "       FilePath, "
+            "       FilePermissions, "
+            "       FileOwnerName, "
+            "       FileGroupName, "
+            "       FileChecksum, "
+            "       DeviceName, "
+            "       DevicePath, "
+            "       DeviceIdentifier, "
+            "       IdentifierID, "
+            "       IdentifierName "
+            "       FROM tblFile f "
+            "       INNER JOIN tblDevice d "
+            "       ON f.FileDeviceID = d.DeviceID "
+            "       INNER JOIN tblplDeviceIdentifier i "
+            "       ON i.IdentifierID = d.DeviceIdentifierID"
+        )
+
+        results = cursor.fetchall()
+        files = []
+        for result in results:
+            row = __row_to_dict(result, cursor.description)
+            device = Device()
+            device.set(
+                row["DeviceName"],
+                row["DevicePath"],
+                row["DeviceIdentifier"],
+                row["IdentifierName"],
+                row["IdentifierID"],
+            )
+
+            file_obj = File()
+            file_obj.device = device
+            file_obj.device_name = device.device_name
+            file_obj.set_properties(
+                row["FileName"], row["FilePath"], row["FileChecksum"]
+            )
+            file_obj.set_security(
+                row["FilePermissions"], row["FileOwnerName"], row["FileGroupName"]
+            )
+
+            files.append(file_obj)
+
+        return files

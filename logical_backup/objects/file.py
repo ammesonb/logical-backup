@@ -1,3 +1,6 @@
+from logical_backup.objects.device import Device
+
+
 class File:
     """
     Represents a backup file
@@ -14,6 +17,7 @@ class File:
         self.__group = None
         self.__checksum = None
         self.__device_name = None
+        self.__device = None
 
     @property
     def file_name(self) -> str:
@@ -113,6 +117,20 @@ class File:
         """
         self.__device_name = device_name
 
+    @property
+    def device(self) -> Device:
+        """
+        .
+        """
+        return self.__device
+
+    @device.setter
+    def device(self, device: Device) -> None:
+        """
+        .
+        """
+        self.__device = device
+
     def set_properties(self, name: str, path: str, checksum: str) -> None:
         """
         Set properties about the file
@@ -146,3 +164,21 @@ class File:
         self.permissions = permissions
         self.owner = owner
         self.group = group
+
+    def __eq__(self, other: "File") -> bool:
+        """
+        Equality check
+        """
+        properties = [
+            "file_name",
+            "file_path",
+            "device_name",
+            "owner",
+            "group",
+            "permissions",
+            "checksum",
+        ]
+
+        matched = [getattr(self, prop) == getattr(other, prop) for prop in properties]
+        print(matched)
+        return all(matched)

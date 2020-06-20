@@ -191,7 +191,7 @@ def test_get_checksum(monkeypatch):
     monkeypatch.setattr(
         utility,
         "run_piped_command",
-        lambda command: {"exit_code": 1, "stdout": "", "stderr": ""},
+        lambda command: {"exit_code": 1, "stdout": b"", "stderr": ""},
     )
     output = utility.checksum_file("test")
     assert not output, "Checksum fail should be empty"
@@ -199,7 +199,7 @@ def test_get_checksum(monkeypatch):
     monkeypatch.setattr(
         utility,
         "run_piped_command",
-        lambda command: {"exit_code": 0, "stdout": "abc123", "stderr": ""},
+        lambda command: {"exit_code": 0, "stdout": b"abc123", "stderr": ""},
     )
     output = utility.checksum_file("test")
     assert output == "abc123", "Faux checksum should match"
@@ -209,11 +209,16 @@ def test_create_backup_name(monkeypatch):
     """
     .
     """
-    monkeypatch.setattr(hashlib, "sha256", lambda text: "abc123")
+    hash_result = hashlib.sha256("abc123".encode())
+    monkeypatch.setattr(hashlib, "sha256", lambda text: hash_result)
     name = utility.create_backup_name("test")
-    assert name == "abc123_test", "Basic file name should match"
+    assert name == hash_result.hexdigest() + "_test", "Basic file name should match"
+
+    hash_result_2 = hashlib.sha256("/foo/test".encode())
     name = utility.create_backup_name("/foo/test")
-    assert name == "abc123_test", "Test file name with path should match"
+    assert (
+        name == hash_result_2.hexdigest() + "_test"
+    ), "Test file name with path should match"
 
 
 def test_byte_printing():
