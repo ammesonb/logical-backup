@@ -26,6 +26,25 @@ PwUID = namedtuple(
 GrID = namedtuple("struct_group", "gr_name gr_passwd gr_gid gr_mem")
 
 
+def patch_input(monkeypatch, module, func) -> None:
+    """
+    Patch the input function for a given module
+
+    Parameters
+    ----------
+    monkeypatch
+        -
+    module
+        The module to patch input on
+    func
+        Function to replace input
+    """
+    # The __builtins__ isn't _officially_ a part of a class, so pylint is mad
+    # _Should_ be safe though, I would expect
+    # pylint: disable=no-member
+    monkeypatch.setitem(module.__builtins__, "input", func)
+
+
 def test_is_test():
     """
     Should always be testing, since this is a test

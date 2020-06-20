@@ -8,8 +8,8 @@ from pytest import raises
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
 from logical_backup.utility import run_command, auto_set_testing
-import logical_backup.main as main  # for input mocking
-import logical_backup.library as library  # for input mocking
+from logical_backup import main  # for input mocking
+from logical_backup import library  # for input mocking
 from logical_backup.main import __check_devices
 from tests.test_arguments import (
     make_arguments,
@@ -23,6 +23,7 @@ from tests.mock_db import mock_devices
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
 from tests.test_db import auto_clear_db
+from tests.test_utility import patch_input
 
 
 def test_help():
@@ -130,10 +131,7 @@ def test_check_devices(capsys, monkeypatch):
             },
         ],
     )
-    # The __builtins__ isn't _officially_ a part of a class, so pylint is mad
-    # _Should_ be safe though, I would expect
-    # pylint: disable=no-member
-    monkeypatch.setitem(main.__builtins__, "input", lambda message: "n")
+    patch_input(monkeypatch, main, lambda message: "n")
 
     with raises(SystemExit) as pytest_exception:
         __check_devices(arguments)
@@ -149,10 +147,7 @@ def test_check_devices(capsys, monkeypatch):
         "Found some devices" in output.out
     ), "Some devices found (n) did not print expected message"
 
-    # The __builtins__ isn't _officially_ a part of a class, so pylint is mad
-    # _Should_ be safe though, I would expect
-    # pylint: disable=no-member
-    monkeypatch.setitem(main.__builtins__, "input", lambda message: "y")
+    patch_input(monkeypatch, main, lambda message: "y")
     __check_devices(arguments)
     output = capsys.readouterr()
     assert (

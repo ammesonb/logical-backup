@@ -8,13 +8,15 @@ import tempfile
 from logical_backup.main import __dispatch_command
 from logical_backup import library
 from logical_backup.objects.file import File
+from logical_backup.objects.device import Device
 from logical_backup.db import initialize_database, DatabaseError
-import logical_backup.db as db
+from logical_backup import db
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
 from logical_backup.utility import auto_set_testing
 from logical_backup import utility
+from tests.test_utility import patch_input
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
@@ -111,10 +113,7 @@ def test_add_device(capsys, monkeypatch):
     arguments["device"] = "/mnt/test1"
     monkeypatch.setattr(path, "ismount", lambda path: True)
 
-    # The __builtins__ isn't _officially_ a part of a class, so pylint is mad
-    # _Should_ be safe though, I would expect
-    # pylint: disable=no-member
-    monkeypatch.setitem(library.__builtins__, "input", lambda message: "device-1")
+    patch_input(monkeypatch, library, lambda message: "device-1")
     monkeypatch.setattr(utility, "get_device_serial", lambda path: "12345")
 
     command = __dispatch_command(arguments)
@@ -126,7 +125,7 @@ def test_add_device(capsys, monkeypatch):
 
     # Happy path two
     arguments["device"] = "/mnt/test2"
-    monkeypatch.setitem(library.__builtins__, "input", lambda message: "device-2")
+    patch_input(monkeypatch, library, lambda message: "device-2")
     monkeypatch.setattr(utility, "get_device_serial", lambda path: None)
     monkeypatch.setattr(
         utility, "get_device_uuid", lambda path: "2ba7b22c-89c6-4125-a4e0-ed5609b81b14"
@@ -140,9 +139,9 @@ def test_add_device(capsys, monkeypatch):
     ), "Second device, by UUID, should be saved"
 
     # Happy path three
-    monkeypatch.setitem(
-        library.__builtins__,
-        "input",
+    patch_input(
+        monkeypatch,
+        library,
         lambda message: "device-3" if message == "Device name: " else "External HDD-1",
     )
     monkeypatch.setattr(utility, "get_device_serial", lambda path: None)
@@ -158,7 +157,7 @@ def test_add_device(capsys, monkeypatch):
 
     # Sad path one
     arguments["device"] = "/mnt/test4"
-    monkeypatch.setitem(library.__builtins__, "input", lambda message: "device-1")
+    patch_input(monkeypatch, library, lambda message: "device-1")
     monkeypatch.setattr(utility, "get_device_serial", lambda path: "12346")
 
     command = __dispatch_command(arguments)
@@ -170,7 +169,7 @@ def test_add_device(capsys, monkeypatch):
 
     # Sad path two
     arguments["device"] = "/mnt/test1"
-    monkeypatch.setitem(library.__builtins__, "input", lambda message: "device-5")
+    patch_input(monkeypatch, library, lambda message: "device-5")
     monkeypatch.setattr(utility, "get_device_serial", lambda path: "12346")
 
     command = __dispatch_command(arguments)
@@ -182,7 +181,7 @@ def test_add_device(capsys, monkeypatch):
 
     # Sad path three
     arguments["device"] = "/mnt/test6"
-    monkeypatch.setitem(library.__builtins__, "input", lambda message: "device-6")
+    patch_input(monkeypatch, library, lambda message: "device-6")
     monkeypatch.setattr(utility, "get_device_serial", lambda path: "12345")
 
     command = __dispatch_command(arguments)
@@ -229,18 +228,35 @@ def test_get_device_with_space(monkeypatch, capsys):
     db.initialize_database()
 
     # Path has insufficient space, and user exits
-    monkeypatch.setattr(db, "file_exists", lambda path: False)
-    monkeypatch.setattr(utility, "get_device_space", lambda path: 0)
-    # Builtins should be patchable
-    # pylint: disable=no-member
-    monkeypatch.setitem(library.__builtins__, "input", lambda text: "n")
+    monkeypatch.setattr(
+        utility, "get_device_space", lambda path: 0 if path == "/mnt1" else 100
+    )
+    patch_input(monkeypatch, library, lambda message: "n")
 
-    name, path = library.__get_device_with_space(1, "/mnt")
+    name, path = library.__get_device_with_space(1, "/mnt1")
     output = capsys.readouterr()
     assert not name and not path, "Insufficient space with exit should be empty"
     assert (
         "Checking drive space...Insufficient space" in output.out
     ), "insufficient space message printed"
+
+    # Path has insufficient space, user continues
+    patch_input(monkeypatch, library, lambda message: "y")
+    device = Device()
+    device.set("test1", "/mnt1", "Device Serial", "ABCDEF", 1)
+    device2 = Device()
+    device2.set("test2", "/mnt2", "Device Serial", "123456", 1)
+
+    monkeypatch.setattr(db, "get_devices", lambda: [device, device2])
+
+    name, path = library.__get_device_with_space(1, "/mnt1")
+    output = capsys.readouterr()
+    assert (
+        "Insufficient space" in output.out
+    ), "Initial device should have insufficient space"
+    assert "Auto-selecting device" in output.out, "Should fall back to auto-selection"
+    assert name == "test2", "Second device should be selected"
+    assert path == "/mnt2", "Second path should be selected"
 
 
 def test_add_file_success(monkeypatch, capsys):
@@ -251,9 +267,7 @@ def test_add_file_success(monkeypatch, capsys):
 
     test_mount_1 = __make_temp_directory()
     monkeypatch.setattr(utility, "get_device_serial", lambda path: "test-serial-1")
-    # Builtins should be patchable
-    # pylint: disable=no-member
-    monkeypatch.setitem(utility.__builtins__, "input", lambda prompt: "test-device-1")
+    patch_input(monkeypatch, library, lambda message: "test-device-1")
     assert library.add_device(test_mount_1), "Making test device should succeed"
 
     monkeypatch.setattr(
