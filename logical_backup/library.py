@@ -100,10 +100,16 @@ def __get_device_with_space(
                 mount_point = device.device_path
                 device_name = device.device_name
                 break
+
+        if not mount_point:
+            pprint_complete(message + "None found!", False, Color.ERROR)
+
     else:
         devices = db.get_devices()
         device_name = [
-            device for device in devices if device.device_path == mount_point
+            device.device_name
+            for device in devices
+            if device.device_path == mount_point
         ][0]
 
     return device_name, mount_point

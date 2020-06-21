@@ -255,8 +255,44 @@ def test_get_device_with_space(monkeypatch, capsys):
         "Insufficient space" in output.out
     ), "Initial device should have insufficient space"
     assert "Auto-selecting device" in output.out, "Should fall back to auto-selection"
+    assert "Selected test2" in output.out, "Selected device should be printed"
     assert name == "test2", "Second device should be selected"
     assert path == "/mnt2", "Second path should be selected"
+
+    # No devices have enough space
+    monkeypatch.setattr(utility, "get_device_space", lambda path: 0)
+    name, path = library.__get_device_with_space(1, "/mnt1")
+    output = capsys.readouterr()
+    assert "Auto-selecting device" in output.out, "Should fall back to auto-selection"
+    assert "None found!" in output.out, "No device found printed"
+    assert not name, "No device name should be returned"
+    assert not path, "No device path should be returned"
+
+    # Requested device is full, falls back to second (not third)
+    device3 = Device()
+    device3.set("test3", "/mnt3", "Device Serial", "112233", 1)
+
+    monkeypatch.setattr(db, "get_devices", lambda: [device, device2, device3])
+    monkeypatch.setattr(
+        utility, "get_device_space", lambda path: 0 if path == "/mnt1" else 100
+    )
+
+    name, path = library.__get_device_with_space(1, "/mnt1")
+    output = capsys.readouterr()
+
+    assert "Auto-selecting device" in output.out, "Should fall back to auto-selection"
+    assert "Selected test2" in output.out, "Selected device should be printed"
+    assert name == "test2", "Second device should be selected"
+    assert path == "/mnt2", "Second path should be selected"
+
+    name, path = library.__get_device_with_space(1, "/mnt3")
+    output = capsys.readouterr()
+
+    assert (
+        "Checking drive space...Done" in output.out
+    ), "Should check provided mount point"
+    assert name == "test3", "Provided device name should be selected"
+    assert path == "/mnt3", "Provided device path should be selected"
 
 
 def test_add_file_success(monkeypatch, capsys):
@@ -336,13 +372,75 @@ def test_add_file_failures(monkeypatch, capsys):
         "Failed to get checksum" in output.out
     ), "Failed checksum should print message"
 
+    # Check no device available exits
+    test_file, test_checksum = __make_temp_file()
+    test_mount_1 = __make_temp_directory()
 
-def test_add_file_device_fallbacks(monkeypatch, capsys):
-    """
-    .
-    """
-    # No device with sufficient space should fail
-    # Specified device doesn't have enough space and drops back to auto selection
-    # Device without enough space is skipped for one that does, stops at second of three devices
-    # Specified device is used, even if it isn't first in the list
+    monkeypatch.setattr(db, "file_exists", lambda path: False)
+    monkeypatch.setattr(utility, "get_file_size", lambda path: 1)
+    monkeypatch.setattr(utility, "checksum_file", lambda path: "unimportant")
+    monkeypatch.setattr(utility, "get_file_security", lambda path: "unimportant")
+    monkeypatch.setattr(
+        library, "__get_device_with_space", lambda size, mount, checked: (None, None)
+    )
+
+    added = library.add_file(test_file, test_mount_1)
+    output = capsys.readouterr()
+    assert not added, "No device available should fail"
+    assert (
+        "No device with space available" in output.out
+    ), "No device available message printed"
+
     # Checksum mismatch after copy - file should be removed
+    monkeypatch.setattr(
+        utility, "checksum_file", lambda path: "123" if path == test_file else "321"
+    )
+    monkeypatch.setattr(
+        library,
+        "__get_device_with_space",
+        lambda size, mount, checked: ("test-device-1", test_mount_1),
+    )
+    monkeypatch.setattr(
+        utility, "create_backup_name", lambda file_path: path.basename(test_file)
+    )
+    added = library.add_file(test_file, test_mount_1)
+    output = capsys.readouterr()
+
+    assert not added, "Mismatched checksum should fail"
+    assert (
+        "Checksum mismatch after copy" in output.out
+    ), "Mismatch checksum message should print"
+    output_file = path.join(test_mount_1, path.basename(test_file))
+    assert not path.isfile(
+        output_file
+    ), "Output file should be deleted after mismatched checksum"
+    assert (
+        not db.get_files()
+    ), "No file should be saved to database given mismatched checksum"
+
+    # Database save failure, file should be removed
+    monkeypatch.setattr(utility, "checksum_file", lambda path: "123")
+    monkeypatch.setattr(
+        utility,
+        "get_file_security",
+        lambda path: {
+            "permissions": "644",
+            "owner": "test-owner",
+            "group": "test-group",
+        },
+    )
+    monkeypatch.setattr(db, "add_file", lambda file_obj: DatabaseError.UNKNOWN_ERROR)
+    added = library.add_file(test_file, test_mount_1)
+    output = capsys.readouterr()
+
+    assert not added, "Database exception should fail"
+    assert (
+        "Saving file record to DB...Failed" in output.out
+    ), "Database exception message should print"
+    output_file = path.join(test_mount_1, path.basename(test_file))
+    assert not path.isfile(
+        output_file
+    ), "Output file should be deleted after database failure"
+    assert (
+        not db.get_files()
+    ), "No file should be saved to database given database failure"
