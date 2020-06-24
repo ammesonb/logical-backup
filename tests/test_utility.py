@@ -316,4 +316,14 @@ def test_list_files():
     files = utility.list_files_in_directory(test_directory)
     assert files == [file1, file2], "Nested directory should be included"
 
+    nested_directory_3 = temp_file_path(tempfile.mkdtemp(dir=nested_directory_1))
+    fd, filename = tempfile.mkstemp(dir=nested_directory_1)
+    file3 = temp_file_path(filename)
+
+    files = utility.list_files_in_directory(test_directory)
+    assert len(files) == 3, "All files included"
+    assert (
+        file1 in files and file2 in files and file3 in files
+    ), "Includes file in double-nested directories"
+
     shutil.rmtree(test_directory)
