@@ -2,7 +2,6 @@
 """
 Library files for adding, moving, verifying files ,etc
 """
-import glob
 import os
 import os.path as os_path
 import shutil

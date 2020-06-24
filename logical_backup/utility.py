@@ -315,10 +315,10 @@ def list_files_in_directory(path: str) -> list:
         The files
     """
     all_files = []
-    path = get_abs_path(path)
+    system_path = get_abs_path(path)
 
-    for path, directories, files in os.walk(path, followlinks=True):
+    for parent_path, directories, files in os.walk(system_path, followlinks=True):
         for file_name in files:
-            all_files.append(os_path.join(path, file_name))
+            all_files.append(os_path.join(parent_path, file_name))
 
     return all_files
