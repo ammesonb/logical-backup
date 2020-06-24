@@ -8,6 +8,9 @@ import os.path as os_path
 import psutil
 import pwd
 import grp
+from pathlib import Path
+import shutil
+import tempfile
 
 from logical_backup.utility import __get_device_path
 import logical_backup.utility as utility
@@ -287,3 +290,30 @@ def test_get_file_security(monkeypatch, capsys):
         "group": "group",
     }, "Expected permissions were returned"
     assert "Checking file permissions...Done" in output.out, "Expected text was printed"
+
+
+def test_list_files():
+    """
+    .
+    """
+    temp_file_path = lambda name, intermediary=None: os_path.join(
+        test_directory, intermediary if intermediary else "", name
+    )
+
+    test_directory = tempfile.mkdtemp()
+    fd, filename = tempfile.mkstemp(dir=test_directory)
+    file1 = temp_file_path(filename)
+
+    nested_directory_1 = temp_file_path(tempfile.mkdtemp(dir=test_directory))
+    nested_directory_2 = temp_file_path(tempfile.mkdtemp(dir=test_directory))
+
+    files = utility.list_files_in_directory(test_directory)
+    assert files == [file1], "Empty directories should not be included"
+
+    fd, filename = tempfile.mkstemp(dir=nested_directory_2)
+    file2 = temp_file_path(filename)
+
+    files = utility.list_files_in_directory(test_directory)
+    assert files == [file1, file2], "Nested directory should be included"
+
+    shutil.rmtree(test_directory)

@@ -2,6 +2,7 @@
 """
 Library files for adding, moving, verifying files ,etc
 """
+import glob
 import os
 import os.path as os_path
 import shutil
@@ -10,8 +11,8 @@ from texttable import Texttable
 from logical_backup.objects.device import Device
 from logical_backup.objects.file import File
 from logical_backup.db import DatabaseError
-import logical_backup.db as db
-import logical_backup.utility as utility
+from logical_backup import db
+from logical_backup import utility
 from logical_backup.pretty_print import (
     pprint,
     Color,

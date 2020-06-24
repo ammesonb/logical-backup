@@ -298,3 +298,27 @@ def get_file_security(path: str) -> dict:
     pprint_complete(message + "Done.", True)
 
     return {"permissions": permission_mask, "owner": owner, "group": group}
+
+
+def list_files_in_directory(path: str) -> list:
+    """
+    Lists files in a directory
+
+    Parameters
+    ----------
+    path : str
+        Path to list files in
+
+    Returns
+    -------
+    list
+        The files
+    """
+    all_files = []
+    path = get_abs_path(path)
+
+    for path, directories, files in os.walk(path, followlinks=True):
+        for file_name in files:
+            all_files.append(os_path.join(path, file_name))
+
+    return all_files
