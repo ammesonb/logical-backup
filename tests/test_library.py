@@ -25,7 +25,7 @@ from tests.test_arguments import make_arguments
 from tests.mock_db import mock_devices
 
 
-def __make_temp_file(size: int = 1024) -> tuple:
+def __make_temp_file(size: int = 1024, directory: str = None) -> tuple:
     """
     Makes a random temp file and files it with random data, by default 1kB
 
@@ -33,13 +33,15 @@ def __make_temp_file(size: int = 1024) -> tuple:
     ----------
     size = 1024 : int
         Size to make the file
+    directory : str
+        The directory to make the file in
 
     Returns
     -------
     tuple
         Path to the file, MD5 checksum of input data
     """
-    descriptor, name = tempfile.mkstemp()
+    descriptor, name = tempfile.mkstemp(dir=directory)
     file_handle = open(descriptor, "wb")
     data = urandom(size)
     file_handle.write(data)
@@ -50,16 +52,21 @@ def __make_temp_file(size: int = 1024) -> tuple:
     return (name, checksum)
 
 
-def __make_temp_directory() -> str:
+def __make_temp_directory(parent: str = None) -> str:
     """
     Makes a temporary directory
+
+    Parameters
+    ----------
+    parent : str
+        Optionally, parent directory to create this one in
 
     Returns
     -------
     str
         Path to the directory
     """
-    return tempfile.mkdtemp()
+    return tempfile.mkdtemp(dir=parent)
 
 
 def test_list_devices(monkeypatch, capsys):
@@ -444,3 +451,89 @@ def test_add_file_failures(monkeypatch, capsys):
     assert (
         not db.get_files()
     ), "No file should be saved to database given database failure"
+
+
+def test_add_directory(monkeypatch, capsys):
+    """
+    .
+    """
+    # Happy path
+    monkeypatch.setattr(
+        utility,
+        "list_files_in_directory",
+        lambda directory: ["/test/file1", "/test/file2"],
+    )
+    monkeypatch.setattr(utility, "sum_file_size", lambda files: 5)
+    monkeypatch.setattr(library, "__get_total_device_space", lambda: 10)
+    monkeypatch.setattr(library, "add_file", lambda file_path, mount_point=None: True)
+
+    assert library.add_directory("/test"), "Adding folder of files should succeed"
+
+    # Not enough space across all devices
+    monkeypatch.setattr(library, "__get_total_device_space", lambda: 0)
+    assert not library.add_directory(
+        "/test"
+    ), "Insufficient total device space should fail"
+    out = capsys.readouterr()
+    assert (
+        "Sum of available devices' space is insufficient" in out.out
+    ), "Insufficient total space message should print"
+
+    # In this case, the selected device does not have enough space
+    # nor do the sum of all devices, so do not even prompt to reassign selected device
+    monkeypatch.setattr(utility, "get_device_space", lambda files: 0)
+    assert not library.add_directory(
+        "/test", "/mnt"
+    ), "Adding directory to mount point should fail, insufficient total space not device space"
+    out = capsys.readouterr()
+    assert (
+        "Sum of available devices' space is insufficient" in out.out
+    ), "Insufficient total space message should print"
+
+    # Insufficient space on selected device but enough on all drives,
+    # User exits on prompt
+    monkeypatch.setattr(library, "__get_total_device_space", lambda: 10)
+    patch_input(monkeypatch, library, lambda prompt: "n")
+    assert not library.add_directory(
+        "/test", "/mnt"
+    ), "Insufficient space on selected device, with exit input should fail"
+    out = capsys.readouterr()
+    assert (
+        "Selected device will not fit all files" in out.out
+    ), "Insufficient device space message should print"
+    assert (
+        "Exiting since unable to fit all files on selected device" in out.out
+    ), "Insufficient device space exit message should print"
+
+    # Check success if user does allow reassigning of device
+    patch_input(monkeypatch, library, lambda prompt: "y")
+    assert library.add_directory(
+        "/test", "/mnt"
+    ), "Insufficient space on selected device, with exit input should fail"
+    out = capsys.readouterr()
+    assert (
+        "Selected device will not fit all files" in out.out
+    ), "Insufficient device space message should print"
+
+
+def test_get_total_device_space(monkeypatch):
+    """
+    .
+    """
+    device = Device()
+    device.set("test1", "/mnt1", "Device Serial", "ABCDEF", 1)
+    device2 = Device()
+    device2.set("test2", "/mnt2", "Device Serial", "123456", 1)
+
+    monkeypatch.setattr(db, "get_devices", lambda: [device, device2])
+    monkeypatch.setattr(path, "ismount", lambda file_path: True)
+    monkeypatch.setattr(
+        utility,
+        "get_device_space",
+        lambda mount_point: 15 if mount_point == "/mnt1" else 5,
+    )
+
+    assert library.__get_total_device_space() == 20, "Two mounted devices add"
+
+    monkeypatch.setattr(path, "ismount", lambda file_path: file_path == "/mnt1")
+    assert library.__get_total_device_space() == 15, "Filters unmounted devices"

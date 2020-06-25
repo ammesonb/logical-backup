@@ -322,3 +322,26 @@ def list_files_in_directory(path: str) -> list:
             all_files.append(os_path.join(parent_path, file_name))
 
     return all_files
+
+
+def sum_file_size(files: list) -> int:
+    """
+    Sums size of list of files
+
+    Parameters
+    ----------
+    files : list
+        List of file paths to sum
+
+    Returns
+    -------
+    int
+        Total bytes
+    """
+    total_size = 0
+    for file_path in files:
+        print(file_path)
+        total_size += get_file_size(file_path)
+        print(total_size)
+
+    return total_size

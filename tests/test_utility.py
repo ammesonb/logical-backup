@@ -327,3 +327,30 @@ def test_list_files():
     ), "Includes file in double-nested directories"
 
     shutil.rmtree(test_directory)
+
+
+def test_sum_files():
+    """
+    .
+    """
+
+    test_directory = tempfile.mkdtemp()
+    fd, filename = tempfile.mkstemp(dir=test_directory)
+    fd = open(filename, "wb")
+    fd.write(os.urandom(100))
+    fd.close()
+
+    file_list = [os_path.join(test_directory, filename)]
+    print(file_list)
+
+    assert utility.sum_file_size(file_list) == 100, "Single file size summed"
+
+    fd, filename = tempfile.mkstemp(dir=test_directory)
+    fd = open(filename, "wb")
+    fd.write(os.urandom(50))
+    fd.close()
+    file_list.append(os_path.join(test_directory, filename))
+
+    assert utility.sum_file_size(file_list) == 150, "Two files summed"
+
+    shutil.rmtree(test_directory)

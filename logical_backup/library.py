@@ -23,14 +23,52 @@ from logical_backup.pretty_print import (
 )
 
 
+# TODO: directory also will need to store permissions for itself and children
 # pylint: disable=unused-argument
 def add_directory(folder_path: str, mount_point: str = None) -> bool:
     """
     Adds a directory to the backup
     See add_file
     """
-    # Note: if want to proceed with specific device, will need to null that out
-    # after capacity is consumed
+    file_list = utility.list_files_in_directory(folder_path)
+    folder_size = utility.sum_file_size(file_list)
+    total_available_space = __get_total_device_space()
+
+    device_has_space = mount_point and folder_size > utility.get_device_space(
+        mount_point
+    )
+    sufficient_space = folder_size <= total_available_space
+
+    # If the given mount point is too small for the folder,
+    # but there is enough space across all drives to fit the folder
+    if not device_has_space and sufficient_space:
+        pprint("Selected device will not fit all files!", Color.YELLOW)
+        switch_device = input(
+            "Continue with any available device? (y/N, 'n' will exit)"
+        )
+        if switch_device == "y":
+            mount_point = None
+        else:
+            pprint(
+                "Exiting since unable to fit all files on selected device", Color.ERROR
+            )
+            return False
+
+    if not sufficient_space:
+        pprint(
+            "Sum of available devices' space is insufficient, "
+            "need {0} additional space! Exiting".format(
+                readable_bytes(folder_size - total_available_space)
+            ),
+            Color.ERROR,
+        )
+        return False
+
+    all_success = True
+    for file_path in file_list:
+        all_success = all_success and add_file(file_path, mount_point)
+
+    return all_success
 
 
 # pylint: disable=unused-argument
@@ -47,6 +85,24 @@ def move_directory(current_path: str, new_path: str) -> bool:
     Moves a directory in the backup
     See move_file
     """
+
+
+def __get_total_device_space() -> int:
+    """
+    Gets total available space on all devices
+
+    Returns
+    -------
+    int
+        Bytes available
+    """
+    devices = db.get_devices()
+    total_space = 0
+    for device in devices:
+        if os_path.ismount(device.device_path):
+            total_space += utility.get_device_space(device.device_path)
+
+    return total_space
 
 
 # pylint: disable=bad-continuation
