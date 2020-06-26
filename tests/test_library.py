@@ -482,9 +482,10 @@ def test_add_directory(monkeypatch, capsys):
     # In this case, the selected device does not have enough space
     # nor do the sum of all devices, so do not even prompt to reassign selected device
     monkeypatch.setattr(utility, "get_device_space", lambda files: 0)
-    assert not library.add_directory(
-        "/test", "/mnt"
-    ), "Adding directory to mount point should fail, insufficient total space not device space"
+    assert not library.add_directory("/test", "/mnt"), (
+        "Adding directory to mount point should fail, "
+        "insufficient total space not device space"
+    )
     out = capsys.readouterr()
     assert (
         "Sum of available devices' space is insufficient" in out.out
