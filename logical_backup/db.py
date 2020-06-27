@@ -80,16 +80,56 @@ class SQLiteCursor(sqlite3.Cursor):
         self.__connection = None
         self.__commit_on_close = commit_on_close
         self.__db_file = DEV_FILE if is_test() else DB_FILE
+        self.__cursor = None
 
     def __enter__(self):
+        """
+        .
+        """
         self.__connection = sqlite3.connect(self.__db_file)
-        return self.__connection.cursor()
+        self.__cursor = self.__connection.cursor()
+        return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
+        """
+        .
+        """
         if self.__commit_on_close:
             self.__connection.commit()
 
         self.__connection.close()
+
+    def execute(self, *args, **kwargs):
+        """
+        Wrapper for sqlite execute
+        """
+        return self.__cursor.execute(*args, **kwargs)
+
+    def fetchone(self):
+        """
+        Wrapper for sqlite fetchone
+        """
+        return self.__cursor.fetchone()
+
+    def fetchall(self):
+        """
+        Wrapper for sqlite fetchall
+        """
+        return self.__cursor.fetchall()
+
+    @property
+    def rowcount(self) -> int:
+        """
+        Wrapper for sqlite cursor rowcount
+        """
+        return self.__cursor.rowcount
+
+    @property
+    def description(self):
+        """
+        Wrapper for sqlite cursor description
+        """
+        return self.__cursor.description
 
 
 def initialize_database():
@@ -206,9 +246,10 @@ def add_device(device: Device) -> int:
     integer
         True if added, False if it already exists
     """
-    with SQLiteCursor() as cursor:
-        result = DatabaseError.UNKNOWN_ERROR
-        try:
+    result = DatabaseError.UNKNOWN_ERROR
+
+    try:
+        with SQLiteCursor() as cursor:
             cursor.execute(
                 "INSERT INTO tblDevice ("
                 "  DeviceName, "
@@ -234,17 +275,18 @@ def add_device(device: Device) -> int:
                 if cursor.rowcount > 0
                 else DatabaseError.INVALID_IDENTIFIER_TYPE
             )
-        except sqlite3.IntegrityError as error:
-            if "DevicePath" in error.args[0]:
-                result = DatabaseError.DEVICE_PATH_EXISTS
-            elif "DeviceName" in error.args[0]:
-                result = DatabaseError.DEVICE_NAME_EXISTS
-            elif "DeviceIdentifier" in error.args[0]:
-                result = DatabaseError.DEVICE_IDENTIFIER_EXISTS
-            else:
-                result = DatabaseError.UNKNOWN_ERROR
 
-        return result
+    except sqlite3.IntegrityError as error:
+        if "DevicePath" in error.args[0]:
+            result = DatabaseError.DEVICE_PATH_EXISTS
+        elif "DeviceName" in error.args[0]:
+            result = DatabaseError.DEVICE_NAME_EXISTS
+        elif "DeviceIdentifier" in error.args[0]:
+            result = DatabaseError.DEVICE_IDENTIFIER_EXISTS
+        else:
+            result = DatabaseError.UNKNOWN_ERROR
+
+    return result
 
 
 def file_exists(file_path: str) -> bool:

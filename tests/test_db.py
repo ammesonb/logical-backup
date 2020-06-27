@@ -9,7 +9,8 @@ import sqlite3
 from logical_backup.objects.device import Device
 from logical_backup.objects.file import File
 from logical_backup.objects.folder import Folder
-import logical_backup.db as db
+from logical_backup import db
+from logical_backup.db import SQLiteCursor
 
 from logical_backup.db import (
     initialize_database,
@@ -84,7 +85,7 @@ def test_get_devices():
     assert db.get_devices() == [device]
 
 
-def test_add_device():
+def test_add_device(monkeypatch):
     """
     Test function for adding a device
     """
@@ -121,7 +122,29 @@ def test_add_device():
     result = db.add_device(device)
     assert result == DatabaseError.SUCCESS, "Third device added by UUID"
 
-    device.set("test4", "/test4", "System UUID", "External HDD")
+    # Check unknown failure by falsely calling an exception
+    exec_func = db.SQLiteCursor.execute
+
+    def raise_integrity_exception(message: str) -> None:
+        """
+        Raises an exception
+        """
+        raise sqlite3.IntegrityError(message)
+
+    monkeypatch.setattr(
+        db.SQLiteCursor,
+        "execute",
+        lambda self, query, args=None: raise_integrity_exception("something else"),
+    )
+    device.set("test4", "/test4", "System UUID", "External HDD", 2)
+    result = db.add_device(device)
+    assert (
+        result == DatabaseError.UNKNOWN_ERROR
+    ), "Fourth device fails due to unknown error"
+
+    # Test successful adding of fourth device
+    monkeypatch.setattr(db.SQLiteCursor, "execute", exec_func)
+    device.set("test4", "/test4", "System UUID", "External HDD", 2)
     result = db.add_device(device)
     assert result == DatabaseError.SUCCESS, "Fourth device added manually"
 
@@ -138,6 +161,8 @@ def test_add_device():
         assert (
             identifier in device_identifiers
         ), "Identifier {0} should be in the database".format(identifier)
+
+    assert db.get_devices("test4") == [device], "Device 4 retrieved by name"
 
 
 def test_add_and_check_file():
@@ -180,6 +205,11 @@ def test_add_and_check_file():
 
     assert db.get_files("/test2") == [file_obj2], "Second file returned with input"
     assert db.get_files("/test") == [file_obj], "First file returned with input"
+
+    # Test for basic get/set on file device,
+    # because it doesn't have anywhere else to live right now
+    file_obj.device = device
+    assert file_obj.device == device, "Device set on file should match"
 
 
 def test_add_folder(monkeypatch):

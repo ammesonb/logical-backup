@@ -143,5 +143,5 @@ class Device:
         self.device_path = path
         self.identifier_type = identifier_name
         self.identifier = identifier
-        if identifier_id:
+        if identifier_id is not None:
             self.identifier_type_id = identifier_id
