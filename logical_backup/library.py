@@ -9,6 +9,7 @@ from texttable import Texttable
 
 from logical_backup.objects.device import Device
 from logical_backup.objects.file import File
+from logical_backup.objects.folder import Folder
 from logical_backup.db import DatabaseError
 from logical_backup import db
 from logical_backup import utility
@@ -66,7 +67,25 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
         )
         return False
 
-    all_success = True
+    parent_details = utility.get_file_security(folder_path)
+    parent_folder = Folder()
+    parent_folder.set(
+        folder_path,
+        parent_details["permissions"],
+        parent_details["owner"],
+        parent_details["group"],
+    )
+    all_success = db.add_folder(parent_folder)
+    for subfolder in entries.folders:
+        folder = Folder()
+        folder_details = utility.get_file_security(subfolder)
+        folder.set(
+            subfolder,
+            folder_details["permissions"],
+            folder_details["owner"],
+            folder_details["group"],
+        )
+        all_success = all_success and db.add_folder(folder)
     for file_path in entries.files:
         all_success = all_success and add_file(file_path, mount_point)
 

@@ -466,8 +466,42 @@ def test_add_directory(monkeypatch, capsys):
     monkeypatch.setattr(utility, "sum_file_size", lambda files: 5)
     monkeypatch.setattr(library, "__get_total_device_space", lambda: 10)
     monkeypatch.setattr(library, "add_file", lambda file_path, mount_point=None: True)
+    monkeypatch.setattr(
+        utility,
+        "get_file_security",
+        lambda path: {"permissions": "755", "owner": "test", "group": "test"},
+    )
+    monkeypatch.setattr(db, "add_folder", lambda folder: DatabaseError.SUCCESS)
 
     assert library.add_directory("/test"), "Adding folder of files should succeed"
+
+    # Failed to add folder
+    monkeypatch.setattr(db, "add_folder", lambda folder: DatabaseError.UNKNOWN_ERROR)
+    assert not library.add_directory(
+        "/test"
+    ), "Should fail if unable to add parent folder"
+    monkeypatch.setattr(db, "add_folder", lambda folder: DatabaseError.SUCCESS)
+
+    # Failed to add subfolders
+    monkeypatch.setattr(
+        utility,
+        "list_entries_in_directory",
+        lambda directory: DirectoryEntries(
+            ["/test/file1", "/test/file2"], ["/test/foo", "/test/bar"]
+        ),
+    )
+    monkeypatch.setattr(
+        db,
+        "add_folder",
+        lambda folder: DatabaseError.SUCCESS
+        if folder.folder_path == "/test"
+        else DatabaseError.UNKNOWN_ERROR,
+    )
+    assert not library.add_directory("/test"), "Should fail if unable to add subfolder"
+
+    # Subfolders added successfully
+    monkeypatch.setattr(db, "add_folder", lambda folder: DatabaseError.SUCCESS)
+    assert library.add_directory("/test"), "Adding files and subfolders should succeed"
 
     # Not enough space across all devices
     monkeypatch.setattr(library, "__get_total_device_space", lambda: 0)
