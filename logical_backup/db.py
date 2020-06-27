@@ -53,6 +53,7 @@ class DatabaseError(Enum):
     NONEXISTENT_DEVICE = 5
     NONEXISTENT_FILE = 6
     FOLDER_EXISTS = 7
+    FILE_EXISTS = 8
 
     def __bool__(self):
         """
@@ -138,7 +139,7 @@ def initialize_database():
             "CREATE TABLE IF NOT EXISTS tblFile ("
             "  FileID          INTEGER PRIMARY KEY AUTOINCREMENT,"
             "  FileName        TEXT NOT NULL,"
-            "  FilePath        TEXT NOT NULL,"
+            "  FilePath        TEXT NOT NULL UNIQUE,"
             "  FilePermissions TEXT NOT NULL,"
             "  FileOwnerName   TEXT NOT NULL,"
             "  FileGroupName   TEXT NOT NULL,"
@@ -266,66 +267,74 @@ def add_file(file_obj: File) -> bool:
     Add a file
     """
     with SQLiteCursor() as cursor:
-        cursor.execute(
-            "INSERT INTO tblFile ("
-            "  FileName, "
-            "  FilePath, "
-            "  FilePermissions, "
-            "  FileOwnerName, "
-            "  FileGroupName, "
-            "  FileChecksum, "
-            "  FileDeviceID "
-            ")"
-            "SELECT ?, "
-            "       ?, "
-            "       ?, "
-            "       ?, "
-            "       ?, "
-            "       ?, "
-            "       d.DeviceID "
-            "FROM   tblDevice d "
-            "WHERE  d.DeviceName = ?",
-            (
-                file_obj.file_name,
-                file_obj.file_path,
-                file_obj.permissions,
-                file_obj.owner,
-                file_obj.group,
-                file_obj.checksum,
-                file_obj.device_name,
-            ),
-        )
-        return (
-            DatabaseError.SUCCESS
-            if cursor.rowcount > 0
-            else DatabaseError.NONEXISTENT_DEVICE
-        )
-        # TODO: try/catch error handling
+        try:
+            cursor.execute(
+                "INSERT INTO tblFile ("
+                "  FileName, "
+                "  FilePath, "
+                "  FilePermissions, "
+                "  FileOwnerName, "
+                "  FileGroupName, "
+                "  FileChecksum, "
+                "  FileDeviceID "
+                ")"
+                "SELECT ?, "
+                "       ?, "
+                "       ?, "
+                "       ?, "
+                "       ?, "
+                "       ?, "
+                "       d.DeviceID "
+                "FROM   tblDevice d "
+                "WHERE  d.DeviceName = ?",
+                (
+                    file_obj.file_name,
+                    file_obj.file_path,
+                    file_obj.permissions,
+                    file_obj.owner,
+                    file_obj.group,
+                    file_obj.checksum,
+                    file_obj.device_name,
+                ),
+            )
+            return (
+                DatabaseError.SUCCESS
+                if cursor.rowcount > 0
+                else DatabaseError.NONEXISTENT_DEVICE
+            )
+        except sqlite3.IntegrityError:
+            return DatabaseError.FILE_EXISTS
 
 
-def get_files() -> list:
+def get_files(path: str = None) -> list:
     """
     .
     """
     with SQLiteCursor() as cursor:
-        cursor.execute(
-            "SELECT FileName, "
-            "       FilePath, "
-            "       FilePermissions, "
-            "       FileOwnerName, "
-            "       FileGroupName, "
-            "       FileChecksum, "
-            "       DeviceName, "
-            "       DevicePath, "
-            "       DeviceIdentifier, "
-            "       IdentifierID, "
-            "       IdentifierName "
-            "       FROM tblFile f "
-            "       INNER JOIN tblDevice d "
-            "       ON f.FileDeviceID = d.DeviceID "
-            "       INNER JOIN tblplDeviceIdentifier i "
-            "       ON i.IdentifierID = d.DeviceIdentifierID"
+        query = (
+            "SELECT     FileName, "
+            "           FilePath, "
+            "           FilePermissions, "
+            "           FileOwnerName, "
+            "           FileGroupName, "
+            "           FileChecksum, "
+            "           DeviceName, "
+            "           DevicePath, "
+            "           DeviceIdentifier, "
+            "           IdentifierID, "
+            "           IdentifierName "
+            "FROM       tblFile f "
+            "INNER JOIN tblDevice d "
+            "ON         f.FileDeviceID = d.DeviceID "
+            "INNER JOIN tblplDeviceIdentifier i "
+            "ON         i.IdentifierID = d.DeviceIdentifierID"
         )
+
+        if path:
+            query += " WHERE f.FilePath = ?"
+            cursor.execute(query, (path,))
+        else:
+            cursor.execute(query)
 
         results = cursor.fetchall()
         files = []

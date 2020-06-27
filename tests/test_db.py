@@ -3,7 +3,8 @@ Tests for the database files
 """
 from os import remove
 from os.path import exists
-from pytest import fixture
+from pytest import fixture, raises
+import sqlite3
 
 from logical_backup.objects.device import Device
 from logical_backup.objects.file import File
@@ -139,7 +140,7 @@ def test_add_device():
         ), "Identifier {0} should be in the database".format(identifier)
 
 
-def test_check_file():
+def test_add_and_check_file():
     """
     .
     """
@@ -160,6 +161,25 @@ def test_check_file():
     assert added == DatabaseError.SUCCESS, "Insert of file should succeed"
 
     assert db.file_exists("/test"), "Added file should exist"
+
+    assert db.get_files() == [file_obj], "File should be in the DB"
+
+    file_obj2 = File()
+    file_obj2.set_properties("test", "/test", "not-real")
+    file_obj2.set_security("755", "root", "root")
+    file_obj2.device_name = "test"
+    added = db.add_file(file_obj2)
+    assert added == DatabaseError.FILE_EXISTS, "Can't add file twice"
+
+    file_obj2.file_path = "/test2"
+    file_obj2.identifier = "not-real-2"
+    added = db.add_file(file_obj2)
+    assert added == DatabaseError.SUCCESS, "Second file added"
+
+    assert db.get_files() == [file_obj, file_obj2], "Two files returned from DB"
+
+    assert db.get_files("/test2") == [file_obj2], "Second file returned with input"
+    assert db.get_files("/test") == [file_obj], "First file returned with input"
 
 
 def test_add_folder(monkeypatch):

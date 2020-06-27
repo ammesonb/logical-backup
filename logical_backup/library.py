@@ -268,7 +268,7 @@ def add_file(
 # pylint: disable=unused-argument
 def remove_file(file_path: str) -> bool:
     """
-    Will remove a file to the backup archive
+    Will remove a file in the backup archive
 
     Parameters
     ----------
@@ -304,7 +304,6 @@ def move_file(original_path: str, new_path: str) -> bool:
     """
 
 
-# pylint: disable=unused-argument
 def add_device(mount_point: str) -> bool:
     """
     Adds a device to the database
@@ -376,23 +375,6 @@ def add_device(mount_point: str) -> bool:
         return False
 
     return True
-
-
-# pylint: disable=unused-argument
-def check_device(device_path: str) -> bool:
-    """
-    Checks if a device exists on the system path
-
-    Parameters
-    ----------
-    device_path : str
-        The path of the device to check
-
-    Returns
-    -------
-    bool
-        True if the device exists
-    """
 
 
 # pylint: disable=unused-argument
