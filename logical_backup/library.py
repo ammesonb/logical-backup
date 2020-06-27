@@ -265,7 +265,6 @@ def add_file(
     return succeeded
 
 
-# pylint: disable=unused-argument
 def remove_file(file_path: str) -> bool:
     """
     Will remove a file in the backup archive
@@ -282,6 +281,46 @@ def remove_file(file_path: str) -> bool:
           - due to database failure, hard drive failure, etc
           - or if it does not exist
     """
+    message = "Validating file removal..."
+    pprint_start(message)
+    file_entry = db.get_files(file_path)
+    if file_entry and len(file_entry) > 0:
+        file_entry = file_entry[0]
+
+    device = None
+    if file_entry:
+        device = db.get_devices(file_entry.device_name)
+
+    if device and len(device) > 0:
+        device = device[0]
+
+    path_on_device = None
+    if file_entry and device:
+        path_on_device = os_path.join(device.device_path, file_entry.file_name)
+
+    valid = bool(file_entry) and bool(device) and os_path.exists(path_on_device)
+
+    db_entry_removed = False
+    if valid:
+        db_entry_removed = db.remove_file(file_path)
+
+    if db_entry_removed:
+        os.remove(path_on_device)
+        pprint_complete(message + "File removed", True, Color.GREEN)
+    elif not file_entry:
+        pprint_complete(
+            message + "File not registered in database!", False, Color.ERROR
+        )
+    elif not device:
+        pprint_complete(message + "Unable to find device", False, Color.ERROR)
+    elif not os_path.exists(path_on_device):
+        pprint_complete(message + "File path does not exist!", False, Color.ERROR)
+    else:
+        pprint_complete(
+            message + "Failed to remove file from database!", False, Color.ERROR
+        )
+
+    return db_entry_removed
 
 
 # pylint: disable=unused-argument

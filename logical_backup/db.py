@@ -160,12 +160,12 @@ def initialize_database():
         )
 
 
-def get_devices() -> list:
+def get_devices(device_name: str = None) -> list:
     """
     Return configured devices
     """
     with SQLiteCursor() as cursor:
-        cursor.execute(
+        query = (
             "SELECT     d.DeviceName, "
             "           d.DevicePath, "
             "           i.IdentifierID, "
@@ -175,6 +175,13 @@ def get_devices() -> list:
             "INNER JOIN tblplDeviceIdentifier i "
             "ON         i.IdentifierID = d.DeviceIdentifierID"
         )
+
+        if device_name:
+            query += " WHERE d.DeviceName = ?"
+            cursor.execute(query, (device_name,))
+        else:
+            cursor.execute(query)
+
         rows = cursor.fetchall()
         devices = []
         for row in rows:
@@ -379,7 +386,7 @@ def remove_file(path: str) -> bool:
         True if removed, false if failed or doesn't exist
     """
     with SQLiteCursor() as cursor:
-        cursor.execute("DELETE " "FROM   tblFile " "WHERE  FilePath = ? ", (path,))
+        cursor.execute("DELETE FROM tblFile WHERE FilePath = ? ", (path,))
         return (
             DatabaseError.SUCCESS
             if cursor.rowcount > 0

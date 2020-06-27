@@ -207,3 +207,29 @@ def test_add_folder(monkeypatch):
     duplicate = db.add_folder(folder2)
     assert not duplicate, "Should fail to add second folder twice"
     assert duplicate == DatabaseError.UNKNOWN_ERROR, "Should fail with unknown error"
+
+
+def test_remove_file(monkeypatch):
+    """
+    .
+    """
+    initialize_database()
+
+    assert not db.remove_file("/test"), "Deleting nonexistent file fails"
+
+    device = Device()
+    device.set("test", "/mnt", "Device Serial", "ABCDEF", 1)
+    assert db.add_device(device), "Adding device should succeed"
+
+    file_obj = File()
+    file_obj.set_properties("test", "/test", "not-real")
+    file_obj.set_security("755", "root", "root")
+    file_obj.device_name = "test"
+    assert db.add_file(file_obj), "Adding file to remove should succeed"
+    file_obj.file_path = "/test2"
+    file_obj.identifier = "not-real-2"
+    assert db.add_file(file_obj), "Adding second file to remove should succeed"
+
+    assert db.remove_file("/test"), "Deleting existing file succeeds"
+
+    assert db.get_files() == [file_obj], "Second file should still be in the database"

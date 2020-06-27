@@ -572,3 +572,75 @@ def test_get_total_device_space(monkeypatch):
 
     monkeypatch.setattr(path, "ismount", lambda file_path: file_path == "/mnt1")
     assert library.__get_total_device_space() == 15, "Filters unmounted devices"
+
+
+def test_remove_file(monkeypatch, capsys):
+    """
+    .
+    """
+    # No file returned
+    monkeypatch.setattr(db, "get_files", lambda path=None: [])
+
+    assert not library.remove_file("/test"), "Unadded file cannot be removed"
+    out = capsys.readouterr()
+    assert (
+        "Validating file removal...File not registered in database" in out.out
+    ), "Unadded file prints message"
+
+    # Having a file, but no device, fails
+    test_file, checksum = __make_temp_file()
+
+    file1 = File()
+    file1.set_properties("test", "test", "abcdef123")
+    file1.set_security("644", "test", "test")
+    file1.device_name = "dev"
+    monkeypatch.setattr(db, "get_files", lambda path=None: [file1])
+    monkeypatch.setattr(db, "get_devices", lambda name=None: [])
+
+    assert not library.remove_file(test_file), "Missing device causes failure"
+    out = capsys.readouterr()
+    assert (
+        "Validating file removal...Unable to find device" in out.out
+    ), "Missing device message printed"
+
+    # A device exists, but the file is not there
+    device1 = Device()
+    device1.set("dev", "/dev1", "Device Serial", "fake", "1")
+    monkeypatch.setattr(db, "get_devices", lambda device: [device1])
+
+    assert not library.remove_file(test_file), "Nonexistent system path causes failure"
+    out = capsys.readouterr()
+    assert (
+        "Validating file removal...File path does not exist" in out.out
+    ), "Nonexistent system path message prints"
+
+    # Database removal failure, with a file in a directory
+    test_directory = __make_temp_directory()
+    test_file_2, checksum_2 = __make_temp_file(directory=test_directory)
+
+    device2 = Device()
+    device2.set("dev", test_directory, "Device Serial", "fake", "1")
+    monkeypatch.setattr(db, "get_devices", lambda device: [device2])
+
+    file2 = File()
+    file2.set_properties(test_file_2, "test2", checksum_2)
+    file2.set_security("644", "test", "test")
+    monkeypatch.setattr(db, "get_files", lambda path: [file2])
+
+    monkeypatch.setattr(db, "remove_file", lambda path: DatabaseError.UNKNOWN_ERROR)
+    assert not library.remove_file(test_file), "Database failure causes failure"
+    out = capsys.readouterr()
+    assert (
+        "Validating file removal...Failed to remove file from database" in out.out
+    ), "Database failure message prints"
+    assert path.exists(test_file_2), "Test file should not be removed yet"
+
+    # File removal is successful
+    monkeypatch.setattr(db, "remove_file", lambda path: DatabaseError.SUCCESS)
+    assert library.remove_file(test_file), "File removed successfully"
+    out = capsys.readouterr()
+    assert (
+        "Validating file removal...File removed" in out.out
+    ), "File removal success message should print"
+
+    assert not path.exists(test_file_2), "Test file is removed"
