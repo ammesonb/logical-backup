@@ -24,7 +24,6 @@ from logical_backup.pretty_print import (
 )
 
 
-# pylint: disable=unused-argument
 def add_directory(folder_path: str, mount_point: str = None) -> bool:
     """
     Adds a directory to the backup
