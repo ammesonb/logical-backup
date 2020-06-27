@@ -52,6 +52,7 @@ class DatabaseError(Enum):
     INVALID_IDENTIFIER_TYPE = 4
     NONEXISTENT_DEVICE = 5
     NONEXISTENT_FILE = 6
+    FOLDER_EXISTS = 7
 
     def __bool__(self):
         """
@@ -418,6 +419,7 @@ def add_folder(folder: Folder) -> bool:
             if cursor.rowcount > 0
             else DatabaseError.UNKNOWN_ERROR
         )
+        # TODO: try/catch error handling
 
 
 def get_folders() -> list:

@@ -172,12 +172,18 @@ def test_add_folder(monkeypatch):
 
     folder1 = Folder()
     folder1.set("/test", "755", "test", "test")
-    db.add_folder(folder1)
+    assert db.add_folder(folder1), "First folder should add successfully"
 
     assert db.get_folders() == [folder1], "Single folder matches"
 
     folder2 = Folder()
     folder2.set("/test2", "700", "test2", "test2")
-    db.add_folder(folder2)
+    assert db.add_folder(folder2), "Second folder should add successfully"
 
     assert db.get_folders() == [folder1, folder2], "Two folders match"
+
+    monkeypatch.setattr(db, "add_folder", lambda folder: DatabaseError.UNKNOWN_ERROR)
+
+    duplicate = db.add_folder(folder2)
+    assert not duplicate, "Should fail to add second folder twice"
+    assert duplicate == DatabaseError.UNKNOWN_ERROR, "Should fail with unknown error"
