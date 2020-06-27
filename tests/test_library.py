@@ -7,14 +7,14 @@ import tempfile
 
 from logical_backup.main import __dispatch_command
 from logical_backup import library
-from logical_backup.objects.file import File
 from logical_backup.objects.device import Device
+from logical_backup.objects.file import File
 from logical_backup.db import initialize_database, DatabaseError
 from logical_backup import db
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
-from logical_backup.utility import auto_set_testing
+from logical_backup.utility import auto_set_testing, DirectoryEntries
 from logical_backup import utility
 from tests.test_utility import patch_input
 
@@ -460,8 +460,8 @@ def test_add_directory(monkeypatch, capsys):
     # Happy path
     monkeypatch.setattr(
         utility,
-        "list_files_in_directory",
-        lambda directory: ["/test/file1", "/test/file2"],
+        "list_entries_in_directory",
+        lambda directory: DirectoryEntries(["/test/file1", "/test/file2"], []),
     )
     monkeypatch.setattr(utility, "sum_file_size", lambda files: 5)
     monkeypatch.setattr(library, "__get_total_device_space", lambda: 10)

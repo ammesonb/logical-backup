@@ -1,6 +1,7 @@
 """
 Some helper functions
 """
+from collections import namedtuple
 import grp
 import hashlib
 from os import getenv, environ
@@ -16,6 +17,8 @@ import psutil
 from logical_backup.pretty_print import pprint_start, pprint_complete, Color
 
 TEST_VARIABLE = "IS_TEST"
+
+DirectoryEntries = namedtuple("directory_entries", "files folders")
 
 
 def is_test() -> bool:
@@ -300,7 +303,7 @@ def get_file_security(path: str) -> dict:
     return {"permissions": permission_mask, "owner": owner, "group": group}
 
 
-def list_files_in_directory(path: str) -> list:
+def list_entries_in_directory(path: str) -> DirectoryEntries:
     """
     Lists files in a directory
 
@@ -311,17 +314,20 @@ def list_files_in_directory(path: str) -> list:
 
     Returns
     -------
-    list
-        The files
+    DirectoryEntries
+        Contents of the directory
     """
-    all_files = []
+    entries = DirectoryEntries([], [])
     system_path = get_abs_path(path)
 
     for parent_path, directories, files in os.walk(system_path, followlinks=True):
         for file_name in files:
-            all_files.append(os_path.join(parent_path, file_name))
+            entries.files.append(os_path.join(parent_path, file_name))
 
-    return all_files
+        for directory in directories:
+            entries.folders.append(os_path.join(parent_path, directory))
+
+    return entries
 
 
 def sum_file_size(files: list) -> int:

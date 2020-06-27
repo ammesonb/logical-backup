@@ -183,6 +183,4 @@ class File:
             "checksum",
         ]
 
-        matched = [getattr(self, prop) == getattr(other, prop) for prop in properties]
-        print(matched)
-        return all(matched)
+        return all([getattr(self, prop) == getattr(other, prop) for prop in properties])

@@ -30,12 +30,14 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
     Adds a directory to the backup
     See add_file
     """
-    file_list = utility.list_files_in_directory(folder_path)
-    folder_size = utility.sum_file_size(file_list)
+    entries = utility.list_entries_in_directory(folder_path)
+    folder_size = utility.sum_file_size(entries.files)
     total_available_space = __get_total_device_space()
 
-    device_has_space = mount_point and folder_size > utility.get_device_space(
-        mount_point
+    device_has_space = (
+        mount_point and folder_size <= utility.get_device_space(mount_point)
+        if mount_point
+        else True
     )
     sufficient_space = folder_size <= total_available_space
 
@@ -65,7 +67,7 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
         return False
 
     all_success = True
-    for file_path in file_list:
+    for file_path in entries.files:
         all_success = all_success and add_file(file_path, mount_point)
 
     return all_success

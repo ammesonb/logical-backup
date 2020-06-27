@@ -7,6 +7,7 @@ import sqlite3
 
 from logical_backup.objects.device import Device
 from logical_backup.objects.file import File
+from logical_backup.objects.folder import Folder
 
 
 from logical_backup.utility import is_test
@@ -143,6 +144,16 @@ def initialize_database():
             "  FileChecksum    TEXT NOT NULL,"
             "  FileDeviceID    INT  NOT NULL,"
             "  FOREIGN KEY (FileDeviceID) REFERENCES tblDevice (DeviceID)"
+            ");"
+        )
+
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS tblFolder ("
+            "  FolderID          INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "  FolderPath        TEXT NOT NULL UNIQUE,"
+            "  FolderPermissions TEXT NOT NULL,"
+            "  FolderOwnerName   TEXT NOT NULL,"
+            "  FolderGroupName   TEXT NOT NULL"
             ");"
         )
 
@@ -364,3 +375,82 @@ def remove_file(path: str) -> bool:
             if cursor.rowcount > 0
             else DatabaseError.NONEXISTENT_FILE
         )
+
+
+def add_folder(folder: Folder) -> bool:
+    """
+    Adds a folder to the DB
+
+    Parameters
+    ----------
+    folder : Folder
+        Folder to add
+
+    Returns
+    -------
+    bool
+        True if added False otherwise
+    """
+    with SQLiteCursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO tblFolder (
+              FolderPath,
+              FolderPermissions,
+              FolderOwnerName,
+              FolderGroupName
+            )
+            SELECT ?,
+                   ?,
+                   ?,
+                   ?
+            """,
+            (
+                folder.folder_path,
+                folder.folder_permissions,
+                folder.folder_owner,
+                folder.folder_group,
+            ),
+        )
+
+        return (
+            DatabaseError.SUCCESS
+            if cursor.rowcount > 0
+            else DatabaseError.UNKNOWN_ERROR
+        )
+
+
+def get_folders() -> list:
+    """
+    Gets folders from the DB
+
+    Returns
+    -------
+    list
+        of folders
+    """
+    with SQLiteCursor() as cursor:
+        cursor.execute(
+            """
+            SELECT FolderPath,
+                   FolderPermissions,
+                   FolderOwnerName,
+                   FolderGroupName
+            FROM   tblFolder
+            """
+        )
+
+        results = cursor.fetchall()
+        folders = []
+        for result in results:
+            row = __row_to_dict(result, cursor.description)
+            folder = Folder()
+            folder.set(
+                row["FolderPath"],
+                row["FolderPermissions"],
+                row["FolderOwnerName"],
+                row["FolderGroupName"],
+            )
+            folders.append(folder)
+
+        return folders

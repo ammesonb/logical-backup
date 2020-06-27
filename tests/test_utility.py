@@ -29,6 +29,12 @@ PwUID = namedtuple(
 GrID = namedtuple("struct_group", "gr_name gr_passwd gr_gid gr_mem")
 
 
+def __compare_lists(list1: list, list2: list) -> bool:
+    return len(list1) == len(list2) and all(
+        [True if item in list2 else False for item in list1]
+    )
+
+
 def patch_input(monkeypatch, module, func) -> None:
     """
     Patch the input function for a given module
@@ -307,24 +313,36 @@ def test_list_files():
     nested_directory_1 = temp_file_path(tempfile.mkdtemp(dir=test_directory))
     nested_directory_2 = temp_file_path(tempfile.mkdtemp(dir=test_directory))
 
-    files = utility.list_files_in_directory(test_directory)
-    assert files == [file1], "Empty directories should not be included"
+    entries = utility.list_entries_in_directory(test_directory)
+    assert entries.files == [file1], "Empty directories should not be included"
+    assert __compare_lists(
+        entries.folders, [nested_directory_1, nested_directory_2]
+    ), "Directory and empty directories should be included"
 
     fd, filename = tempfile.mkstemp(dir=nested_directory_2)
     file2 = temp_file_path(filename)
 
-    files = utility.list_files_in_directory(test_directory)
-    assert files == [file1, file2], "Nested directory should be included"
+    entries = utility.list_entries_in_directory(test_directory)
+    assert entries.files == [
+        file1,
+        file2,
+    ], "Files in nested directory should be included"
+    assert __compare_lists(
+        entries.folders, [nested_directory_1, nested_directory_2,]
+    ), "Nested files in directory"
 
     nested_directory_3 = temp_file_path(tempfile.mkdtemp(dir=nested_directory_1))
     fd, filename = tempfile.mkstemp(dir=nested_directory_1)
     file3 = temp_file_path(filename)
 
-    files = utility.list_files_in_directory(test_directory)
-    assert len(files) == 3, "All files included"
-    assert (
-        file1 in files and file2 in files and file3 in files
+    entries = utility.list_entries_in_directory(test_directory)
+    assert len(entries.files) == 3, "All files included"
+    assert __compare_lists(
+        entries.files, [file1, file2, file3]
     ), "Includes file in double-nested directories"
+    assert __compare_lists(
+        entries.folders, [nested_directory_1, nested_directory_2, nested_directory_3]
+    ), "All nested directories should be included"
 
     shutil.rmtree(test_directory)
 

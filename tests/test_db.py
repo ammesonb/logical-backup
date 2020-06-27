@@ -7,6 +7,7 @@ from pytest import fixture
 
 from logical_backup.objects.device import Device
 from logical_backup.objects.file import File
+from logical_backup.objects.folder import Folder
 import logical_backup.db as db
 
 from logical_backup.db import (
@@ -159,3 +160,24 @@ def test_check_file():
     assert added == DatabaseError.SUCCESS, "Insert of file should succeed"
 
     assert db.file_exists("/test"), "Added file should exist"
+
+
+def test_add_folder(monkeypatch):
+    """
+    .
+    """
+    initialize_database()
+
+    assert db.get_folders() == [], "Initially should be empty"
+
+    folder1 = Folder()
+    folder1.set("/test", "755", "test", "test")
+    db.add_folder(folder1)
+
+    assert db.get_folders() == [folder1], "Single folder matches"
+
+    folder2 = Folder()
+    folder2.set("/test2", "700", "test2", "test2")
+    db.add_folder(folder2)
+
+    assert db.get_folders() == [folder1, folder2], "Two folders match"
