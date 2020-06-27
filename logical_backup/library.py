@@ -24,7 +24,6 @@ from logical_backup.pretty_print import (
 )
 
 
-# TODO: directory also will need to store permissions for itself and children
 # pylint: disable=unused-argument
 def add_directory(folder_path: str, mount_point: str = None) -> bool:
     """
