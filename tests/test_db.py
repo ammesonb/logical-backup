@@ -2,7 +2,7 @@
 Tests for the database files
 """
 from os import remove
-from os.path import exists
+from os.path import exists, join
 from pytest import fixture, raises
 import sqlite3
 
@@ -22,6 +22,8 @@ from logical_backup.db import (
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
 from logical_backup.utility import auto_set_testing
+
+from tests.test_utility import __compare_lists
 
 
 @fixture(autouse=True)
@@ -263,3 +265,53 @@ def test_remove_file(monkeypatch):
     assert db.remove_file("/test"), "Deleting existing file succeeds"
 
     assert db.get_files() == [file_obj], "Second file should still be in the database"
+
+
+def test_get_entries_for_folder():
+    """
+    .
+    """
+    initialize_database()
+
+    set_file_security = lambda file_obj: file_obj.set_security("644", "test", "test")
+    set_folder_details = lambda folder, path: folder.set(path, "644", "test", "test")
+
+    test_path = "/test"
+    test_sub_path = "bar"
+    other_path = "/other"
+
+    device = Device()
+    device.set("test", "/mnt", "Device Serial", "ABCDEF", 1)
+    assert db.add_device(device), "Device should be added successfully"
+
+    file1 = File()
+    set_file_security(file1)
+    file1.set_properties("test", test_path + "foo", "abc")
+    file2 = File()
+    set_file_security(file2)
+    file2.set_properties("test2", join(test_path, test_sub_path, "baz"), "def")
+    file3 = File()
+    set_file_security(file3)
+    file3.set_properties("test3", join(other_path, "ipsum"), "ghi")
+
+    for file_obj in [file1, file2, file3]:
+        file_obj.device_name = "test"
+        assert db.add_file(file_obj), "Files should be added successfully"
+
+    folder1 = Folder()
+    set_folder_details(folder1, test_path)
+    folder2 = Folder()
+    set_folder_details(folder2, join(test_path, test_sub_path))
+    folder3 = Folder()
+    set_folder_details(folder3, other_path)
+
+    for folder_obj in [folder1, folder2, folder3]:
+        assert db.add_folder(folder_obj), "Folders should be added successfully"
+
+    entries = db.get_entries_for_folder(test_path)
+    assert __compare_lists(
+        entries.files, [file1.file_path, file2.file_path]
+    ), "Files under directory should be returned"
+    assert __compare_lists(
+        entries.folders, [folder1.folder_path, folder2.folder_path]
+    ), "Selected and subfolder should be returned"

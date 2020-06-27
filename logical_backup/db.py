@@ -10,7 +10,7 @@ from logical_backup.objects.file import File
 from logical_backup.objects.folder import Folder
 
 
-from logical_backup.utility import is_test
+from logical_backup.utility import is_test, DirectoryEntries
 
 DB_FILE = "files.db"
 DEV_FILE = "files.db.test"
@@ -514,3 +514,49 @@ def get_folders() -> list:
             folders.append(folder)
 
         return folders
+
+
+def get_entries_for_folder(folder_path: str) -> DirectoryEntries:
+    """
+    Gets the files and folders registered under a given path
+
+    Parameters
+    ----------
+    folder_path : str
+        Path to find stuff under
+
+    Returns
+    -------
+    DirectoryEntries
+        A list of files and folders in the DB that match
+    """
+
+    entries = DirectoryEntries([], [])
+    with SQLiteCursor() as cursor:
+        cursor.execute(
+            """
+            SELECT FolderPath
+            FROM   tblFolder
+            WHERE  FolderPath LIKE ? || '%'
+            """,
+            (folder_path,),
+        )
+
+        results = cursor.fetchall()
+        for result in results:
+            entries.folders.append(result[0])
+
+        cursor.execute(
+            """
+            SELECT FilePath
+            FROM   tblFile
+            WHERE  FilePath LIKE ? || '%'
+            """,
+            (folder_path,),
+        )
+
+        results = cursor.fetchall()
+        for result in results:
+            entries.files.append(result[0])
+
+    return entries
