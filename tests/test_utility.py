@@ -295,7 +295,9 @@ def test_get_file_security(monkeypatch, capsys):
         "owner": "user",
         "group": "group",
     }, "Expected permissions were returned"
-    assert "Checking file permissions...Done" in output.out, "Expected text was printed"
+    assert (
+        "Checking file permissions...Complete" in output.out
+    ), "Expected text was printed"
 
 
 def test_list_files():

@@ -13,10 +13,10 @@ import os.path as path
 from os.path import isfile, isdir
 import sys
 
-import logical_backup.db as db
-import logical_backup.library as library
-import logical_backup.utility as utility
-from logical_backup.pretty_print import PrettyStatusPrinter, Color
+from logical_backup import db
+from logical_backup import library
+from logical_backup import utility
+from logical_backup.pretty_print import PrettyStatusPrinter, Color, print_error
 
 
 def __prepare():
@@ -206,16 +206,13 @@ def __check_devices(args: dict):
     device_message.print_start()
 
     devices = db.get_devices()
-    print(devices)
     if not devices:
         # pylint: disable=bad-continuation
         if (args["action"] != "add" or not args["device"]) and args[
             "action"
         ] != "list-devices":
             device_message.print_complete(False)
-            PrettyStatusPrinter(
-                "A device must be added before any other actions can occur"
-            ).with_specific_color(Color.ERROR).print_message()
+            print_error("A device must be added before any other actions can occur")
             sys.exit(3)
         else:
             device_message.print_complete(2)

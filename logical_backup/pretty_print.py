@@ -70,6 +70,13 @@ def get_success_prefix(succeeded: bool = None) -> str:
     return string
 
 
+def print_error(message: str) -> None:
+    """
+    Prints an error message
+    """
+    PrettyStatusPrinter(message).with_specific_color(Color.ERROR).print_message()
+
+
 # pylint: disable=too-many-instance-attributes
 class PrettyStatusPrinter:
     """
@@ -131,7 +138,7 @@ class PrettyStatusPrinter:
         """
         Allow custom result responses
         Requires definition of whether it is a "success" or not
-        DO NOT USE "1" as a value with "True" as well - THEY WILL COLLIDE
+        DO NOT USE "0" or "1" AS VALUES - THEY WILL COLLIDE WITH TRUE/FALSE
         """
         self.__results[result] = is_success
         return self
@@ -198,110 +205,19 @@ class PrettyStatusPrinter:
         line_ending = "\r" if to_overwrite else self.__line_ending
         print(self.__get_styled_message(result), end=line_ending, flush=True)
 
-    def print_start(self):
+    def print_start(self) -> PrettyStatusPrinter:
         """
         Prints the starting message
         """
         self.__started = True
         self.print_message(True)
+        return self
 
     def print_complete(self, succeeded: bool = True):
         """
         Print the completed message, for a given success status
         """
         self.print_message(result=succeeded)
-
-
-# pylint: disable=bad-continuation
-def pprint(
-    message: str,
-    color: Color = None,
-    background: Background = None,
-    formats: list = None,
-    line_ending: str = "\n",
-) -> None:
-    """
-    Prints a message
-
-    Parameters
-    ----------
-    message : str
-        The message to print
-    color : Color
-        Foreground color of the text
-    background : Background
-        Background color of the text
-    formats : list
-        One or more formats to apply, e.g. bold or underlined
-    line_ending : str
-        The line ending to print
-    """
-    print_string = ""
-    if color:
-        print_string += color.value
-    if background:
-        print_string += background.value
-    if formats:
-        print_string += "".join([style.value for style in formats])
-    print_string += message + Format.END.value
-
-    print(print_string, end=line_ending, flush=True)
-
-
-# pylint: disable=bad-continuation
-def pprint_start(
-    message: str,
-    color: Color = None,
-    background: Background = None,
-    formats: list = None,
-):
-    """
-    Prints a message
-
-    Parameters
-    ----------
-    message : str
-        The message to print
-    color : Color
-        Foreground color of the text
-    background : Background
-        Background color of the text
-    formats : list
-        One or more formats to apply, e.g. bold or underlined
-    """
-    pprint("  " + message, color, background, formats, "\r")
-
-
-# pylint: disable=bad-continuation
-def pprint_complete(
-    message: str,
-    succeeded: bool,
-    color: Color = None,
-    background: Background = None,
-    formats: list = None,
-) -> None:
-    """
-    Prints a message about a completed operation
-
-    Parameters
-    ----------
-    message : str
-        The message to print
-    succeeded : bool
-        Whether the operation succeeded
-    color : Color
-        Foreground color of the text
-    background : Background
-        Background color of the text
-    formats : list
-        One or more formats to apply, e.g. bold or underlined
-    """
-    pprint(
-        "{0}{1}".format((CHECK_UNICODE + " ") if succeeded else CROSS_UNICODE, message),
-        color,
-        background,
-        formats,
-    )
 
 
 def readable_bytes(size: int, suffix: str = "B") -> str:

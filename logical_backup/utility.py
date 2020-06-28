@@ -14,7 +14,7 @@ from time import time
 from pytest import fixture
 import psutil
 
-from logical_backup.pretty_print import pprint_start, pprint_complete, Color
+from logical_backup.pretty_print import PrettyStatusPrinter
 
 TEST_VARIABLE = "IS_TEST"
 
@@ -127,8 +127,11 @@ def get_device_serial(mount_point: str) -> str:
     mount_point : str
         The mount point for the drive
     """
-    message = "Checking device serial..."
-    pprint_start(message)
+    message = (
+        PrettyStatusPrinter("Checking device serial")
+        .with_message_postfix_for_result(False, "No serial found!")
+        .print_start()
+    )
 
     serial = None
     partition = __get_device_path(mount_point)
@@ -144,9 +147,11 @@ def get_device_serial(mount_point: str) -> str:
             serial = output["stdout"].strip().decode("utf-8")
 
     if serial:
-        pprint_complete(message + "Found " + serial, True, Color.GREEN)
+        message.with_message_postfix_for_result(
+            True, "Found " + serial
+        ).print_complete()
     else:
-        pprint_complete(message + "No serial found!", False, Color.ERROR)
+        message.print_complete(False)
 
     return serial
 
@@ -160,8 +165,11 @@ def get_device_uuid(mount_point: str) -> str:
     mount_point : str
         The mount point for the drive
     """
-    message = "Checking device UUID..."
-    pprint_start(message)
+    message = (
+        PrettyStatusPrinter("Checking device UUID")
+        .with_message_postfix_for_result(False, "No UUID found!")
+        .print_start()
+    )
 
     uuid = None
     partition = __get_device_path(mount_point)
@@ -173,9 +181,9 @@ def get_device_uuid(mount_point: str) -> str:
             uuid = output["stdout"].strip().decode("utf-8")
 
     if uuid:
-        pprint_complete(message + "Found " + uuid, True, Color.GREEN)
+        message.with_message_postfix_for_result(True, "Found " + uuid).print_complete()
     else:
-        pprint_complete(message + "No UUID found!", False, Color.ERROR)
+        message.print_complete(False)
 
     return uuid
 
@@ -241,18 +249,15 @@ def checksum_file(path: str) -> str:
     string
         Checksum
     """
-    message = "Getting MD5 hash..."
-    pprint_start(message)
+    message = PrettyStatusPrinter("Getting MD5 hash").print_start()
     result = run_piped_command([["md5sum", path], ["awk", "{ print $1 }"]])
     if result["exit_code"]:
-        pprint_complete(
-            message + "Failed! Exit code: {0}".format(result["exit_code"]),
-            False,
-            Color.ERROR,
-        )
+        message.with_message_postfix_for_result(
+            False, "Failed! Exit code: {0}".format(result["exit_code"])
+        ).print_complete(False)
         checksum = None
     else:
-        pprint_complete(message + "Complete", True)
+        message.print_complete()
         checksum = result["stdout"].strip().decode()
 
     return checksum
@@ -292,13 +297,12 @@ def get_file_security(path: str) -> dict:
     dict
         Containing owner, group, and permissions
     """
-    message = "Checking file permissions..."
-    pprint_start(message)
+    message = PrettyStatusPrinter("Checking file permissions").print_start()
     file_stats = os.stat(path)
     permission_mask = oct(file_stats.st_mode)[-3:]
     owner = pwd.getpwuid(file_stats.st_uid).pw_name
     group = grp.getgrgid(file_stats.st_gid).gr_name
-    pprint_complete(message + "Done.", True)
+    message.print_complete()
 
     return {"permissions": permission_mask, "owner": owner, "group": group}
 

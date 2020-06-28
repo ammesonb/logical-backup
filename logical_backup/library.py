@@ -14,13 +14,10 @@ from logical_backup.db import DatabaseError
 from logical_backup import db
 from logical_backup import utility
 from logical_backup.pretty_print import (
-    pprint,
     Color,
-    Background,
-    Format,
-    pprint_start,
-    pprint_complete,
     readable_bytes,
+    PrettyStatusPrinter,
+    print_error,
 )
 
 
@@ -43,25 +40,24 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
     # If the given mount point is too small for the folder,
     # but there is enough space across all drives to fit the folder
     if not device_has_space and sufficient_space:
-        pprint("Selected device will not fit all files!", Color.YELLOW)
+        PrettyStatusPrinter(
+            "Selected device will not fit all files!"
+        ).with_specific_color(Color.YELLOW).print_message()
         switch_device = input(
             "Continue with any available device? (y/N, 'n' will exit)"
         )
         if switch_device == "y":
             mount_point = None
         else:
-            pprint(
-                "Exiting since unable to fit all files on selected device", Color.ERROR
-            )
+            print_error("Exiting since unable to fit all files on selected device")
             return False
 
     if not sufficient_space:
-        pprint(
+        print_error(
             "Sum of available devices' space is insufficient, "
             "need {0} additional space! Exiting".format(
                 readable_bytes(folder_size - total_available_space)
-            ),
-            Color.ERROR,
+            )
         )
         return False
 
@@ -100,26 +96,33 @@ def remove_directory(folder_path: str) -> bool:
     are just organizational, for use in restoration only
     """
     entries = db.get_entries_for_folder(folder_path)
-    message = "Removing files..."
-    pprint_start(message)
-    files_removed = all([remove_file(file_path) for file_path in entries.files])
-    if files_removed:
-        pprint_complete(message + "Complete", True, Color.GREEN)
+    file_removal = PrettyStatusPrinter(
+        "Removing files"
+    ).with_message_postfix_for_result(False, "Failures")
+    file_removal.print_start()
 
-        message = "Removing folders..."
-        pprint_start(message)
-        files_removed = files_removed and all(
+    files_removed = all([remove_file(file_path) for file_path in entries.files])
+    all_removed = files_removed
+    if files_removed:
+        file_removal.print_complete()
+
+        folder_removal = PrettyStatusPrinter(
+            "Removing folders"
+        ).with_message_postfix_for_result(False, "Failures")
+        folder_removal.print_start()
+
+        all_removed = files_removed and all(
             [db.remove_folder(folder) for folder in entries.folders]
         )
 
-        if files_removed:
-            pprint_complete(message + "Complete", True, Color.GREEN)
+        if all_removed:
+            folder_removal.print_complete()
         else:
-            pprint_complete(message + "Failures", False, Color.ERROR)
+            folder_removal.print_complete(False)
     else:
-        pprint_complete(message + "Failures", False, Color.ERROR)
+        file_removal.print_complete(False)
 
-    return files_removed
+    return all_removed
 
 
 # pylint: disable=unused-argument
@@ -172,36 +175,43 @@ def __get_device_with_space(
         Name of the device to use, and mount point
     """
     if mount_point and not size_checked:
-        message = "Checking drive space..."
-        pprint_start(message)
+        space_message = PrettyStatusPrinter(
+            "Checking drive space"
+        ).with_message_postfix_for_result(False, "Insufficient space!")
+        space_message.print_start()
+
         drive_space = utility.get_device_space(mount_point)
         if file_size >= drive_space:
-            pprint_complete(message + "Insufficient space!", False, Color.ERROR)
+            space_message.print_complete(False)
             confirm = input("Switch drive? (Y/n, n exits) ")
             if confirm != "n":
                 mount_point = None
             else:
                 return None, None
         else:
-            pprint_complete(message + "Done.", True, Color.BLUE)
+            space_message.print_complete()
 
     device_name = None
     # This also needs to happen if we unset it due to space problems
     if not mount_point:
-        message = "Auto-selecting device..."
-        pprint_start(message)
+        auto_select_device = PrettyStatusPrinter(
+            "Auto-selecting device"
+        ).with_message_postfix_for_result(False, "None found!")
+        auto_select_device.print_start()
 
         devices = db.get_devices()
         for device in devices:
             space = utility.get_device_space(device.device_path)
             if space > file_size:
-                pprint_complete(message + "Selected " + device.device_name, True)
+                auto_select_device.with_message_postfix_for_result(
+                    True, "Selected " + device.device_name
+                ).print_complete()
                 mount_point = device.device_path
                 device_name = device.device_name
                 break
 
         if not mount_point:
-            pprint_complete(message + "None found!", False, Color.ERROR)
+            auto_select_device.print_complete(False)
 
     else:
         devices = db.get_devices()
@@ -240,25 +250,28 @@ def add_file(
           - or if it already exists
     """
     if db.file_exists(file_path):
-        pprint("File is already backed up!", Color.ERROR)
+        print_error("File is already backed up!")
         return False
 
     security_details = utility.get_file_security(file_path)
     checksum = utility.checksum_file(file_path)
     if not checksum:
-        pprint("Failed to get checksum!", Color.ERROR)
+        print_error("Failed to get checksum!")
         return False
 
-    message = "Getting file size..."
-    pprint_start(message)
+    file_size_message = PrettyStatusPrinter("Getting file size")
+    file_size_message.print_start()
+
     file_size = utility.get_file_size(file_path)
-    pprint_complete(message + "Read. File is " + readable_bytes(file_size), True)
+    file_size_message.with_message_postfix_for_result(
+        True, "Read. File is " + readable_bytes(file_size)
+    ).print_complete()
 
     device_name, mount_point = __get_device_with_space(
         file_size, mount_point, size_checked
     )
     if not device_name:
-        pprint("No device with space available!", Color.ERROR)
+        print_error("No device with space available!")
         return False
 
     new_name = utility.create_backup_name(file_path)
@@ -268,7 +281,7 @@ def add_file(
     checksum2 = utility.checksum_file(new_path)
 
     if checksum != checksum2:
-        pprint("Checksum mismatch after copy!", Color.ERROR)
+        print_error("Checksum mismatch after copy!")
         os.remove(new_path)
         return False
 
@@ -277,13 +290,13 @@ def add_file(
     file_obj.set_properties(os_path.basename(file_path), file_path, checksum)
     file_obj.set_security(**security_details)
 
-    message = "Saving file record to DB..."
-    pprint_start(message)
+    db_save = PrettyStatusPrinter("Saving file record to DB").print_start()
+
     succeeded = db.add_file(file_obj)
     if succeeded == DatabaseError.SUCCESS:
-        pprint_complete(message + "Done.", True, Color.GREEN)
+        db_save.print_complete()
     else:
-        pprint_complete(message + "Failed!", False, Color.ERROR)
+        db_save.print_complete(False)
         os.remove(new_path)
 
     return succeeded
@@ -305,8 +318,20 @@ def remove_file(file_path: str) -> bool:
           - due to database failure, hard drive failure, etc
           - or if it does not exist
     """
-    message = "Validating file removal..."
-    pprint_start(message)
+    validate_message = (
+        PrettyStatusPrinter("Validating file removal")
+        .with_message_postfix_for_result(True, "File removed")
+        .with_custom_result(2, False)
+        .with_message_postfix_for_result(2, "File not registered in database!")
+        .with_custom_result(3, False)
+        .with_message_postfix_for_result(3, "Unable to find device")
+        .with_custom_result(4, False)
+        .with_message_postfix_for_result(4, "File path does not exist!")
+        .with_custom_result(5, False)
+        .with_message_postfix_for_result(5, "Failed to remove file from database!")
+        .print_start()
+    )
+
     file_entry = db.get_files(file_path)
     if file_entry and len(file_entry) > 0:
         file_entry = file_entry[0]
@@ -330,19 +355,15 @@ def remove_file(file_path: str) -> bool:
 
     if db_entry_removed:
         os.remove(path_on_device)
-        pprint_complete(message + "File removed", True, Color.GREEN)
+        validate_message.print_complete()
     elif not file_entry:
-        pprint_complete(
-            message + "File not registered in database!", False, Color.ERROR
-        )
+        validate_message.print_complete(2)
     elif not device:
-        pprint_complete(message + "Unable to find device", False, Color.ERROR)
+        validate_message.print_complete(3)
     elif not os_path.exists(path_on_device):
-        pprint_complete(message + "File path does not exist!", False, Color.ERROR)
+        validate_message.print_complete(4)
     else:
-        pprint_complete(
-            message + "Failed to remove file from database!", False, Color.ERROR
-        )
+        validate_message.print_complete(5)
 
     return db_entry_removed
 
@@ -396,48 +417,47 @@ def add_device(mount_point: str) -> bool:
         )
         identifier_type = "User Specified"
 
-    message = "Saving device..."
-    pprint_start(message)
+    save_message = (
+        PrettyStatusPrinter("Saving device")
+        .print_start()
+        .with_custom_result(2, False)
+        .with_message_postfix_for_result(2, "Failed. Unrecognized device identifier!")
+        .with_custom_result(3, False)
+        .with_message_postfix_for_result(3, "Failed. Name already taken!")
+        .with_custom_result(4, False)
+        .with_message_postfix_for_result(
+            4, "Failed. Device already registered at mount point!"
+        )
+        .with_custom_result(5, False)
+        .with_message_postfix_for_result(
+            5, "Failed. Serial already registered for another device!"
+        )
+        .with_custom_result(6, False)
+        .with_message_postfix_for_result(6, "Failed. Unknown error occurred!")
+        .with_custom_result(7, False)
+        .with_message_postfix_for_result(7, "Failed. Super-unknown error occurred!")
+    )
 
     device = Device()
     device.set(device_name, mount_point, identifier_type, identifier)
     result = db.add_device(device)
 
     if result == DatabaseError.SUCCESS:
-        pprint_complete(message + "Done", True, Color.GREEN)
+        save_message.print_complete()
+    elif result == DatabaseError.INVALID_IDENTIFIER_TYPE:
+        save_message.print_complete(2)
+    elif result == DatabaseError.DEVICE_NAME_EXISTS:
+        save_message.print_complete(3)
+    elif result == DatabaseError.DEVICE_PATH_EXISTS:
+        save_message.print_complete(4)
+    elif result == DatabaseError.DEVICE_IDENTIFIER_EXISTS:
+        save_message.print_complete(5)
+    elif result == DatabaseError.UNKNOWN_ERROR:
+        save_message.print_complete(6)
     else:
-        message += "Failed. "
-        if result == DatabaseError.INVALID_IDENTIFIER_TYPE:
-            pprint_complete(
-                message + "Unrecognized device identifier!", False, Color.ERROR
-            )
-        elif result == DatabaseError.DEVICE_NAME_EXISTS:
-            pprint_complete(message + "Name already taken!", False, Color.ERROR)
-        elif result == DatabaseError.DEVICE_PATH_EXISTS:
-            pprint_complete(
-                message + "Device already registered at mount point!",
-                False,
-                Color.ERROR,
-            )
-        elif result == DatabaseError.DEVICE_IDENTIFIER_EXISTS:
-            pprint_complete(
-                message + "Serial already registered for another device!",
-                False,
-                Color.ERROR,
-            )
-        elif result == DatabaseError.UNKNOWN_ERROR:
-            pprint_complete(message + "Unknown error occurred!", False, Color.ERROR)
-        else:
-            pprint_complete(
-                message + "Super-unknown error occurred!",
-                False,
-                Color.ERROR,
-                formats=[Format.UNDERLINE],
-            )
+        save_message.print_complete(7)
 
-        return False
-
-    return True
+    return result == DatabaseError.SUCCESS
 
 
 # pylint: disable=unused-argument
@@ -534,4 +554,4 @@ def list_devices():
 
         print(table.draw())
     else:
-        pprint("No devices saved!", Color.ERROR, Background.BLACK, [Format.BOLD])
+        print_error("No devices saved!")

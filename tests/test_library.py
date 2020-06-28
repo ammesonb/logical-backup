@@ -127,7 +127,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Saving device...Done" in output.out
+        "Saving device...Completed" in output.out
     ), "First device, by serial, should be saved"
 
     # Happy path two
@@ -142,7 +142,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Saving device...Done" in output.out
+        "Saving device...Completed" in output.out
     ), "Second device, by UUID, should be saved"
 
     # Happy path three
@@ -159,7 +159,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Saving device...Done" in output.out
+        "Saving device...Completed" in output.out
     ), "Third device, specified by user, should be saved"
 
     # Sad path one
@@ -296,7 +296,7 @@ def test_get_device_with_space(monkeypatch, capsys):
     output = capsys.readouterr()
 
     assert (
-        "Checking drive space...Done" in output.out
+        "Checking drive space...Completed" in output.out
     ), "Should check provided mount point"
     assert name == "test3", "Provided device name should be selected"
     assert path == "/mnt3", "Provided device path should be selected"
