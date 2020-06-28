@@ -52,8 +52,9 @@ class DatabaseError(Enum):
     INVALID_IDENTIFIER_TYPE = 4
     NONEXISTENT_DEVICE = 5
     NONEXISTENT_FILE = 6
-    FOLDER_EXISTS = 7
+    NONEXISTENT_FOLDER = 7
     FILE_EXISTS = 8
+    FOLDER_EXISTS = 9
 
     def __bool__(self):
         """
@@ -560,3 +561,32 @@ def get_entries_for_folder(folder_path: str) -> DirectoryEntries:
             entries.files.append(result[0])
 
     return entries
+
+
+def remove_folder(folder_path: str) -> bool:
+    """
+    Removes folder from the database
+
+    Parameters
+    ----------
+    folder_path : str
+        Path to remove
+
+    Returns
+    -------
+    bool
+        True if removed, False otherwise
+    """
+    with SQLiteCursor() as cursor:
+        cursor.execute(
+            """
+            DELETE FROM tblFolder WHERE FolderPath = ?
+            """,
+            (folder_path,),
+        )
+
+        return (
+            DatabaseError.SUCCESS
+            if cursor.rowcount > 0
+            else DatabaseError.NONEXISTENT_FOLDER
+        )

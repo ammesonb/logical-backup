@@ -315,3 +315,33 @@ def test_get_entries_for_folder():
     assert __compare_lists(
         entries.folders, [folder1.folder_path, folder2.folder_path]
     ), "Selected and subfolder should be returned"
+
+
+def test_remove_folder():
+    """
+    .
+    """
+    initialize_database()
+
+    folder1 = Folder()
+    folder2 = Folder()
+
+    folder1.set("/test/foo", "755", "test", "test")
+    folder2.set("/bar", "755", "test", "test")
+
+    assert db.add_folder(folder1), "Folder one should be added"
+    assert db.add_folder(folder2), "Folder two should be added"
+
+    assert __compare_lists(
+        db.get_folders(), [folder1, folder2]
+    ), "Folders should be retrieved"
+
+    assert db.remove_folder(folder1.folder_path), "Folder one should be removed"
+    assert (
+        db.remove_folder(folder1.folder_path) == DatabaseError.NONEXISTENT_FOLDER
+    ), "Cannot remove nonexistent folder"
+
+    assert db.get_folders() == [folder2], "Folder two still in DB"
+    assert db.remove_folder(folder2.folder_path), "Folder two should be removed"
+
+    assert db.get_folders() == [], "No folders in DB"

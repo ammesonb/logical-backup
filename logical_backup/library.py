@@ -95,7 +95,31 @@ def remove_directory(folder_path: str) -> bool:
     """
     Removes a directory from the backup
     See remove_file
+
+    Note: does NOT remove anything on disk, since backed-up folders
+    are just organizational, for use in restoration only
     """
+    entries = db.get_entries_for_folder(folder_path)
+    message = "Removing files..."
+    pprint_start(message)
+    files_removed = all([remove_file(file_path) for file_path in entries.files])
+    if files_removed:
+        pprint_complete(message + "Complete", True, Color.GREEN)
+
+        message = "Removing folders..."
+        pprint_start(message)
+        files_removed = files_removed and all(
+            [db.remove_folder(folder) for folder in entries.folders]
+        )
+
+        if files_removed:
+            pprint_complete(message + "Complete", True, Color.GREEN)
+        else:
+            pprint_complete(message + "Failures", False, Color.ERROR)
+    else:
+        pprint_complete(message + "Failures", False, Color.ERROR)
+
+    return files_removed
 
 
 # pylint: disable=unused-argument

@@ -617,13 +617,15 @@ def test_remove_file(monkeypatch, capsys):
     # Database removal failure, with a file in a directory
     test_directory = __make_temp_directory()
     test_file_2, checksum_2 = __make_temp_file(directory=test_directory)
+    # pylint: disable=unused-variable
+    actual_file_path, actual_checksum = __make_temp_file()
 
     device2 = Device()
     device2.set("dev", test_directory, "Device Serial", "fake", "1")
     monkeypatch.setattr(db, "get_devices", lambda device: [device2])
 
     file2 = File()
-    file2.set_properties(test_file_2, "test2", checksum_2)
+    file2.set_properties(test_file_2, actual_file_path, checksum_2)
     file2.set_security("644", "test", "test")
     monkeypatch.setattr(db, "get_files", lambda path: [file2])
 
@@ -644,3 +646,44 @@ def test_remove_file(monkeypatch, capsys):
     ), "File removal success message should print"
 
     assert not path.exists(test_file_2), "Test file is removed"
+    assert path.exists(actual_file_path), "Actual file should NOT be deleted"
+
+    remove(test_file)
+    remove(actual_file_path)
+
+
+def test_remove_folder(monkeypatch, capsys):
+    """
+    .
+    """
+    monkeypatch.setattr(library, "remove_file", lambda file_path: False)
+    monkeypatch.setattr(
+        db,
+        "get_entries_for_folder",
+        lambda folder: DirectoryEntries(["abc", "def"], ["foo", "bar"]),
+    )
+
+    assert not library.remove_directory("/test"), "Should fail if files not removed"
+    out = capsys.readouterr()
+    assert "Removing files...Failures" in out.out, "File removal failure message prints"
+
+    monkeypatch.setattr(library, "remove_file", lambda file_path: True)
+    monkeypatch.setattr(db, "remove_folder", lambda folder_path: False)
+
+    assert not library.remove_directory("/test"), "Should fail if folders not removed"
+    out = capsys.readouterr()
+    assert "Removing files...Complete" in out.out, "File removal success prints"
+    assert (
+        "Removing folders...Failures" in out.out
+    ), "Folder removal failure message prints"
+
+    monkeypatch.setattr(db, "remove_folder", lambda folder_path: True)
+
+    assert library.remove_directory("/test"), "Should succeed if all removed"
+    out = capsys.readouterr()
+    assert (
+        "Removing files...Complete" in out.out
+    ), "File removal success message prints (two)"
+    assert (
+        "Removing folders...Complete" in out.out
+    ), "Folder removal success message prints"
