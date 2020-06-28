@@ -82,17 +82,16 @@ class PrettyStatusPrinter:
         """
         self.__with_ellipsis = True
         self.__specific_color = None
-        self.__success_color = Color.GREEN
-        self.__failure_color = Color.ERROR
-        self.__success_postfix = "Completed"
-        self.__failure_postfix = "Failed"
+        self.__result_colors = {True: Color.GREEN, False: Color.ERROR}
+        self.__message_postfix = {True: "Completed", False: "Failed"}
+        self.__results = {None: None, True: True, False: False}
         self.__background_color = None
         self.__styles = []
         self.__message = message
         self.__line_ending = "\n"
         self.__started = False
 
-    def __get_styled_message(self, succeeded: bool = None) -> str:
+    def __get_styled_message(self, result=None) -> str:
         """
         Returns the styled message
         Needs to know success status to resolve color correctly
@@ -100,10 +99,12 @@ class PrettyStatusPrinter:
         styled_message = ""
         if self.__specific_color:
             styled_message += self.__specific_color.value
-        elif succeeded and self.__success_color:
-            styled_message += self.__success_color.value
-        elif succeeded is not None and self.__failure_color:
-            styled_message += self.__failure_color.value
+        elif result is not None:
+            styled_message += (
+                self.__result_colors[result].value
+                if result in self.__result_colors
+                else self.__result_colors[self.__results[result]].value
+            )
 
         if self.__background_color:
             styled_message += self.__background_color.value
@@ -112,20 +113,28 @@ class PrettyStatusPrinter:
             for style in self.__styles:
                 styled_message += style.value
 
-        styled_message += get_success_prefix(succeeded)
+        styled_message += get_success_prefix(result)
         styled_message += self.__message
 
         if self.__started and self.__with_ellipsis:
             styled_message += "..."
 
-        if succeeded is not None:
-            styled_message += (
-                self.__success_postfix if succeeded else self.__failure_postfix
-            )
+        styled_message += self.__message_postfix.get(
+            result, self.__message_postfix.get(self.__results[result], "")
+        )
 
         styled_message += Format.END.value
 
         return styled_message
+
+    def with_custom_result(self, result, is_success: bool) -> PrettyStatusPrinter:
+        """
+        Allow custom result responses
+        Requires definition of whether it is a "success" or not
+        DO NOT USE "1" as a value with "True" as well - THEY WILL COLLIDE
+        """
+        self.__results[result] = is_success
+        return self
 
     def with_ellipsis(self, include: bool = True) -> PrettyStatusPrinter:
         """
@@ -142,31 +151,21 @@ class PrettyStatusPrinter:
         return self
 
     # pylint: disable=bad-continuation
-    def with_color_for_result(
-        self, on_success: bool, color: Color
-    ) -> PrettyStatusPrinter:
+    def with_color_for_result(self, result, color: Color) -> PrettyStatusPrinter:
         """
         Sets the output color for a given response
         """
 
-        if on_success:
-            self.__success_color = color
-        else:
-            self.__failure_color = color
-
+        self.__result_colors[result] = color
         return self
 
     def with_message_postfix_for_result(
-        self, on_success: bool, postfix: str
+        self, result, postfix: str
     ) -> PrettyStatusPrinter:
         """
-        Adds message postfix for failure/success, e.g. "failed to do X" or "Y happened"
+        Adds message postfix for for given result, e.g. "failed to do X" or "Y happened"
         """
-        if on_success:
-            self.__success_postfix = postfix
-        else:
-            self.__failure_postfix = postfix
-
+        self.__message_postfix[result] = postfix
         return self
 
     def with_background_color(self, background: Background) -> PrettyStatusPrinter:
@@ -190,14 +189,14 @@ class PrettyStatusPrinter:
         self.__styles += styles
         return self
 
-    def print_message(self, to_overwrite: bool = False, succeeded: bool = None) -> None:
+    def print_message(self, to_overwrite: bool = False, result=None) -> None:
         """
         Prints the message
         If to overwrite, will use a carriage return instead of newline
         Succeeded can also be specified, to pass through for formatting
         """
         line_ending = "\r" if to_overwrite else self.__line_ending
-        print(self.__get_styled_message(succeeded), end=line_ending, flush=True)
+        print(self.__get_styled_message(result), end=line_ending, flush=True)
 
     def print_start(self):
         """
@@ -210,7 +209,7 @@ class PrettyStatusPrinter:
         """
         Print the completed message, for a given success status
         """
-        self.print_message(succeeded=succeeded)
+        self.print_message(result=succeeded)
 
 
 # pylint: disable=bad-continuation

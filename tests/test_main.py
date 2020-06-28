@@ -92,7 +92,7 @@ def test_check_devices(capsys, monkeypatch):
     __check_devices(arguments)
     output = capsys.readouterr()
     assert (
-        "devices...Missing, but OK" in output.out
+        "devices...None found, but OK" in output.out
     ), "Adding device message did not print"
 
     make_mock_folder()

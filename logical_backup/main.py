@@ -16,7 +16,7 @@ import sys
 import logical_backup.db as db
 import logical_backup.library as library
 import logical_backup.utility as utility
-from logical_backup.pretty_print import pprint, pprint_start, pprint_complete, Color
+from logical_backup.pretty_print import PrettyStatusPrinter, Color
 
 
 def __prepare():
@@ -192,44 +192,57 @@ def __check_devices(args: dict):
         Configured arguments from the command line,
         in dictionary form for easier injection with testing
     """
-    message = "Checking for devices..."
-    pprint_start(message, Color.BLUE)
+    device_message = (
+        PrettyStatusPrinter("Checking for devices")
+        .with_message_postfix_for_result(True, "All devices found")
+        .with_message_postfix_for_result(False, "None!")
+        .with_custom_result(2, True)
+        .with_color_for_result(2, Color.YELLOW)
+        .with_message_postfix_for_result(2, "None found, but OK")
+        .with_custom_result(3, True)
+        .with_color_for_result(3, Color.YELLOW)
+        .with_message_postfix_for_result(3, "Found some devices:")
+    )
+    device_message.print_start()
 
     devices = db.get_devices()
+    print(devices)
     if not devices:
         # pylint: disable=bad-continuation
         if (args["action"] != "add" or not args["device"]) and args[
             "action"
         ] != "list-devices":
-            pprint_complete(message + "None", False, Color.ERROR)
-            pprint(
-                "A device must be added before any other actions can occur", Color.ERROR
-            )
+            device_message.print_complete(False)
+            PrettyStatusPrinter(
+                "A device must be added before any other actions can occur"
+            ).with_specific_color(Color.ERROR).print_message()
             sys.exit(3)
         else:
-            pprint_complete(message + "Missing, but OK", True, Color.YELLOW)
+            device_message.print_complete(2)
     else:
         for device in devices:
             device["found"] = path.ismount(device["device_path"])
 
         if all([device["found"] for device in devices]):
-            pprint_complete(message + "All devices found", True, Color.GREEN)
+            device_message.print_complete(True)
         else:
-            pprint_complete(message + "Found some devices:", True, Color.YELLOW)
+            device_message.print_complete(3)
+
             for device in devices:
                 message = (
                     "{device_name} (Path: {device_path})\n"
                     "  {identifier_name}: {device_identifier}"
                 ).format(**device)
-                if device["found"]:
-                    pprint_complete(message, True, Color.GREEN)
-                else:
-                    pprint_complete(message, False, Color.ERROR)
+                PrettyStatusPrinter(message).with_specific_color(
+                    Color.GREEN if device["found"] else Color.ERROR
+                ).print_complete(device["found"])
 
             confirm = input("Proceed? (y/N) ")
             if confirm != "y":
                 sys.exit(3)
-            pprint("Continuing without all devices", Color.YELLOW)
+            PrettyStatusPrinter("Continuing without all devices").with_specific_color(
+                Color.YELLOW
+            ).print_message()
 
 
 def __dispatch_command(arguments: dict) -> str:

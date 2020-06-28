@@ -148,3 +148,48 @@ def test_specific_color_overrides_success(capsys):
 
     out = capsys.readouterr()
     assert Color.CYAN.value in out.out, "Failure color should be cyan not default"
+
+
+def test_custom_result(capsys):
+    """
+    .
+    """
+    # Negative two, because why not
+    psp = (
+        PrettyStatusPrinter("testing thing")
+        .with_custom_result(-2, True)
+        .with_color_for_result(-2, Color.WHITE)
+        .with_message_postfix_for_result(-2, "Random number")
+    )
+    psp.print_start()
+    psp.print_complete(True)
+
+    out = capsys.readouterr()
+    assert (
+        "testing thing..." + Format.END.value + "\r" in out.out
+    ), "First line to be overwritten is printed"
+    assert "testing thing...Complete" in out.out, "Complete message prints"
+    assert CHECK_UNICODE in out.out, "Complete check prints"
+    assert Color.GREEN.value in out.out, "Complete color is printed"
+
+    psp.print_start()
+    psp.print_complete(False)
+
+    out = capsys.readouterr()
+    assert (
+        "testing thing..." + Format.END.value + "\r" in out.out
+    ), "First line to be overwritten is printed"
+    assert "testing thing...Failed" in out.out, "Failure message prints"
+    assert CROSS_UNICODE in out.out, "Failure cross prints"
+    assert Color.ERROR.value in out.out, "Error color is printed"
+
+    psp.print_start()
+    psp.print_complete(-2)
+
+    out = capsys.readouterr()
+    assert (
+        "testing thing..." + Format.END.value + "\r" in out.out
+    ), "First line to be overwritten is printed"
+    assert "testing thing...Random number" in out.out, "Custom result message prints"
+    assert CHECK_UNICODE in out.out, "Success check prints"
+    assert Color.WHITE.value in out.out, "Custom result color is printed"
