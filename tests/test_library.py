@@ -687,3 +687,38 @@ def test_remove_folder(monkeypatch, capsys):
     assert (
         "Removing folders...Complete" in out.out
     ), "Folder removal success message prints"
+
+
+def test_verify_file(monkeypatch, capsys):
+    """
+    .
+    """
+    device = Device()
+    device.set("device", "/dev", "Device Serial", "ABCDEF", 1)
+
+    file_obj = File()
+    file_obj.set_properties("test", "path", "abc")
+    file_obj.set_security("644", "owner", "group")
+    file_obj.device_name = device.device_name
+    file_obj.device = device
+    monkeypatch.setattr(db, "get_files", lambda path: [file_obj])
+    monkeypatch.setattr(
+        utility,
+        "checksum_file",
+        lambda path: "abc" if path == file_obj.file_path else "def",
+    )
+
+    assert library.verify_file(
+        file_obj.file_path, False
+    ), "Local file path verification works"
+    assert not library.verify_file(
+        file_obj.file_path, True
+    ), "Device path verification fails"
+
+    out = capsys.readouterr()
+    assert "Checksum mismatch" in out.out, "Device verifcation failed message printed"
+
+    monkeypatch.setattr(db, "get_files", lambda path: [])
+    assert not library.verify_file("/test", False), "Nonexistent file should fail"
+    out = capsys.readouterr()
+    assert "File record not in database" in out.out, "Missing file message prints"

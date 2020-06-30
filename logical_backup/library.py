@@ -475,7 +475,6 @@ def verify_folder(folder_path: str, for_restore: bool) -> bool:
     """
 
 
-# pylint: disable=unused-argument
 def verify_file(file_path: str, for_restore: bool) -> bool:
     """
     Check a file path for consistency
@@ -494,6 +493,21 @@ def verify_file(file_path: str, for_restore: bool) -> bool:
         True if checksum match
         False otherwise, e.g. file does not exist
     """
+    file_result = db.get_files(file_path)
+    if not file_result:
+        print_error("File record not in database")
+        return False
+
+    file_obj = file_result[0]
+
+    path_to_check = os_path.join(
+        file_obj.device.device_path + file_obj.file_name if for_restore else file_path
+    )
+    actual_checksum = utility.checksum_file(path_to_check)
+    if actual_checksum != file_obj.checksum:
+        print_error("Checksum mismatch for " + file_path)
+
+    return actual_checksum == file_obj.checksum
 
 
 # pylint: disable=unused-argument

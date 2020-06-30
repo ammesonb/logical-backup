@@ -249,7 +249,7 @@ def checksum_file(path: str) -> str:
     string
         Checksum
     """
-    message = PrettyStatusPrinter("Getting MD5 hash").print_start()
+    message = PrettyStatusPrinter("Getting MD5 hash of " + path).print_start()
     result = run_piped_command([["md5sum", path], ["awk", "{ print $1 }"]])
     if result["exit_code"]:
         message.with_message_postfix_for_result(
