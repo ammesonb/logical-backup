@@ -500,8 +500,10 @@ def verify_file(file_path: str, for_restore: bool) -> bool:
 
     file_obj = file_result[0]
 
-    path_to_check = os_path.join(
-        file_obj.device.device_path + file_obj.file_name if for_restore else file_path
+    path_to_check = (
+        os_path.join(file_obj.device.device_path, file_obj.file_name)
+        if for_restore
+        else file_path
     )
     actual_checksum = utility.checksum_file(path_to_check)
     if actual_checksum != file_obj.checksum:

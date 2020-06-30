@@ -705,15 +705,17 @@ def test_verify_file(monkeypatch, capsys):
     monkeypatch.setattr(
         utility,
         "checksum_file",
-        lambda path: "abc" if path == file_obj.file_path else "def",
+        lambda file_path: "abc"
+        if file_path == path.join(device.device_path, file_obj.file_name)
+        else "def",
     )
 
     assert library.verify_file(
-        file_obj.file_path, False
-    ), "Local file path verification works"
-    assert not library.verify_file(
         file_obj.file_path, True
-    ), "Device path verification fails"
+    ), "Device path verification works"
+    assert not library.verify_file(
+        file_obj.file_path, False
+    ), "Local file path verification fails"
 
     out = capsys.readouterr()
     assert "Checksum mismatch" in out.out, "Device verifcation failed message printed"
