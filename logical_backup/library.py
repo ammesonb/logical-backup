@@ -86,7 +86,6 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
     return all_success
 
 
-# pylint: disable=unused-argument
 def remove_directory(folder_path: str) -> bool:
     """
     Removes a directory from the backup
@@ -460,19 +459,29 @@ def add_device(mount_point: str) -> bool:
     return result == DatabaseError.SUCCESS
 
 
-# pylint: disable=unused-argument
 def verify_all(for_restore: bool) -> bool:
     """
     Verify all findable files on drives
     """
+    files = db.get_files()
+    all_verified = True
+    for file_path in files:
+        all_verified = all_verified and verify_file(file_path, for_restore)
+
+    return all_verified
 
 
-# pylint: disable=unused-argument
 def verify_folder(folder_path: str, for_restore: bool) -> bool:
     """
     Checks a folder integrity based on the DB
     See verify_file
     """
+    entries = db.get_entries_for_folder(folder_path)
+    all_verified = True
+    for file_path in entries.files:
+        all_verified = all_verified and verify_file(file_path, for_restore)
+
+    return all_verified
 
 
 def verify_file(file_path: str, for_restore: bool) -> bool:

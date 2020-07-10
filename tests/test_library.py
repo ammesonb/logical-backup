@@ -724,3 +724,37 @@ def test_verify_file(monkeypatch, capsys):
     assert not library.verify_file("/test", False), "Nonexistent file should fail"
     out = capsys.readouterr()
     assert "File record not in database" in out.out, "Missing file message prints"
+
+
+def test_verify_folder(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(
+        db,
+        "get_entries_for_folder",
+        lambda folder: DirectoryEntries(["/foo/test", "/foo/test2"], []),
+    )
+
+    monkeypatch.setattr(
+        library, "verify_file", lambda file_path, for_restore: file_path == "/foo/test"
+    )
+    assert not library.verify_folder("/foo", True), "Partial verification fails"
+
+    monkeypatch.setattr(library, "verify_file", lambda file_path, for_restore: True)
+    assert library.verify_folder("/foo", True), "Folder verification succeeds"
+
+
+def test_verify_all(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(db, "get_files", lambda: ["/foo/test", "/foo/test2"])
+
+    monkeypatch.setattr(
+        library, "verify_file", lambda file_path, for_restore: file_path == "/foo/test"
+    )
+    assert not library.verify_all(False), "Partial verification fails"
+
+    monkeypatch.setattr(library, "verify_file", lambda file_path, for_restore: True)
+    assert library.verify_all(False), "Folder verification succeeds"
