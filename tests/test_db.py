@@ -234,6 +234,10 @@ def test_add_folder(monkeypatch):
 
     assert db.get_folders() == [folder1, folder2], "Two folders match"
 
+    assert db.get_folders(folder2.folder_path) == [
+        folder2
+    ], "Specific folder retrieval works"
+
     monkeypatch.setattr(db, "add_folder", lambda folder: DatabaseError.UNKNOWN_ERROR)
 
     duplicate = db.add_folder(folder2)

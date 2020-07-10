@@ -481,9 +481,14 @@ def add_folder(folder: Folder) -> bool:
         # TODO: try/catch error handling
 
 
-def get_folders() -> list:
+def get_folders(folder_path: str = None) -> list:
     """
     Gets folders from the DB
+
+    Parameters
+    ----------
+    folder_path : str
+        Optionally, folder path to look for
 
     Returns
     -------
@@ -491,15 +496,19 @@ def get_folders() -> list:
         of folders
     """
     with SQLiteCursor() as cursor:
-        cursor.execute(
-            """
+        query = """
             SELECT FolderPath,
                    FolderPermissions,
                    FolderOwnerName,
                    FolderGroupName
             FROM   tblFolder
             """
-        )
+
+        if folder_path:
+            query += " WHERE FolderPath = ?"
+            cursor.execute(query, (folder_path,))
+        else:
+            cursor.execute(query)
 
         results = cursor.fetchall()
         folders = []

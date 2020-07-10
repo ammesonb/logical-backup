@@ -9,6 +9,7 @@ from logical_backup.main import __dispatch_command
 from logical_backup import library
 from logical_backup.objects.device import Device
 from logical_backup.objects.file import File
+from logical_backup.objects.folder import Folder
 from logical_backup.db import initialize_database, DatabaseError
 from logical_backup import db
 
@@ -808,3 +809,152 @@ def test_update_file(monkeypatch, capsys):
     assert (
         "Failed to remove file, so cannot update" in out.out
     ), "Failure to remove updated file prints message"
+
+
+def test_remove_missing_database_entries(monkeypatch):
+    """
+    .
+    """
+    entries = DirectoryEntries(["/test", "/test2"], ["/var", "/var2"])
+
+    # Test everything exists
+    monkeypatch.setattr(library, "remove_directory", lambda path: False)
+    monkeypatch.setattr(library, "remove_file", lambda path: False)
+    monkeypatch.setattr(path, "isdir", lambda path: True)
+    monkeypatch.setattr(path, "isfile", lambda path: True)
+
+    assert library.__remove_missing_database_entries(
+        entries
+    ), "Everything exists should pass"
+
+    # Removing nothing should pass
+    patch_input(monkeypatch, library, lambda prompt: "n")
+    assert library.__remove_missing_database_entries(
+        entries
+    ), "Nothing being removed should pass"
+
+    # Removing only folders should fail if removal fails, and succeed otherwise
+    monkeypatch.setattr(path, "isdir", lambda path: False)
+    patch_input(
+        monkeypatch, library, lambda prompt: "REMOVE" if "folders" in prompt else "n"
+    )
+    assert not library.__remove_missing_database_entries(
+        entries
+    ), "Removing only folders should fail if not removed"
+    monkeypatch.setattr(library, "remove_directory", lambda path: True)
+    assert library.__remove_missing_database_entries(
+        entries
+    ), "Removing only folders should succeed"
+
+    # Removing everything should fail
+    monkeypatch.setattr(path, "isfile", lambda path: False)
+    patch_input(
+        monkeypatch, library, lambda prompt: "REMOVE" if "folders" in prompt else "YES"
+    )
+    assert not library.__remove_missing_database_entries(
+        entries
+    ), "Removing everything should fail if file fails"
+    monkeypatch.setattr(library, "remove_file", lambda path: True)
+    assert library.__remove_missing_database_entries(
+        entries
+    ), "Removing everything should succeed"
+
+    # Removing only files should fail if removal fails
+    monkeypatch.setattr(path, "isdir", lambda path: True)
+    monkeypatch.setattr(library, "remove_file", lambda path: False)
+    patch_input(
+        monkeypatch, library, lambda prompt: "n" if "folders" in prompt else "YES"
+    )
+    assert not library.__remove_missing_database_entries(
+        entries
+    ), "Removing only files should fail if not removed"
+    monkeypatch.setattr(library, "remove_file", lambda path: True)
+    assert library.__remove_missing_database_entries(
+        entries
+    ), "Removing only files should succeed"
+
+
+def test_update_folder(monkeypatch, capsys):
+    """
+    .
+    """
+    folder_entries = DirectoryEntries(["bar"], [])
+    both_entries = DirectoryEntries(["foo"], ["bar"])
+
+    # First, test files only
+    monkeypatch.setattr(db, "get_entries_for_folder", lambda folder: folder_entries)
+    monkeypatch.setattr(
+        utility, "list_entries_in_directory", lambda folder: folder_entries
+    )
+
+    # If removing missing entries fails, should fail
+    monkeypatch.setattr(
+        library, "__remove_missing_database_entries", lambda entries: False
+    )
+    monkeypatch.setattr(library, "update_file", lambda file_path: True)
+    assert not library.update_folder(
+        "/test"
+    ), "Failure to remove missing entries should fail"
+
+    # Results of update_file should match output of update folder
+    monkeypatch.setattr(
+        library, "__remove_missing_database_entries", lambda entries: True
+    )
+    monkeypatch.setattr(library, "update_file", lambda file_path: False)
+    assert not library.update_folder("/test"), "Failure to update file should fail"
+    monkeypatch.setattr(library, "update_file", lambda file_path: True)
+    assert library.update_folder(
+        "/test"
+    ), "Updating folder if files update should succeed"
+
+    # Now test both, but files is stubbed out so irrelevant
+    monkeypatch.setattr(db, "get_entries_for_folder", lambda folder: both_entries)
+    monkeypatch.setattr(
+        utility, "list_entries_in_directory", lambda folder: both_entries
+    )
+    monkeypatch.setattr(db, "remove_folder", lambda folder_path: False)
+    monkeypatch.setattr(db, "add_folder", lambda folder: False)
+
+    # First, test equivalence for folder succeeds
+    folder = Folder()
+    folder_path, folder_permissions, folder_owner, folder_group = (
+        "bar",
+        "755",
+        "user",
+        "group",
+    )
+    folder.set(folder_path, folder_permissions, folder_owner, folder_group)
+
+    monkeypatch.setattr(
+        utility,
+        "get_file_security",
+        lambda folder_path: {
+            "permissions": folder_permissions,
+            "owner": folder_owner,
+            "group": folder_group,
+        },
+    )
+    monkeypatch.setattr(db, "get_folders", lambda folder_path: [folder])
+
+    assert library.update_folder(folder_path), "Directory unchanged should succeed"
+
+    # Check removal/adding of folder causes failures
+    folder.folder_group = "other"
+    assert not library.update_folder(folder_path), "Folder removal failure should error"
+    out = capsys.readouterr()
+    assert (
+        "Failed to remove folder" in out.out
+    ), "Folder removal failure should print message"
+
+    monkeypatch.setattr(db, "remove_folder", lambda folder_path: True)
+    monkeypatch.setattr(db, "add_folder", lambda folder_path: False)
+    assert not library.update_folder(
+        folder_path
+    ), "Folder addition failure should error"
+    out = capsys.readouterr()
+    assert (
+        "Failed to add folder" in out.out
+    ), "Folder adding failure should print message"
+
+    monkeypatch.setattr(db, "add_folder", lambda folder_path: True)
+    assert library.update_folder(folder_path), "Folder updating should succeed"

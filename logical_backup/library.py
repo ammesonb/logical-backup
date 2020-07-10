@@ -45,7 +45,7 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
         ).with_specific_color(Color.YELLOW).print_message()
         switch_device = input(
             "Continue with any available device? (y/N, 'n' will exit)"
-        )
+        ).lower()
         if switch_device == "y":
             mount_point = None
         else:
@@ -221,6 +221,59 @@ def __get_device_with_space(
         ][0]
 
     return device_name, mount_point
+
+
+def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool:
+    """
+    Checks a given list of files and folders for existence on the file system
+    Will prompt to remove them
+
+    Parameters
+    ----------
+    entries : DirectoryEntries
+        The list of entries to check
+
+    Returns
+    -------
+    bool
+        True if all attempted removals succeed
+    """
+    recursive_prompted = False
+    remove_recursive = False
+    files_prompted = False
+    remove_files = False
+
+    success = True
+
+    for folder_path in entries.folders:
+        if not os_path.isdir(folder_path):
+            if not recursive_prompted:
+                remove_recursive = (
+                    input(
+                        "Found one or more backed-up folders that no longer exist! Remove ALL missing directories recursively? Type REMOVE uppdercase to do so "
+                    )
+                    == "REMOVE"
+                )
+                recursive_prompted = True
+
+            if remove_recursive:
+                success = success and remove_directory(folder_path)
+
+    for file_path in entries.files:
+        if not os_path.isfile(file_path):
+            if not files_prompted:
+                remove_files = (
+                    input(
+                        "Found one or more backed-up files that no longer exist! Remove all missing files? Type YES uppercase to do so "
+                    )
+                    == "YES"
+                )
+                files_prompted = True
+
+            if remove_files:
+                success = success and remove_file(file_path)
+
+    return success
 
 
 # pylint: disable=bad-continuation
@@ -563,6 +616,19 @@ def restore_file(file_path: str) -> bool:
 def update_file(file_path: str) -> bool:
     """
     Checks if a file has changed, and if it has, replaces the backed-up file
+
+    Parameters
+    ----------
+    file_path : str
+        The file path to update
+
+    Returns
+    -------
+    bool
+        True if file updated or is current
+        False if, e.g.:
+          - failed to remove file
+          - failed to re-add file
     """
     file_result = db.get_files(file_path)
     file_registered = bool(file_result)
@@ -595,10 +661,61 @@ def update_file(file_path: str) -> bool:
         if not file_added:
             print_error("Failed to add file during update!")
 
+    # pylint: disable=consider-using-ternary
     # outcome must be one of:
     #   - no change to file
     #   - file is updated - removed AND added
+    #
+    # NOT equivalent using a ternary
+    # which would return checksum_match if not file_removed
     return (file_added and file_removed) or checksum_match
+
+
+def update_folder(folder: str) -> bool:
+    """
+    Updates a folder to match what is currently on disk
+    """
+    registered_files = db.get_entries_for_folder(folder)
+    disk_files = utility.list_entries_in_directory(folder)
+
+    # Too many conditions, so add explicit success flag here
+    all_success = __remove_missing_database_entries(registered_files)
+
+    # An existing folder just need to be purged from the DB to be added back
+    # No recursive file checks or anything, since the listing already handled that
+    for folder_path in disk_files.folders:
+        folder = Folder()
+        folder_details = utility.get_file_security(folder_path)
+        folder.set(
+            folder_path,
+            folder_details["permissions"],
+            folder_details["owner"],
+            folder_details["group"],
+        )
+
+        if folder_path in registered_files.folders:
+            db_folder = db.get_folders(folder_path)
+            # If folders are equivalent, do nothing
+            if db_folder[0] == folder:
+                continue
+
+            if not db.remove_folder(folder_path):
+                print_error(
+                    "Failed to remove folder {0} from database!".format(folder_path)
+                )
+                all_success = False
+                continue
+
+        if not db.add_folder(folder):
+            print_error(
+                "Failed to add folder {0} back to database!".format(folder_path)
+            )
+            all_success = False
+
+    for file_path in disk_files.files:
+        all_success = all_success and update_file(file_path)
+
+    return all_success
 
 
 def list_devices():
