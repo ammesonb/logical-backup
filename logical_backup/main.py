@@ -336,6 +336,7 @@ def __dispatch_update_command(arguments: list) -> str:
         library.update_file(arguments["file"])
     elif arguments["folder"]:
         command = "update-folder"
+        library.update_folder(arguments["folder"])
 
     return command
 
