@@ -256,57 +256,120 @@ def __dispatch_command(arguments: dict) -> str:
     str
         The command being called
     """
-    # The chain of if's is what this function does, unfortunately
-    # pylint: disable=too-many-branches
     command = ""
     if arguments["action"] == "add":
-        if arguments["file"]:
-            command = "add-file"
-            library.add_file(arguments["file"], arguments["device"])
-        elif arguments["folder"]:
-            command = "add-folder"
-            library.add_directory(arguments["file"], arguments["device"])
-        elif arguments["device"]:
-            command = "add-device"
-            library.add_device(arguments["device"])
-
+        command = __dispatch_add_command(arguments)
     elif arguments["action"] == "move":
-        if arguments["file"]:
-            command = "move-file"
-        elif arguments["folder"]:
-            command = "move-folder"
-
+        command = __dispatch_move_command(arguments)
     elif arguments["action"] == "remove":
-        if arguments["file"]:
-            command = "remove-file"
-        elif arguments["folder"]:
-            command = "remove-folder"
-
+        command = __dispatch_remove_command(arguments)
     elif arguments["action"] == "update":
-        if arguments["file"]:
-            command = "update-file"
-        elif arguments["folder"]:
-            command = "update-folder"
-
+        command = __dispatch_update_command(arguments)
     elif arguments["action"] == "restore":
-        if arguments["file"]:
-            command = "restore-file"
-        elif arguments["folder"]:
-            command = "restore-folder"
-        elif arguments["all"]:
-            command = "restore-all"
-
+        command = __dispatch_restore_command(arguments)
     elif arguments["action"] == "verify":
-        if arguments["file"]:
-            command = "verify-file"
-        elif arguments["folder"]:
-            command = "verify-folder"
-        elif arguments["all"]:
-            command = "verify-all"
-
+        command = __dispatch_verify_command(arguments)
     elif arguments["action"] == "list-devices":
         command = "list-devices"
         library.list_devices()
+
+    return command
+
+
+def __dispatch_add_command(arguments: dict) -> str:
+    """
+    Dispatches a command to add something
+    Returns command run
+    """
+    command = ""
+    if arguments["file"]:
+        command = "add-file"
+        library.add_file(arguments["file"], arguments["device"])
+    elif arguments["folder"]:
+        command = "add-folder"
+        library.add_directory(arguments["file"], arguments["device"])
+    elif arguments["device"]:
+        command = "add-device"
+        library.add_device(arguments["device"])
+
+    return command
+
+
+def __dispatch_move_command(arguments: list) -> str:
+    """
+    Dispatches command to move file/folder or between devices
+    Returns command that was run
+    """
+    command = ""
+    if arguments["file"]:
+        command = "move-file"
+    elif arguments["folder"]:
+        command = "move-folder"
+
+    return command
+
+
+def __dispatch_remove_command(arguments: list) -> str:
+    """
+    Dispatches command to remove file/folder
+    Returns command that was run
+    """
+    command = ""
+    if arguments["file"]:
+        command = "remove-file"
+        library.remove_file(arguments["file"])
+    elif arguments["folder"]:
+        command = "remove-folder"
+        library.remove_directory(arguments["folder"])
+
+    return command
+
+
+def __dispatch_update_command(arguments: list) -> str:
+    """
+    Dispatches command to update a file or folder
+    Returns command that was run
+    """
+    command = ""
+    if arguments["file"]:
+        command = "update-file"
+    elif arguments["folder"]:
+        command = "update-folder"
+
+    return command
+
+
+def __dispatch_restore_command(arguments: list) -> str:
+    """
+    Dispatches command to restore a file, folder, or everything
+    Returns command that was run
+    """
+    command = ""
+    if arguments["file"]:
+        command = "restore-file"
+    elif arguments["folder"]:
+        command = "restore-folder"
+    elif arguments["all"]:
+        command = "restore-all"
+
+    return command
+
+
+def __dispatch_verify_command(arguments: list) -> str:
+    """
+    Dispatches command to verify a file, folder, or everything
+    Returns command that was run
+    """
+    command = ""
+    if arguments["file"]:
+        command = "verify-file"
+        library.verify_file(arguments["file"], False)
+    elif arguments["folder"]:
+        command = "verify-folder"
+        library.verify_folder(arguments["folder"], False)
+    elif arguments["all"]:
+        command = "verify-all"
+        library.verify_all(False)
 
     return command
 
