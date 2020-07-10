@@ -370,7 +370,7 @@ def remove_file(file_path: str) -> bool:
 # pylint: disable=unused-argument
 def move_file(original_path: str, new_path: str) -> bool:
     """
-    Will remove a file to the backup archive
+    Will move a file in the archive to a new path, or to a different device
 
     Parameters
     ----------
@@ -558,6 +558,47 @@ def restore_file(file_path: str) -> bool:
           - copied file checksum mismatches
           - device unavailable
     """
+
+
+def update_file(file_path: str) -> bool:
+    """
+    Checks if a file has changed, and if it has, replaces the backed-up file
+    """
+    file_result = db.get_files(file_path)
+    file_registered = bool(file_result)
+    # If these checks are irrelevant, then allow them to pass
+    # checksum is relevant if file is registered, otherwise
+    # success is solely dependent on file being added
+    checksum_match = file_registered
+    file_removed = True
+    file_added = True
+
+    # Only need to compare checksums if the file is registered
+    # Otherwise will simply add it
+    if file_registered:
+        file_obj = file_result[0]
+        checksum_match = utility.checksum_file(file_path) == file_obj.checksum
+
+    # Only need to remove the file if
+    #   - The file is registered already
+    #   - and the checksum has changed
+    if file_registered and not checksum_match:
+        file_removed = remove_file(file_obj.file_path)
+        if not file_removed:
+            print_error("Failed to remove file, so cannot update!")
+
+    # Add the file if:
+    #   - file is NOT already registered
+    #   - file did not match and was removed
+    if not file_registered or (not checksum_match and file_removed):
+        file_added = add_file(file_path)
+        if not file_added:
+            print_error("Failed to add file during update!")
+
+    # outcome must be one of:
+    #   - no change to file
+    #   - file is updated - removed AND added
+    return (file_added and file_removed) or checksum_match
 
 
 def list_devices():

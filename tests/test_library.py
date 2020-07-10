@@ -758,3 +758,53 @@ def test_verify_all(monkeypatch):
 
     monkeypatch.setattr(library, "verify_file", lambda file_path, for_restore: True)
     assert library.verify_all(False), "Folder verification succeeds"
+
+
+def test_update_file(monkeypatch, capsys):
+    """
+    .
+    """
+    # Test unregistered file, successfully
+    monkeypatch.setattr(db, "get_files", lambda file_path: [])
+    monkeypatch.setattr(library, "add_file", lambda file_path: True)
+    assert library.update_file("/test"), "New file added via update successfully"
+    # Fail this time
+    monkeypatch.setattr(library, "add_file", lambda file_path: False)
+    assert not library.update_file("/test"), "New file fails to add via update"
+    out = capsys.readouterr()
+    assert (
+        "Failed to add file during update" in out.out
+    ), "New file failure prints message"
+
+    # Registered file has checksum match, so no need to update
+    file_checksum = "abc123"
+    file_path = "/foo/test"
+    file_obj = File()
+    file_obj.set_properties("/test", file_path, file_checksum)
+    file_obj.set_security("644", "user", "group")
+    monkeypatch.setattr(db, "get_files", lambda file_path: [file_obj])
+    monkeypatch.setattr(utility, "checksum_file", lambda file_path: file_checksum)
+    # Force these to fail, so if they are called the execution will fail
+    monkeypatch.setattr(library, "remove_file", lambda file_path: False)
+    monkeypatch.setattr(library, "add_file", lambda file_path: False)
+    assert library.update_file("/test"), "Updating file with matching checksum succeeds"
+
+    # Checksum mismatch cases work as expected - removal success/fail, add success/fail
+    monkeypatch.setattr(utility, "checksum_file", lambda file_path: "mismatch")
+    monkeypatch.setattr(library, "remove_file", lambda file_path: True)
+    monkeypatch.setattr(library, "add_file", lambda file_path: True)
+    assert library.update_file("/test"), "Updating file works"
+
+    monkeypatch.setattr(library, "add_file", lambda file_path: False)
+    assert not library.update_file("/test"), "Fails to add updated file"
+    out = capsys.readouterr()
+    assert (
+        "Failed to add file during update" in out.out
+    ), "Failure to add updated file prints message"
+
+    monkeypatch.setattr(library, "remove_file", lambda file_path: False)
+    assert not library.update_file("/test"), "Fails to remove updated file"
+    out = capsys.readouterr()
+    assert (
+        "Failed to remove file, so cannot update" in out.out
+    ), "Failure to remove updated file prints message"
