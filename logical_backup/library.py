@@ -125,10 +125,48 @@ def remove_directory(folder_path: str) -> bool:
 
 
 # pylint: disable=unused-argument
-def move_directory(current_path: str, new_path: str) -> bool:
+def move_directory_local(current_path: str, new_path: str) -> bool:
     """
     Moves a directory in the backup
-    See move_file
+    See move_file_local
+    """
+    entries = db.get_entries_for_folder(current_path)
+
+    all_success = True
+    absolute_new_path = new_path
+    # If new path already exists, add name of current path to it
+    if os_path.isdir(new_path):
+        absolute_new_path = os_path.join(
+            absolute_new_path, os_path.basename(current_path)
+        )
+    elif os_path.isfile(new_path):
+        print_error("Cannot move folder over existing file!")
+        return False
+
+    # Should include base folder as well
+    for folder in entries.folders:
+        new_folder = folder.replace(current_path, absolute_new_path)
+        result = db.update_folder_path(folder, new_folder)
+        if result == DatabaseError.FOLDER_EXISTS:
+            print_error("Folder already backed up at path '{0}'!".format(new_folder))
+            all_success = False
+        elif result == DatabaseError.NONEXISTENT_FOLDER:
+            print_error("Specified folder not backed up: '{0}'!".format(new_folder))
+            all_success = False
+
+    for file_path in entries.files:
+        new_file = file_path.replace(current_path, absolute_new_path)
+        if not move_file_local(file_path, new_file):
+            all_success = False
+
+    return all_success
+
+
+# pylint: disable=unused-argument
+def move_directory_device(current_path: str, device: str) -> bool:
+    """
+    Moves a directory in the backup
+    See move_file_device
     """
 
 
@@ -250,7 +288,9 @@ def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool
             if not recursive_prompted:
                 remove_recursive = (
                     input(
-                        "Found one or more backed-up folders that no longer exist! Remove ALL missing directories recursively? Type REMOVE uppdercase to do so "
+                        "Found one or more backed-up folders that no longer exist! "
+                        "Remove ALL missing directories recursively? "
+                        "Type REMOVE uppdercase to do so "
                     )
                     == "REMOVE"
                 )
@@ -264,7 +304,8 @@ def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool
             if not files_prompted:
                 remove_files = (
                     input(
-                        "Found one or more backed-up files that no longer exist! Remove all missing files? Type YES uppercase to do so "
+                        "Found one or more backed-up files that no longer exist! "
+                        "Remove all missing files? Type YES uppercase to do so "
                     )
                     == "YES"
                 )
@@ -421,9 +462,9 @@ def remove_file(file_path: str) -> bool:
 
 
 # pylint: disable=unused-argument
-def move_file(original_path: str, new_path: str) -> bool:
+def move_file_local(original_path: str, new_path: str) -> bool:
     """
-    Will move a file in the archive to a new path, or to a different device
+    Will move a file in the archive to a new path
 
     Parameters
     ----------
@@ -431,6 +472,37 @@ def move_file(original_path: str, new_path: str) -> bool:
         The current file path to remove
     new_path : str
         The new path to the file
+
+    Returns
+    -------
+    bool
+        True if moved, False otherwise
+          - due to database failure, or if it does not exist
+    """
+    # Add file path if destination is a directory
+    if os_path.isdir(new_path):
+        new_path = os_path.join(new_path, os_path.basename(original_path))
+
+    result = db.update_file_path(original_path, new_path)
+    if result == DatabaseError.NONEXISTENT_FILE:
+        print_error("File path not backed up!")
+    elif result == DatabaseError.FILE_EXISTS:
+        print_error("File already backed up at new location!")
+
+    return bool(result)
+
+
+# pylint: disable=unused-argument
+def move_file_device(original_path: str, device: str) -> bool:
+    """
+    Will move a file in the archive to a specified device
+
+    Parameters
+    ----------
+    original_path : str
+        The current file path to remove
+    device : str
+        The path of the device to move it onto
 
     Returns
     -------

@@ -349,3 +349,68 @@ def test_remove_folder():
     assert db.remove_folder(folder2.folder_path), "Folder two should be removed"
 
     assert db.get_folders() == [], "No folders in DB"
+
+
+def test_update_folder_path(monkeypatch):
+    """
+    .
+    """
+    initialize_database()
+    folder = Folder()
+    folder.set("/test", "644", "owner", "group")
+    folder2 = Folder()
+    folder2.set("/test2", "644", "owner2", "group2")
+
+    assert db.add_folder(folder), "Folder should be added"
+    assert db.add_folder(folder2), "Second folder should be added"
+
+    assert (
+        db.update_folder_path("/test", "/test2") == DatabaseError.FOLDER_EXISTS
+    ), "Integrity constraint should be violated"
+    assert (
+        db.update_folder_path("/foo", "/foo2") == DatabaseError.NONEXISTENT_FOLDER
+    ), "Cannot update nonexistent folder"
+    assert (
+        db.update_folder_path("/test", "/mnt/device") == DatabaseError.SUCCESS
+    ), "Folder update works"
+
+    folder.folder_path = "/mnt/device"
+    assert __compare_lists(
+        [folder, folder2], db.get_folders()
+    ), "Folder update persists"
+
+
+def test_update_file_path(monkeypatch):
+    """
+    .
+    """
+    initialize_database()
+    device = Device()
+    device.set("test device", "/mnt/device", "Device Serial", "ABCDEF123", 1)
+    db.add_device(device)
+    file_obj = File()
+    file_obj.set_properties("/test", "/test", "abc123")
+    file_obj.set_security("644", "owner", "group")
+    file_obj.device_name = "test device"
+    file_obj2 = File()
+    file_obj2.set_properties("/test2", "/test2", "abc123")
+    file_obj2.set_security("644", "owner2", "group2")
+    file_obj2.device_name = "test device"
+
+    assert db.add_file(file_obj), "File should be added"
+    assert db.add_file(file_obj2), "Second file should be added"
+
+    assert (
+        db.update_file_path("/test", "/test2") == DatabaseError.FILE_EXISTS
+    ), "Integrity constraint should be violated"
+    assert (
+        db.update_file_path("/foo", "/foo2") == DatabaseError.NONEXISTENT_FILE
+    ), "Cannot update nonexistent file"
+    assert (
+        db.update_file_path("/test", "/mnt/device/test") == DatabaseError.SUCCESS
+    ), "File update works"
+
+    file_obj.file_path = "/mnt/device/test"
+    assert __compare_lists(
+        [file_obj, file_obj2], db.get_files()
+    ), "File update persists"

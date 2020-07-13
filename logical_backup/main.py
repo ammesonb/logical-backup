@@ -299,12 +299,31 @@ def __dispatch_move_command(arguments: list) -> str:
     """
     Dispatches command to move file/folder or between devices
     Returns command that was run
+
+    NOTES:
+    - file/folder on system only needs to update path
+      - check dest path is directory, if so add base name for FILES ONLY
+      - files/folders will need to be moved recursively, FROM DB ONLY
+    - move on device needs to check space for files recursively
+      - do NOT prompt for option to reassign, only exit
+      - if space:
+        - copy file to new device
+        - verify checksum matches DB
+        - remove previous device file
     """
     command = ""
     if arguments["file"]:
-        command = "move-file"
+        if arguments["move_path"]:
+            command = "move-file"
+            library.move_file_local(arguments["file"], arguments["move_path"])
+        else:
+            command = "move-file-to-device"
     elif arguments["folder"]:
-        command = "move-folder"
+        if arguments["move_path"]:
+            command = "move-folder"
+            library.move_directory_local(arguments["folder"], arguments["move_path"])
+        else:
+            command = "move-folder-to-device"
 
     return command
 
@@ -345,6 +364,23 @@ def __dispatch_restore_command(arguments: list) -> str:
     """
     Dispatches command to restore a file, folder, or everything
     Returns command that was run
+
+    NOTES:
+
+    For file:
+        - stop if file exists already
+        - verify backup file checksum
+        - copy file using actual name, not backup name
+        - verify checksum match
+        - set permissions (while we/you own this file)
+        - set owner
+
+    For folders:
+        - Create all subfolders
+        - Set (sub)folder permissions
+        - Restore all files
+        - Set folder owners
+            - After file restoration, since otherwise may not have permissions anymore
     """
     command = ""
     if arguments["file"]:

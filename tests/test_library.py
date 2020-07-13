@@ -958,3 +958,107 @@ def test_update_folder(monkeypatch, capsys):
 
     monkeypatch.setattr(db, "add_folder", lambda folder_path: True)
     assert library.update_folder(folder_path), "Folder updating should succeed"
+
+
+def test_move_file_local(monkeypatch, capsys):
+    """
+    .
+    """
+    # Test error cases
+    monkeypatch.setattr(
+        db, "update_file_path", lambda current, new: DatabaseError.NONEXISTENT_FILE
+    )
+    assert not library.move_file_local(
+        "/test/foo", "/test2"
+    ), "Un backed-up file should fail"
+    out = capsys.readouterr()
+    assert "File path not backed up" in out.out, "Un backed-up file message prints"
+
+    # This ensures that it accepts a directory as output, as well as a specific file
+    monkeypatch.setattr(
+        db,
+        "update_file_path",
+        lambda current, new: DatabaseError.SUCCESS
+        if new == "/test2/foo"
+        else DatabaseError.FILE_EXISTS,
+    )
+    assert not library.move_file_local(
+        "/test/foo", "/failure"
+    ), "Backed up to duplicate file should fail"
+    out = capsys.readouterr()
+    assert (
+        "File already backed up at new location" in out.out
+    ), "Backed up to duplicate file message prints"
+
+    # Success cases
+    monkeypatch.setattr(path, "isdir", lambda directory: True)
+    assert library.move_file_local(
+        "/test/foo", "/test2"
+    ), "Change to backed up file should work with directory destination"
+    monkeypatch.setattr(path, "isdir", lambda directory: False)
+    assert library.move_file_local(
+        "/test/foo", "/test2/foo"
+    ), "Change to backed up file should work with file destination"
+
+
+def test_move_directory_local(monkeypatch, capsys):
+    """
+    .
+    """
+    monkeypatch.setattr(
+        db,
+        "get_entries_for_folder",
+        lambda folder: DirectoryEntries(["/test/foo"], ["/test/foo"]),
+    )
+    # Test error cases
+    monkeypatch.setattr(library, "move_file_local", lambda current, new: True)
+    monkeypatch.setattr(
+        db, "update_folder_path", lambda current, new: DatabaseError.NONEXISTENT_FOLDER
+    )
+    assert not library.move_directory_local(
+        "/test/foo", "/test2"
+    ), "Un backed-up folder should fail"
+    out = capsys.readouterr()
+    assert (
+        "Specified folder not backed up" in out.out
+    ), "Un backed-up folder message prints"
+
+    # This ensures that it accepts a directory as output, as well as a specific folder
+    monkeypatch.setattr(
+        db,
+        "update_folder_path",
+        lambda current, new: DatabaseError.SUCCESS
+        if new == "/test2/foo"
+        else DatabaseError.FOLDER_EXISTS,
+    )
+    assert not library.move_directory_local(
+        "/test/foo", "/failure"
+    ), "Backed up to duplicate folder should fail"
+    out = capsys.readouterr()
+    assert (
+        "Folder already backed up at path" in out.out
+    ), "Backed up to duplicate folder message prints"
+
+    # Success cases
+    monkeypatch.setattr(path, "isdir", lambda directory: True)
+    assert library.move_directory_local(
+        "/test/foo", "/test2"
+    ), "Change to backed up folder should work with directory destination"
+
+    # If file, don't back up
+    monkeypatch.setattr(path, "isdir", lambda directory: False)
+    monkeypatch.setattr(path, "isfile", lambda directory: True)
+    assert not library.move_directory_local(
+        "/test/foo", "/test2/foo"
+    ), "Folder back up to file location should fail"
+    out = capsys.readouterr()
+    assert (
+        "Cannot move folder over existing file"
+    ), "Folder back up to file message prints"
+
+    # If file fails, should fail move
+    monkeypatch.setattr(library, "move_file_local", lambda current, new: False)
+    monkeypatch.setattr(path, "isfile", lambda directory: False)
+    assert not library.move_directory_local(
+        "/test/foo", "/test2/foo"
+    ), "File move failure should fail"

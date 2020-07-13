@@ -312,7 +312,7 @@ def file_exists(file_path: str) -> bool:
         return bool(result)
 
 
-def add_file(file_obj: File) -> bool:
+def add_file(file_obj: File) -> DatabaseError:
     """
     Add a file
     """
@@ -599,3 +599,73 @@ def remove_folder(folder_path: str) -> bool:
             if cursor.rowcount > 0
             else DatabaseError.NONEXISTENT_FOLDER
         )
+
+
+def update_file_path(current_path: str, new_path: str) -> DatabaseError:
+    """
+    Updates path of a file
+
+    Parameters
+    ----------
+    current_path : string
+        Current file path
+    new_path :  string
+        New file path (including name)
+
+    Returns
+    -------
+    DatabaseError
+        Database result code
+    """
+    try:
+        with SQLiteCursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE tblFile
+                SET    FilePath = ?
+                WHERE  FilePath = ?
+                """,
+                (new_path, current_path,),
+            )
+            return (
+                DatabaseError.SUCCESS
+                if cursor.rowcount
+                else DatabaseError.NONEXISTENT_FILE
+            )
+    except sqlite3.IntegrityError:
+        return DatabaseError.FILE_EXISTS
+
+
+def update_folder_path(current_path: str, new_path: str) -> DatabaseError:
+    """
+    Updates path of a folder
+
+    Parameters
+    ----------
+    current_path : string
+        Current folder path
+    new_path :  string
+        New folder path (including name)
+
+    Returns
+    -------
+    DatabaseError
+        Database result code
+    """
+    try:
+        with SQLiteCursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE tblFolder
+                SET    FolderPath = ?
+                WHERE  FolderPath = ?
+                """,
+                (new_path, current_path,),
+            )
+            return (
+                DatabaseError.SUCCESS
+                if cursor.rowcount
+                else DatabaseError.NONEXISTENT_FOLDER
+            )
+    except sqlite3.IntegrityError:
+        return DatabaseError.FOLDER_EXISTS

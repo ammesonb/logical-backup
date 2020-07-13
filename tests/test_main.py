@@ -276,8 +276,11 @@ def test_command_run(monkeypatch, capsys):
     arguments = ["move", "--file", "foo", "--move-path", "/root"]
     assert main.process(arguments) == "move-file", "Move file"
 
+    arguments = ["move", "--file", "foo", "--device", "/mnt"]
+    assert main.process(arguments) == "move-file-to-device", "Move file"
+
     arguments = ["move", "--folder", "foo", "--device", "/mnt"]
-    assert main.process(arguments) == "move-folder", "Move folder"
+    assert main.process(arguments) == "move-folder-to-device", "Move folder"
 
     arguments = ["move", "--folder", "foo", "--move-path", "/home/user/"]
     assert main.process(arguments) == "move-folder", "Move folder"
