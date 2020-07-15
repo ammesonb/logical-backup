@@ -124,7 +124,6 @@ def remove_directory(folder_path: str) -> bool:
     return all_removed
 
 
-# pylint: disable=unused-argument
 def move_directory_local(current_path: str, new_path: str) -> bool:
     """
     Moves a directory in the backup
@@ -461,7 +460,6 @@ def remove_file(file_path: str) -> bool:
     return db_entry_removed
 
 
-# pylint: disable=unused-argument
 def move_file_local(original_path: str, new_path: str) -> bool:
     """
     Will move a file in the archive to a new path
@@ -492,7 +490,6 @@ def move_file_local(original_path: str, new_path: str) -> bool:
     return bool(result)
 
 
-# pylint: disable=unused-argument
 def move_file_device(original_path: str, device: str) -> bool:
     """
     Will move a file in the archive to a specified device
@@ -510,6 +507,61 @@ def move_file_device(original_path: str, device: str) -> bool:
         True if moved, False otherwise
           - due to database failure, or if it does not exist
     """
+    file_size = utility.get_file_size(original_path)
+    device_space = utility.get_device_space(device)
+
+    if file_size >= device_space:
+        print_error("Device selected has insufficient space!")
+        return False
+
+    file_result = db.get_files(original_path)
+    if not file_result:
+        print_error("Selected path does not exist in back up!")
+        return False
+
+    backup_name = file_result[0].file_name
+    current_path = os_path.join(file_result[0].device.device_path, backup_name)
+
+    file_valid = True
+    if not os_path.ismount(file_result[0].device.device_path):
+        print_error("Device for backed-up file is not attached!")
+        file_valid = False
+    elif not os_path.isfile(current_path):
+        print_error("Cannot find back up of file!")
+        file_valid = False
+
+    if not file_valid:
+        return False
+
+    copy_printer = PrettyStatusPrinter("Copying file to new device").print_start()
+    new_path = os_path.join(device, backup_name)
+    shutil.copyfile(current_path, new_path)
+    copy_printer.print_complete()
+
+    new_checksum = utility.checksum_file(new_path)
+
+    device_updated = False
+    file_updated = False
+
+    checksum_match = file_result[0].checksum == new_checksum
+    if checksum_match:
+        device_updated = db.update_file_device(original_path, device)
+    else:
+        print_error("Checksum verification mismatch!")
+
+    if checksum_match and device_updated:
+        file_updated = db.update_file_path(original_path, new_path)
+        if file_updated:
+            os.remove(current_path)
+        else:
+            print_error("Failed to update path in database!")
+    else:
+        print_error("Failed to update device for file in database!")
+
+    if not checksum_match or not device_updated or not file_updated:
+        os.remove(new_path)
+
+    return checksum_match and device_updated and file_updated
 
 
 def add_device(mount_point: str) -> bool:

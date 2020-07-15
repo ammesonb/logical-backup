@@ -669,3 +669,43 @@ def update_folder_path(current_path: str, new_path: str) -> DatabaseError:
             )
     except sqlite3.IntegrityError:
         return DatabaseError.FOLDER_EXISTS
+
+
+def update_file_device(file_path: str, device_mount_path: str) -> DatabaseError:
+    """
+    Updates the device a given file path is backed up on
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the file to update device for
+    device_mount_path : str
+        Mount path of the device to use for this file
+
+    Returns
+    -------
+    DatabaseError
+        Result
+    """
+    try:
+        with SQLiteCursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE     tblFile
+                SET        FileDeviceID = (
+                    SELECT DeviceID
+                    FROM   tblDevice
+                    WHERE  DevicePath = ?
+                )
+                WHERE      FilePath = ?
+                """,
+                (device_mount_path, file_path,),
+            )
+
+            return (
+                DatabaseError.SUCCESS
+                if cursor.rowcount > 0
+                else DatabaseError.NONEXISTENT_FILE
+            )
+    except sqlite3.IntegrityError:
+        return DatabaseError.NONEXISTENT_DEVICE

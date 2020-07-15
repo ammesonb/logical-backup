@@ -301,9 +301,6 @@ def __dispatch_move_command(arguments: list) -> str:
     Returns command that was run
 
     NOTES:
-    - file/folder on system only needs to update path
-      - check dest path is directory, if so add base name for FILES ONLY
-      - files/folders will need to be moved recursively, FROM DB ONLY
     - move on device needs to check space for files recursively
       - do NOT prompt for option to reassign, only exit
       - if space:

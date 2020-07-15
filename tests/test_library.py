@@ -3,6 +3,7 @@ Test less-complex library functions
 """
 import hashlib
 from os import path, urandom, remove
+import shutil
 import tempfile
 
 from logical_backup.main import __dispatch_command
@@ -26,7 +27,10 @@ from tests.test_arguments import make_arguments
 from tests.mock_db import mock_devices
 
 
-def __make_temp_file(size: int = 1024, directory: str = None) -> tuple:
+# pylint: disable=bad-continuation
+def __make_temp_file(
+    size: int = 1024, directory: str = None, data: bytes = None
+) -> tuple:
     """
     Makes a random temp file and files it with random data, by default 1kB
 
@@ -36,6 +40,8 @@ def __make_temp_file(size: int = 1024, directory: str = None) -> tuple:
         Size to make the file
     directory : str
         The directory to make the file in
+    data : bytes
+        Optionally, the data to put in the file
 
     Returns
     -------
@@ -44,7 +50,8 @@ def __make_temp_file(size: int = 1024, directory: str = None) -> tuple:
     """
     descriptor, name = tempfile.mkstemp(dir=directory)
     file_handle = open(descriptor, "wb")
-    data = urandom(size)
+    if not data:
+        data = urandom(size)
     file_handle.write(data)
     file_handle.close()
 
@@ -1062,3 +1069,129 @@ def test_move_directory_local(monkeypatch, capsys):
     assert not library.move_directory_local(
         "/test/foo", "/test2/foo"
     ), "File move failure should fail"
+
+
+def test_move_file_device(monkeypatch, capsys):
+    """
+    .
+    """
+    dev1 = __make_temp_directory()
+    dev2 = __make_temp_directory()
+
+    origin_file, origin_checksum = __make_temp_file()
+    origin_data = open(origin_file, "rb").read()
+    backup_file, backup_checksum = __make_temp_file(directory=dev1, data=origin_data)
+    assert (
+        origin_checksum == backup_checksum
+    ), "Origin and backup file should be identical"
+
+    monkeypatch.setattr(utility, "get_file_size", lambda path: 1024)
+    monkeypatch.setattr(utility, "get_device_space", lambda file_path: 0)
+    assert not library.move_file_device(
+        origin_file, dev2
+    ), "Insufficient space should fail"
+    out = capsys.readouterr()
+    assert (
+        "Device selected has insufficient space" in out.out
+    ), "Insufficient space message prints"
+
+    monkeypatch.setattr(utility, "get_device_space", lambda file_path: 100000)
+    monkeypatch.setattr(db, "get_files", lambda file_path: [])
+    assert not library.move_file_device(
+        origin_file, dev2
+    ), "Non-backed up file should fail"
+    out = capsys.readouterr()
+    assert (
+        "Selected path does not exist in back up" in out.out
+    ), "Non-backed up file message prints"
+
+    file_obj = File()
+    file_obj.set_properties(path.basename(backup_file), origin_file, origin_checksum)
+    file_obj.set_security("644", "test", "test")
+    device1 = Device()
+    device1.set("dev1", dev1, "Device Serial", "ABC123", 1)
+    device2 = Device()
+    device2.set("dev2", dev2, "Device Serial", "ABC123", 1)
+    file_obj.device = device1
+    monkeypatch.setattr(db, "get_files", lambda file_path: [file_obj])
+    monkeypatch.setattr(path, "ismount", lambda mount_path: False)
+    assert not library.move_file_device(origin_file, dev2), "Missing mount should fail"
+    out = capsys.readouterr()
+    assert (
+        "Device for backed-up file is not attached" in out.out
+    ), "Missing mount message prints"
+
+    monkeypatch.setattr(path, "ismount", lambda mount_path: True)
+    isfile_func = path.isfile
+    monkeypatch.setattr(path, "isfile", lambda file_path: False)
+    assert not library.move_file_device(
+        origin_file, dev2
+    ), "Missing backup file should fail"
+    out = capsys.readouterr()
+    assert (
+        "Cannot find back up of file" in out.out
+    ), "Missing backup file message prints"
+
+    monkeypatch.setattr(
+        db, "update_file_device", lambda file_path, device: DatabaseError.SUCCESS
+    )
+    monkeypatch.setattr(
+        db, "update_file_path", lambda file_path, device: DatabaseError.SUCCESS
+    )
+
+    checksum_func = utility.checksum_file
+    monkeypatch.setattr(utility, "checksum_file", lambda file_path: "wrong")
+    monkeypatch.setattr(path, "isfile", isfile_func)
+    assert not library.move_file_device(
+        origin_file, dev2
+    ), "Invalid checksum verification fails"
+    out = capsys.readouterr()
+    assert (
+        "Checksum verification mismatch" in out.out
+    ), "Invalid checksum verification message prints"
+
+    moved_path = path.join(dev2, path.basename(backup_file))
+    assert path.isfile(
+        backup_file
+    ), "Original backup file NOT deleted after checksum mismatch"
+    assert not path.isfile(moved_path), "File deleted after checksum mismatch"
+
+    monkeypatch.setattr(utility, "checksum_file", checksum_func)
+    monkeypatch.setattr(db, "update_file_device", lambda file_path, device: False)
+    assert not library.move_file_device(
+        origin_file, dev2
+    ), "Fail to update file device in database fails"
+    out = capsys.readouterr()
+    assert (
+        "Failed to update device for file in database" in out.out
+    ), "Update file device in DB message prints"
+    assert path.isfile(
+        backup_file
+    ), "Original backup file NOT deleted after device update failure"
+    assert not path.isfile(
+        moved_path
+    ), "File deleted after checksum mismatch after device update filure"
+
+    monkeypatch.setattr(db, "update_file_device", lambda file_path, device: True)
+    monkeypatch.setattr(db, "update_file_path", lambda file_path, new_path: False)
+    assert not library.move_file_device(
+        origin_file, dev2
+    ), "Fail to update file path in database fails"
+    out = capsys.readouterr()
+    assert (
+        "Failed to update path in database" in out.out
+    ), "Update file path in DB message prints"
+    assert path.isfile(
+        backup_file
+    ), "Original backup file NOT deleted after path update failure"
+    assert not path.isfile(
+        moved_path
+    ), "File deleted after checksum mismatch after path update filure"
+
+    monkeypatch.setattr(db, "update_file_path", lambda file_path, new_path: True)
+    assert library.move_file_device(origin_file, dev2), "File move works"
+    assert not path.isfile(backup_file), "Original backup file deleted after move"
+    assert path.isfile(moved_path), "New backup file exists after move"
+    assert (
+        utility.checksum_file(moved_path) == origin_checksum
+    ), "Checksum still matches"

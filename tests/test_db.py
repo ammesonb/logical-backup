@@ -245,7 +245,7 @@ def test_add_folder(monkeypatch):
     assert duplicate == DatabaseError.UNKNOWN_ERROR, "Should fail with unknown error"
 
 
-def test_remove_file(monkeypatch):
+def test_remove_file():
     """
     .
     """
@@ -351,7 +351,7 @@ def test_remove_folder():
     assert db.get_folders() == [], "No folders in DB"
 
 
-def test_update_folder_path(monkeypatch):
+def test_update_folder_path():
     """
     .
     """
@@ -380,7 +380,7 @@ def test_update_folder_path(monkeypatch):
     ), "Folder update persists"
 
 
-def test_update_file_path(monkeypatch):
+def test_update_file_path():
     """
     .
     """
@@ -414,3 +414,31 @@ def test_update_file_path(monkeypatch):
     assert __compare_lists(
         [file_obj, file_obj2], db.get_files()
     ), "File update persists"
+
+
+def test_update_file_device():
+    """
+    .
+    """
+    initialize_database()
+    device = Device()
+    device.set("test", "/foo", "Device Serial", "foo", 1)
+    assert db.add_device(device), "Device should be added successfully"
+    device.set("test2", "/bar", "Device Serial", "bar", 1)
+    assert db.add_device(device), "Second device should be added successfully"
+
+    file_obj = File()
+    file_obj.set_properties("test", "/test/foo", "abc123")
+    file_obj.set_security("644", "test", "test")
+    file_obj.device_name = "test"
+    assert db.add_file(file_obj), "File should be added successfully"
+
+    assert (
+        db.update_file_device("/nonexistent", "/foo") == DatabaseError.NONEXISTENT_FILE
+    ), "Nonexistent file returned"
+    assert (
+        db.update_file_device("/test/foo", "/foo2") == DatabaseError.NONEXISTENT_DEVICE
+    ), "Nonexistent device returned"
+    assert (
+        db.update_file_device("/test/foo", "/bar") == DatabaseError.SUCCESS
+    ), "File device updates"
