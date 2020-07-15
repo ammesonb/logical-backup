@@ -161,12 +161,20 @@ def move_directory_local(current_path: str, new_path: str) -> bool:
     return all_success
 
 
-# pylint: disable=unused-argument
 def move_directory_device(current_path: str, device: str) -> bool:
     """
     Moves a directory in the backup
     See move_file_device
     """
+    entries = db.get_entries_for_folder(current_path)
+    total_file_size = utility.sum_file_size(entries.files)
+    device_space = utility.get_device_space(device)
+
+    if total_file_size >= device_space:
+        print_error("Selected device cannot fit all the requested files!")
+        return False
+
+    return all([move_file_device(file_path, device) for file_path in entries.files])
 
 
 def __get_total_device_space() -> int:

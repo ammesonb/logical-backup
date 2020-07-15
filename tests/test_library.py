@@ -1195,3 +1195,36 @@ def test_move_file_device(monkeypatch, capsys):
     assert (
         utility.checksum_file(moved_path) == origin_checksum
     ), "Checksum still matches"
+
+
+def test_move_directory_device(monkeypatch, capsys):
+    """
+    .
+    """
+    monkeypatch.setattr(
+        db,
+        "get_entries_for_folder",
+        lambda folder: DirectoryEntries(["abc", "def"], ["ghi"]),
+    )
+    monkeypatch.setattr(utility, "sum_file_size", lambda files: 1)
+    monkeypatch.setattr(utility, "get_device_space", lambda device_path: 0)
+
+    assert not library.move_directory_device(
+        "/test", "/dev"
+    ), "Insufficient device space fails"
+    out = capsys.readouterr()
+    assert (
+        "Selected device cannot fit all the requested files" in out.out
+    ), "Insufficient device space message prints"
+
+    monkeypatch.setattr(utility, "get_device_space", lambda device_path: 10)
+    monkeypatch.setattr(
+        library, "move_file_device", lambda file_path, device: file_path == "abc"
+    )
+
+    assert not library.move_directory_device(
+        "/test", "/dev"
+    ), "Partial failures should fail"
+
+    monkeypatch.setattr(library, "move_file_device", lambda file_path, device: True)
+    assert library.move_directory_device("/test", "/dev"), "All success should succeed"
