@@ -1,8 +1,11 @@
 """
 Test less-complex library functions
 """
+import grp
 import hashlib
-from os import path, urandom, remove
+import os
+from os import path, urandom, remove, getuid, getegid
+import pwd
 import shutil
 import tempfile
 
@@ -1228,3 +1231,115 @@ def test_move_directory_device(monkeypatch, capsys):
 
     monkeypatch.setattr(library, "move_file_device", lambda file_path, device: True)
     assert library.move_directory_device("/test", "/dev"), "All success should succeed"
+
+
+def test_restore_file(monkeypatch, capsys):
+    """
+    .
+    """
+    original_file, original_checksum = __make_temp_file()
+    dev_folder = __make_temp_directory()
+
+    device = Device()
+    device.set("device", dev_folder, "Device Serial", "ABCDEF", 1)
+
+    shutil.copyfile(original_file, path.join(dev_folder, path.basename(original_file)))
+
+    assert not library.restore_file(
+        original_file
+    ), "Restore fails if file already exists"
+    out = capsys.readouterr()
+    assert (
+        "Path to restore already exists" in out.out
+    ), "File already exists message prints"
+    remove(original_file)
+
+    monkeypatch.setattr(library, "verify_file", lambda file_path, for_restore: False)
+    assert not library.restore_file(
+        original_file
+    ), "Restore fails if back up of file has invalid checksum"
+    out = capsys.readouterr()
+    assert (
+        "Backed-up file has mismatched checksum" in out.out
+    ), "Invalid back-up checksum message prints"
+
+    monkeypatch.setattr(library, "verify_file", lambda file_path, for_restore: True)
+    monkeypatch.setattr(db, "get_files", lambda file_path: [])
+    assert not library.restore_file(
+        original_file
+    ), "Restore fails if file not backed up"
+    out = capsys.readouterr()
+    assert (
+        "Requested path was not backed up" in out.out
+    ), "Not backed-up file message prints"
+
+    file_obj = File()
+    file_obj.set_properties(
+        path.basename(original_file), original_file, original_checksum
+    )
+    file_obj.set_security(
+        "600", pwd.getpwuid(getuid()).pw_name, grp.getgrgid(getegid()).gr_name
+    )
+    file_obj.device = device
+
+    monkeypatch.setattr(db, "get_files", lambda file_path: [file_obj])
+    checksum_func = utility.checksum_file
+    monkeypatch.setattr(utility, "checksum_file", lambda file_path: "bad-checksum")
+
+    assert not library.restore_file(
+        original_file
+    ), "Checksum verification after copy fails"
+    out = capsys.readouterr()
+    assert (
+        "Restored file has mismatched checksum" in out.out
+    ), "Checksum verification after copy prints message"
+    assert not path.isfile(
+        original_file
+    ), "Restored file should be deleted after checksum failure"
+
+    monkeypatch.setattr(utility, "checksum_file", checksum_func)
+    security_func = utility.get_file_security
+    monkeypatch.setattr(
+        utility,
+        "get_file_security",
+        lambda file_path: {"permissions": "bad", "owner": "wrong", "group": "wrong"},
+    )
+    assert not library.restore_file(
+        original_file
+    ), "Fails permission verification after copy files"
+    out = capsys.readouterr()
+    assert (
+        "Failed to set file permissions/owner, but able to remove file" in out.out
+    ), "Permission verification after copy prints message"
+    assert not path.isfile(
+        original_file
+    ), "Restored file should be deleted after permission set failure"
+
+    def throw_error(file_path):
+        """
+        Throws an error
+        """
+        raise PermissionError()
+
+    remove_func = os.remove
+    monkeypatch.setattr(os, "remove", throw_error)
+    assert not library.restore_file(
+        original_file
+    ), "Fails permission verification after copy files"
+    out = capsys.readouterr()
+    assert (
+        "Failed to set file permissions/owner, manual removal required" in out.out
+    ), "Permission verification after copy prints message, cannot remove file"
+    assert path.isfile(
+        original_file
+    ), "Restored file should NOT be deleted after permission set failure"
+
+    monkeypatch.setattr(utility, "get_file_security", security_func)
+    monkeypatch.setattr(os, "remove", remove_func)
+    os.remove(original_file)
+
+    assert library.restore_file(original_file), "Successful file restoration"
+    assert path.isfile(original_file), "File exists at original location"
+    assert original_checksum == utility.checksum_file(
+        original_file
+    ), "Restored file matches original checksum"

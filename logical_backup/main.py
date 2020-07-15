@@ -299,14 +299,6 @@ def __dispatch_move_command(arguments: list) -> str:
     """
     Dispatches command to move file/folder or between devices
     Returns command that was run
-
-    NOTES:
-    - move on device needs to check space for files recursively
-      - do NOT prompt for option to reassign, only exit
-      - if space:
-        - copy file to new device
-        - verify checksum matches DB
-        - remove previous device file
     """
     command = ""
     if arguments["file"]:
@@ -382,10 +374,13 @@ def __dispatch_restore_command(arguments: list) -> str:
     command = ""
     if arguments["file"]:
         command = "restore-file"
+        library.restore_file(arguments["file"])
     elif arguments["folder"]:
         command = "restore-folder"
+        library.restore_folder(arguments["folder"])
     elif arguments["all"]:
         command = "restore-all"
+        library.restore_all()
 
     return command
 

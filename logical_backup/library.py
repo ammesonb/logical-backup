@@ -2,8 +2,10 @@
 """
 Library files for adding, moving, verifying files ,etc
 """
+import grp
 import os
 import os.path as os_path
+import pwd
 import shutil
 from texttable import Texttable
 
@@ -722,7 +724,6 @@ def restore_folder(folder_path: str) -> bool:
     """
 
 
-# pylint: disable=unused-argument
 def restore_file(file_path: str) -> bool:
     """
     Restore a file from backup
@@ -743,6 +744,58 @@ def restore_file(file_path: str) -> bool:
           - copied file checksum mismatches
           - device unavailable
     """
+    # Check path is valid for restoring
+    if os_path.isfile(file_path):
+        print_error("Path to restore already exists!")
+        return False
+
+    if not verify_file(file_path, True):
+        print_error("Backed-up file has mismatched checksum!")
+        return False
+
+    file_result = db.get_files(file_path)
+    if not file_result:
+        print_error("Requested path was not backed up!")
+        return False
+
+    file_obj = file_result[0]
+
+    # Copy the file
+    backup_path = os_path.join(file_obj.device.device_path, file_obj.file_name)
+    shutil.copyfile(backup_path, file_path)
+
+    # Verify it copied successfully
+    if utility.checksum_file(file_path) != file_obj.checksum:
+        print_error("Restored file has mismatched checksum!")
+        # Can remove file here because we just created it
+        # MAy not be true after this, once we restore file permissions and ownership
+        os.remove(file_path)
+        return False
+
+    # Get security details to set
+    # Using names so can persist across sytem recreations where IDs may change
+    os.chmod(file_path, int(file_obj.permissions, 8))
+    uid = pwd.getpwnam(file_obj.owner).pw_uid
+    gid = grp.getgrnam(file_obj.group).gr_gid
+    os.chown(file_path, uid, gid)
+
+    security_verification = utility.get_file_security(file_path)
+    security_verified = security_verification == {
+        "permissions": file_obj.permissions,
+        "owner": file_obj.owner,
+        "group": file_obj.group,
+    }
+
+    if not security_verified:
+        try:
+            os.remove(file_path)
+            print_error("Failed to set file permissions/owner, but able to remove file")
+        except PermissionError:
+            print_error(
+                "Failed to set file permissions/owner, manual removal required!"
+            )
+
+    return security_verified
 
 
 def update_file(file_path: str) -> bool:
