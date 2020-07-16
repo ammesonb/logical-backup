@@ -1421,3 +1421,87 @@ def test_restore_folder(monkeypatch, capsys):
     assert (
         utility.get_file_security(folder2)["permissions"] == "700"
     ), "Folder two permissions set"
+
+
+def test_get_unique_folders(monkeypatch):
+    """
+    .
+    """
+    folder1 = Folder()
+    folder1.folder_path = "/foo"
+    folder2 = Folder()
+    folder2.folder_path = "/foo/test"
+    folder3 = Folder()
+    folder3.folder_path = "/bar"
+    folder4 = Folder()
+    folder4.folder_path = "/bar/baz/ipsum"
+    folder5 = Folder()
+    folder5.folder_path = "/f"
+
+    monkeypatch.setattr(
+        db, "get_folders", lambda: [folder1, folder2, folder3, folder4, folder5]
+    )
+    assert library.__get_unique_folders() == [
+        "/foo",
+        "/bar",
+        "/f",
+    ], "Reduced folder set returned"
+
+    root_folder = Folder()
+    root_folder.folder_path = "/"
+    monkeypatch.setattr(
+        db,
+        "get_folders",
+        lambda: [folder1, folder2, folder3, folder4, folder5, root_folder],
+    )
+    assert library.__get_unique_folders() == ["/"], "Root returns only itself"
+
+
+def test_get_external_files(monkeypatch):
+    """
+    .
+    """
+    file1 = File()
+    file1.file_path = "/foo/test"
+    file2 = File()
+    file2.file_path = "/foo/bar/baz"
+
+    file3 = File()
+    file3.file_path = "/home.txt"
+
+    monkeypatch.setattr(library, "__get_unique_folders", lambda: ["/foo", "/home"])
+    monkeypatch.setattr(db, "get_files", lambda: [file1, file2, file3])
+    assert library.__get_files_outside_directories() == ["/home.txt"], "One returned"
+
+    monkeypatch.setattr(library, "__get_unique_folders", lambda: ["/foo/bar", "/home"])
+    assert library.__get_files_outside_directories() == [
+        "/foo/test",
+        "/home.txt",
+    ], "Two returned"
+
+    monkeypatch.setattr(
+        library, "__get_unique_folders", lambda: ["/foo/bar", "/home", "/"]
+    )
+    assert library.__get_files_outside_directories() == [], "Root returns no files"
+
+
+def test_restore_all(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(library, "__get_unique_folders", lambda: ["/foo", "/bar"])
+    monkeypatch.setattr(
+        library, "__get_files_outside_directories", lambda: ["/ipsum", "/lorem"]
+    )
+
+    monkeypatch.setattr(library, "restore_folder", lambda folder_path: False)
+    monkeypatch.setattr(library, "restore_file", lambda file_path: True)
+    assert not library.restore_all(), "Folder restoration failure, fails"
+
+    monkeypatch.setattr(library, "restore_folder", lambda folder_path: True)
+    monkeypatch.setattr(library, "restore_file", lambda file_path: False)
+    assert not library.restore_all(), "File restoration failure, fails"
+
+    monkeypatch.setattr(library, "restore_folder", lambda folder_path: True)
+    monkeypatch.setattr(library, "restore_file", lambda file_path: True)
+    assert library.restore_all(), "Success case"

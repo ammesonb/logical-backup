@@ -353,23 +353,6 @@ def __dispatch_restore_command(arguments: list) -> str:
     """
     Dispatches command to restore a file, folder, or everything
     Returns command that was run
-
-    NOTES:
-
-    For file:
-        - stop if file exists already
-        - verify backup file checksum
-        - copy file using actual name, not backup name
-        - verify checksum match
-        - set permissions (while we/you own this file)
-        - set owner
-
-    For folders:
-        - Create all subfolders
-        - Set (sub)folder permissions
-        - Restore all files
-        - Set folder owners
-            - After file restoration, since otherwise may not have permissions anymore
     """
     command = ""
     if arguments["file"]:

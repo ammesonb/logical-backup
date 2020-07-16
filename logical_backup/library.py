@@ -708,12 +708,77 @@ def verify_file(file_path: str, for_restore: bool) -> bool:
     return actual_checksum == file_obj.checksum
 
 
-# pylint: disable=unused-argument
+def __get_unique_folders() -> list:
+    """
+    Gets a list of folders from the database
+    If nested directories, will only return the top-most, since restoring that
+    will also include all the subdirectories as well
+    """
+    folders = [folder_obj.folder_path for folder_obj in db.get_folders()]
+    deduplicated_folders = []
+    for folder in folders:
+        other_folder_found = False
+        for other_folder in folders:
+            if other_folder == folder:
+                continue
+
+            try:
+                folder_index = folder.index(other_folder)
+                next_char_slash = (
+                    folder[len(other_folder)] == "/" or other_folder[-1] == "/"
+                )
+                if folder_index == 0 and next_char_slash:
+                    other_folder_found = True
+                    break
+            # Okay if this doesn't exist
+            except ValueError:
+                continue
+
+        if not other_folder_found:
+            deduplicated_folders.append(folder)
+
+    return deduplicated_folders
+
+
+def __get_files_outside_directories() -> list:
+    """
+    Since restoring a directory will also restore all files in that directory,
+    need to have a way to only get files outside backed-up directories
+    """
+    folders = __get_unique_folders()
+    all_files = [file_obj.file_path for file_obj in db.get_files()]
+    external_files = []
+
+    for file_path in all_files:
+        folder_matched = False
+        for folder in folders:
+            next_char_slash = file_path[len(folder)] == "/" or folder == "/"
+            if file_path.startswith(folder) and next_char_slash:
+                folder_matched = True
+                break
+
+        if not folder_matched:
+            external_files.append(file_path)
+
+    return external_files
+
+
 def restore_all() -> bool:
     """
     Restore all files
     See restore_files
     """
+    directories = __get_unique_folders()
+    files = __get_files_outside_directories()
+
+    all_success = True
+    for directory in directories:
+        all_success = all_success and restore_folder(directory)
+
+    for file_path in files:
+        all_success = all_success and restore_file(file_path)
+
+    return all_success
 
 
 def restore_folder(folder_path: str) -> bool:
