@@ -163,9 +163,10 @@ def __validate_arguments(arguments: dict) -> bool:
             "verify",
         ]
     elif arguments["folder"]:
-        path_exists = isdir(
-            arguments["folder"] or arguments["action"] in ["restore", "verify"]
-        )
+        path_exists = isdir(arguments["folder"]) or arguments["action"] in [
+            "restore",
+            "verify",
+        ]
 
     if arguments["device"] or arguments["from_device"]:
         devices = db.get_devices()
