@@ -308,7 +308,6 @@ def __dispatch_add_command(arguments: dict) -> str:
         library.add_directory(arguments["folder"], arguments["device"])
     elif arguments["device"]:
         command = "add-device"
-        print("add")
         library.add_device(arguments["device"])
 
     return command

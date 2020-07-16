@@ -138,8 +138,8 @@ def get_device_serial(mount_point: str) -> str:
     if partition:
         commands = [
             ["udevadm", "info", "--query=all", "--name=" + partition],
-            ["grep", "ID_SERIAL_SHORT"],
-            ["sed", "s/.*=//"],
+            ["grep", " disk/by-uuid/"],
+            ["sed", "s/.*by-uuid\///"],
         ]
         output = run_piped_command(commands)
 
