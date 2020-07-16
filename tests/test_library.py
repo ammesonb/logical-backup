@@ -1245,9 +1245,9 @@ def test_restore_file(monkeypatch, capsys):
 
     shutil.copyfile(original_file, path.join(dev_folder, path.basename(original_file)))
 
-    assert not library.restore_file(
+    assert library.restore_file(
         original_file
-    ), "Restore fails if file already exists"
+    ), "Restore succeeds if file already exists"
     out = capsys.readouterr()
     assert (
         "Path to restore already exists" in out.out
@@ -1343,3 +1343,81 @@ def test_restore_file(monkeypatch, capsys):
     assert original_checksum == utility.checksum_file(
         original_file
     ), "Restored file matches original checksum"
+
+
+def test_restore_folder(monkeypatch, capsys):
+    """
+    .
+    """
+    monkeypatch.setattr(
+        db, "get_entries_for_folder", lambda folder: DirectoryEntries([], [])
+    )
+    assert not library.restore_folder("/test"), "No returned entries should fail"
+    out = capsys.readouterr()
+    assert "Folder not backed up" in out.out, "No entries returned message printed"
+
+    folder1 = __make_temp_directory()
+    folder2 = __make_temp_directory(folder1)
+    # Also removes parent directory, since it is empty
+    os.removedirs(folder2)
+
+    entries = DirectoryEntries(["/test", "/foo"], [folder1, folder2])
+    monkeypatch.setattr(db, "get_entries_for_folder", lambda folder: entries)
+
+    def throw_error(file_path, exist_ok):
+        """
+        Throws a permission error
+        """
+        raise PermissionError
+
+    makedirs_func = os.makedirs
+    monkeypatch.setattr(os, "makedirs", throw_error)
+    assert not library.restore_folder(folder1), "Should fail due to permissions"
+    out = capsys.readouterr()
+    assert "Failed to create folder" in out.out, "Permission failure message prints"
+    assert not path.isdir(folder1), "Folders should not be created yet"
+
+    monkeypatch.setattr(os, "makedirs", makedirs_func)
+    monkeypatch.setattr(library, "restore_file", lambda file_path: False)
+    assert not library.restore_folder(
+        folder1
+    ), "Should fail due to file restoration failure"
+    assert path.isdir(folder1), "Folder one still created"
+    assert path.isdir(folder2), "Folder two still created"
+    # Also removes parent directory
+    os.removedirs(folder2)
+
+    user_name = pwd.getpwuid(getuid()).pw_name
+    group_name = grp.getgrgid(getegid()).gr_name
+    folder = Folder()
+    folder.set("unnecessary", "700", user_name, group_name)
+    monkeypatch.setattr(db, "get_folders", lambda folder_path: [folder])
+    monkeypatch.setattr(library, "restore_file", lambda file_path: True)
+    security_func = utility.get_file_security
+    monkeypatch.setattr(
+        utility,
+        "get_file_security",
+        lambda folder_path: {"permissions": "bad", "owner": "wrong", "group": "wrong"},
+    )
+    assert not library.restore_folder(folder1), "Should fail due to permission mismatch"
+    out = capsys.readouterr()
+    assert (
+        "Failed to set folder security options for" in out.out
+    ), "Permission mismatch message prints"
+    assert path.isdir(folder1), "Folder one still created after permission mismatch"
+    assert path.isdir(folder2), "Folder two still created after permission mismatch"
+
+    # Also removes parent directory
+    os.removedirs(folder2)
+    assert not path.isdir(folder1), "Verify parent directory removed"
+
+    monkeypatch.setattr(utility, "get_file_security", security_func)
+    assert library.restore_folder(folder1), "Folder restoration should succeed"
+    assert path.isdir(folder1), "Folder one created"
+    assert path.isdir(folder2), "Folder two created"
+    assert (
+        utility.get_file_security(folder1)["permissions"] == "700"
+    ), "Folder one permissions set"
+    assert (
+        utility.get_file_security(folder2)["permissions"] == "700"
+    ), "Folder two permissions set"

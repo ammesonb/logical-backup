@@ -716,12 +716,57 @@ def restore_all() -> bool:
     """
 
 
-# pylint: disable=unused-argument
 def restore_folder(folder_path: str) -> bool:
     """
     Restores a specific folder
     See restore_files
     """
+    entries = db.get_entries_for_folder(folder_path)
+    if not entries.folders and not entries.files:
+        print_error("Folder not backed up!")
+        return False
+
+    # Sort folders by length, so can create folders in order
+    ordered_folders = entries.folders
+    ordered_folders.sort(key=len)
+    for folder in ordered_folders:
+        try:
+            os.makedirs(folder, exist_ok=True)
+        except PermissionError:
+            print_error("Failed to create folder: {0}!".format(folder))
+            return False
+
+    files_created = True
+    for file_path in entries.files:
+        if not restore_file(file_path):
+            files_created = False
+
+    # Only set permissions if all files restored, since otherwise
+    # can't retry file restoration, given missing permissions
+    security_set = True
+    if files_created:
+        # Reverse the order to set owner/permissions of folders, before the parent
+        # permissions block us from being able to modify the children
+        ordered_folders.reverse()
+        for subfolder in ordered_folders:
+            folder = db.get_folders(subfolder)[0]
+            uid = pwd.getpwnam(folder.folder_owner).pw_uid
+            gid = grp.getgrnam(folder.folder_group).gr_gid
+
+            os.chmod(subfolder, int(folder.folder_permissions, 8))
+            os.chown(subfolder, uid, gid)
+
+            if utility.get_file_security(subfolder) != {
+                "permissions": folder.folder_permissions,
+                "owner": folder.folder_owner,
+                "group": folder.folder_group,
+            }:
+                print_error(
+                    "Failed to set folder security options for {0}!".format(subfolder)
+                )
+                security_set = False
+
+    return files_created and security_set
 
 
 def restore_file(file_path: str) -> bool:
@@ -747,7 +792,7 @@ def restore_file(file_path: str) -> bool:
     # Check path is valid for restoring
     if os_path.isfile(file_path):
         print_error("Path to restore already exists!")
-        return False
+        return True  # Not an error, since just means no action needed
 
     if not verify_file(file_path, True):
         print_error("Backed-up file has mismatched checksum!")
