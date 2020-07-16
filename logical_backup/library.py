@@ -551,7 +551,6 @@ def move_file_device(original_path: str, device: str) -> bool:
     new_checksum = utility.checksum_file(new_path)
 
     device_updated = False
-    file_updated = False
 
     checksum_match = file_result[0].checksum == new_checksum
     if checksum_match:
@@ -559,19 +558,15 @@ def move_file_device(original_path: str, device: str) -> bool:
     else:
         print_error("Checksum verification mismatch!")
 
-    if checksum_match and device_updated:
-        file_updated = db.update_file_path(original_path, new_path)
-        if file_updated:
-            os.remove(current_path)
-        else:
-            print_error("Failed to update path in database!")
-    else:
+    if not device_updated:
         print_error("Failed to update device for file in database!")
+    else:
+        os.remove(current_path)
 
-    if not checksum_match or not device_updated or not file_updated:
+    if not checksum_match or not device_updated:
         os.remove(new_path)
 
-    return checksum_match and device_updated and file_updated
+    return checksum_match and device_updated
 
 
 def add_device(mount_point: str) -> bool:

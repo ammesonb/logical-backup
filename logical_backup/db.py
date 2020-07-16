@@ -13,8 +13,9 @@ from logical_backup.objects.folder import Folder
 
 from logical_backup.utility import is_test, DirectoryEntries
 
-DB_FILE = join(dirname(__file__), "files.db")
-DEV_FILE = join(dirname(__file__), "files.db.test")
+DB_FILE = join(dirname(__file__), "../files.db")
+print(DB_FILE)
+DEV_FILE = join(dirname(__file__), "../files.db.test")
 
 
 def __row_to_dict(row: list, column_names: list) -> dict:

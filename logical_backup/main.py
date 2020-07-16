@@ -245,7 +245,9 @@ def __check_devices(args: dict):
                     identifier_name=device.identifier_type,
                     device_identifier=device.identifier,
                 )
-                PrettyStatusPrinter(message).print_complete(
+                PrettyStatusPrinter(message).with_message_postfix_for_result(
+                    True, ""
+                ).with_message_postfix_for_result(False, "").print_complete(
                     device not in missing_devices
                 )
 
@@ -323,12 +325,14 @@ def __dispatch_move_command(arguments: list) -> str:
             library.move_file_local(arguments["file"], arguments["move_path"])
         else:
             command = "move-file-to-device"
+            library.move_file_device(arguments["file"], arguments["device"])
     elif arguments["folder"]:
         if arguments["move_path"]:
             command = "move-folder"
             library.move_directory_local(arguments["folder"], arguments["move_path"])
         else:
             command = "move-folder-to-device"
+            library.move_directory_device(arguments["folder"], arguments["device"])
 
     return command
 

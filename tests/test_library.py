@@ -1141,9 +1141,6 @@ def test_move_file_device(monkeypatch, capsys):
     monkeypatch.setattr(
         db, "update_file_device", lambda file_path, device: DatabaseError.SUCCESS
     )
-    monkeypatch.setattr(
-        db, "update_file_path", lambda file_path, device: DatabaseError.SUCCESS
-    )
 
     checksum_func = utility.checksum_file
     monkeypatch.setattr(utility, "checksum_file", lambda file_path: "wrong")
@@ -1179,22 +1176,6 @@ def test_move_file_device(monkeypatch, capsys):
     ), "File deleted after checksum mismatch after device update filure"
 
     monkeypatch.setattr(db, "update_file_device", lambda file_path, device: True)
-    monkeypatch.setattr(db, "update_file_path", lambda file_path, new_path: False)
-    assert not library.move_file_device(
-        origin_file, dev2
-    ), "Fail to update file path in database fails"
-    out = capsys.readouterr()
-    assert (
-        "Failed to update path in database" in out.out
-    ), "Update file path in DB message prints"
-    assert path.isfile(
-        backup_file
-    ), "Original backup file NOT deleted after path update failure"
-    assert not path.isfile(
-        moved_path
-    ), "File deleted after checksum mismatch after path update filure"
-
-    monkeypatch.setattr(db, "update_file_path", lambda file_path, new_path: True)
     assert library.move_file_device(origin_file, dev2), "File move works"
     assert not path.isfile(backup_file), "Original backup file deleted after move"
     assert path.isfile(moved_path), "New backup file exists after move"
