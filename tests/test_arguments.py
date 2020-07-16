@@ -220,7 +220,15 @@ def test_restore():
     """
     Test the restore parameter validation
     """
-    check_generic_file_folder("restore")
+    arguments = make_arguments("restore")
+
+    assert not __validate_arguments(arguments), "Nothing except action should fail"
+
+    # Cannot have both file and folder specified
+    arguments["folder"] = MOCK_FILE
+    arguments["file"] = "bar"
+    assert not __validate_arguments(arguments), "Cannot specify both file and folder"
+
     check_generic_all("restore")
 
 
@@ -228,7 +236,15 @@ def test_verify():
     """
     Test the verify parameter validation
     """
-    check_generic_file_folder("verify")
+    arguments = make_arguments("verify")
+
+    assert not __validate_arguments(arguments), "Nothing except action should fail"
+
+    # Cannot have both file and folder specified
+    arguments["folder"] = MOCK_FILE
+    arguments["file"] = "bar"
+    assert not __validate_arguments(arguments), "Cannot specify both file and folder"
+
     check_generic_all("verify")
 
 

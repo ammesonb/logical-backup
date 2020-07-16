@@ -376,20 +376,20 @@ def add_file(
         print_error("No device with space available!")
         return False
 
-    new_name = utility.create_backup_name(file_path)
-    new_path = os_path.join(mount_point, new_name)
-    shutil.copyfile(file_path, new_path)
+    backup_name = utility.create_backup_name(file_path)
+    backup_path = os_path.join(mount_point, backup_name)
+    shutil.copyfile(file_path, backup_path)
 
-    checksum2 = utility.checksum_file(new_path)
+    checksum2 = utility.checksum_file(backup_path)
 
     if checksum != checksum2:
         print_error("Checksum mismatch after copy!")
-        os.remove(new_path)
+        os.remove(backup_path)
         return False
 
     file_obj = File()
     file_obj.device_name = device_name
-    file_obj.set_properties(os_path.basename(file_path), file_path, checksum)
+    file_obj.set_properties(backup_name, file_path, checksum)
     file_obj.set_security(**security_details)
 
     db_save = PrettyStatusPrinter("Saving file record to DB").print_start()
@@ -399,7 +399,7 @@ def add_file(
         db_save.print_complete()
     else:
         db_save.print_complete(False)
-        os.remove(new_path)
+        os.remove(backup_path)
 
     return succeeded
 

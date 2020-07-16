@@ -3,6 +3,7 @@ Database interactions for the utility
 """
 
 from enum import Enum
+from os.path import dirname, join
 import sqlite3
 
 from logical_backup.objects.device import Device
@@ -12,8 +13,8 @@ from logical_backup.objects.folder import Folder
 
 from logical_backup.utility import is_test, DirectoryEntries
 
-DB_FILE = "files.db"
-DEV_FILE = "files.db.test"
+DB_FILE = join(dirname(__file__), "files.db")
+DEV_FILE = join(dirname(__file__), "files.db.test")
 
 
 def __row_to_dict(row: list, column_names: list) -> dict:

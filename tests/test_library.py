@@ -343,6 +343,9 @@ def test_add_file_success(monkeypatch, capsys):
     # Use actual sizes/checksum, since that will be fine
     # If temp runs out of space, that would be an actual issue for system stability
     # so don't mock that
+    monkeypatch.setattr(
+        utility, "create_backup_name", lambda file_path: path.basename(file_path)
+    )
     assert library.add_file(test_file), "Test file should be added"
     files = db.get_files()
     assert len(files) == 1, "Exactly one file should be in the database"
@@ -352,7 +355,7 @@ def test_add_file_success(monkeypatch, capsys):
     expected.set_properties(path.basename(test_file), test_file, test_checksum)
     expected.set_security("644", "test-owner", "test-group")
     expected.device_name = "test-device-1"
-    assert files[0] == expected, "Only one file is added so far"
+    assert files == [expected], "Only one file is added so far"
 
     test_output_path = path.join(test_mount_1, test_file)
     assert path.isfile(test_output_path), "Output path should be a file"
