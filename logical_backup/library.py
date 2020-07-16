@@ -28,6 +28,10 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
     Adds a directory to the backup
     See add_file
     """
+    if db.get_folders(folder_path):
+        print_error("Folder already added!")
+        return True
+
     entries = utility.list_entries_in_directory(folder_path)
     folder_size = utility.sum_file_size(entries.files)
     total_available_space = __get_total_device_space()

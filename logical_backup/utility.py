@@ -350,8 +350,6 @@ def sum_file_size(files: list) -> int:
     """
     total_size = 0
     for file_path in files:
-        print(file_path)
         total_size += get_file_size(file_path)
-        print(total_size)
 
     return total_size

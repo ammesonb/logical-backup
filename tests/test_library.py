@@ -471,7 +471,13 @@ def test_add_directory(monkeypatch, capsys):
     """
     .
     """
+    monkeypatch.setattr(db, "get_folders", lambda folder_path: ["anything"])
+    assert library.add_directory("/test"), "Succeeds if folder already exists"
+    out = capsys.readouterr()
+    assert "Folder already added" in out.out, "Already exists message prints"
+
     # Happy path
+    monkeypatch.setattr(db, "get_folders", lambda folder_path: [])
     monkeypatch.setattr(
         utility,
         "list_entries_in_directory",
