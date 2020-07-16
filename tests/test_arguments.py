@@ -160,7 +160,6 @@ def test_add(monkeypatch):
     monkeypatch.setattr(path, "ismount", lambda path: False)
     assert not __validate_arguments(arguments), "Unmounted path for device should fail"
     monkeypatch.setattr(path, "ismount", lambda path: True)
-    assert not __validate_arguments(arguments), "Unregistered device should fail"
     device = Device()
     device.set("test", "/mnt", "blank", "fake", 1)
     monkeypatch.setattr(db, "get_devices", lambda: [device])

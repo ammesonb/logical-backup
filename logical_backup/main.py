@@ -167,9 +167,12 @@ def __validate_arguments(arguments: dict) -> bool:
 
     if arguments["device"]:
         path_exists = path_exists and path.ismount(arguments["device"])
-        path_exists = path_exists and [
-            device for device in devices if device.device_path == arguments["device"]
-        ]
+        if arguments["action"] != "add":
+            path_exists = path_exists and [
+                device
+                for device in devices
+                if device.device_path == arguments["device"]
+            ]
 
     if arguments["from_device"]:
         path_exists = path_exists and path.ismount(arguments["from_device"])
@@ -217,10 +220,12 @@ def __check_devices(args: dict):
         else:
             device_message.print_complete(2)
     else:
+        missing_devices = []
         for device in devices:
-            device["found"] = path.ismount(device["device_path"])
+            if not path.ismount(device.device_path):
+                missing_devices.append(device)
 
-        if all([device["found"] for device in devices]):
+        if not missing_devices:
             device_message.print_complete(True)
         else:
             device_message.print_complete(3)
@@ -229,10 +234,15 @@ def __check_devices(args: dict):
                 message = (
                     "{device_name} (Path: {device_path})\n"
                     "  {identifier_name}: {device_identifier}"
-                ).format(**device)
-                PrettyStatusPrinter(message).with_specific_color(
-                    Color.GREEN if device["found"] else Color.ERROR
-                ).print_complete(device["found"])
+                ).format(
+                    device_name=device.device_name,
+                    device_path=device.device_path,
+                    identifier_name=device.identifier_type,
+                    device_identifier=device.identifier,
+                )
+                PrettyStatusPrinter(message).print_complete(
+                    device not in missing_devices
+                )
 
             confirm = input("Proceed? (y/N) ")
             if confirm != "y":
@@ -290,6 +300,7 @@ def __dispatch_add_command(arguments: dict) -> str:
         library.add_directory(arguments["file"], arguments["device"])
     elif arguments["device"]:
         command = "add-device"
+        print("add")
         library.add_device(arguments["device"])
 
     return command
@@ -406,6 +417,7 @@ def process(arguments: list = None) -> str:
     __prepare()
     args = __parse_arguments(arguments if arguments else sys.argv[1:])
     if not __validate_arguments(args):
+        print_error("Argument combination not valid!")
         sys.exit(1)
 
     __check_devices(args)

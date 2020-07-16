@@ -11,6 +11,7 @@ from logical_backup.utility import run_command, auto_set_testing
 from logical_backup import main  # for input mocking
 from logical_backup import library  # for input mocking
 from logical_backup.main import __check_devices
+from logical_backup.objects.device import Device
 from tests.test_arguments import (
     make_arguments,
     MOCK_FILE,
@@ -96,17 +97,14 @@ def test_check_devices(capsys, monkeypatch):
     ), "Adding device message did not print"
 
     make_mock_folder()
+    device1 = Device()
+    device1.set("test1", MOCK_FILE, "Device Serial", "12345", 1)
+    device2 = Device()
+    device2.set("tes2", MOCK_FILE + "_nonexistent", "Device Serial", "54321", 1)
+
     monkeypatch.setattr(os.path, "ismount", lambda path: path == MOCK_FILE)
     mock_devices(
-        monkeypatch,
-        [
-            {
-                "device_name": "test1",
-                "device_path": MOCK_FILE,
-                "identifier_name": "Device Serial",
-                "device_identifier": "12345",
-            }
-        ],
+        monkeypatch, [device1],
     )
     __check_devices(arguments)
     output = capsys.readouterr()
@@ -115,21 +113,7 @@ def test_check_devices(capsys, monkeypatch):
     ), "All devices found did not print expected message"
 
     mock_devices(
-        monkeypatch,
-        [
-            {
-                "device_name": "test1",
-                "device_path": MOCK_FILE,
-                "identifier_name": "Device Serial",
-                "device_identifier": "12345",
-            },
-            {
-                "device_name": "test2",
-                "device_path": MOCK_FILE + "_nonexistent",
-                "identifier_name": "Device Serial",
-                "device_identifier": "54321",
-            },
-        ],
+        monkeypatch, [device1, device2],
     )
     patch_input(monkeypatch, main, lambda message: "n")
 
