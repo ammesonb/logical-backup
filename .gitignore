@@ -129,5 +129,6 @@ dmypy.json
 .pyre/
 
 files.db
+files.db.test
 
 .mutmut-cache
