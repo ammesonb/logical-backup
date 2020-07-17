@@ -3,14 +3,14 @@ Tests for the database files
 """
 from os import remove
 from os.path import exists, join
-from pytest import fixture, raises
 import sqlite3
+
+from pytest import fixture
 
 from logical_backup.objects.device import Device
 from logical_backup.objects.file import File
 from logical_backup.objects.folder import Folder
 from logical_backup import db
-from logical_backup.db import SQLiteCursor
 
 from logical_backup.db import (
     initialize_database,
@@ -175,33 +175,38 @@ def test_add_and_check_file():
 
     assert not db.file_exists("/test"), "File should not exist"
 
-    device = Device()
-    device.set("test", "/test", "Device Serial", "12345")
-    result = db.add_device(device)
-    assert result == DatabaseError.SUCCESS, "Insert of test device should succeed"
-
     file_obj = File()
     file_obj.set_properties("test", "/test", "not-real")
     file_obj.set_security("755", "root", "root")
     file_obj.device_name = "test"
-    added = db.add_file(file_obj)
-    assert added == DatabaseError.SUCCESS, "Insert of file should succeed"
+    assert (
+        db.add_file(file_obj) == DatabaseError.NONEXISTENT_DEVICE
+    ), "Missing device causes file to not be added"
+
+    device = Device()
+    device.set("test", "/test", "Device Serial", "12345", 1)
+    result = db.add_device(device)
+    assert result == DatabaseError.SUCCESS, "Insert of test device should succeed"
+
+    assert (
+        db.add_file(file_obj) == DatabaseError.SUCCESS
+    ), "Insert of file should succeed"
 
     assert db.file_exists("/test"), "Added file should exist"
 
-    assert db.get_files() == [file_obj], "File should be in the DB"
+    db_files = db.get_files()
+    assert db_files == [file_obj], "File should be in the DB"
+    assert db_files[0].device == device, "Retrieved file's device matches"
 
     file_obj2 = File()
     file_obj2.set_properties("test", "/test", "not-real")
     file_obj2.set_security("755", "root", "root")
     file_obj2.device_name = "test"
-    added = db.add_file(file_obj2)
-    assert added == DatabaseError.FILE_EXISTS, "Can't add file twice"
+    assert db.add_file(file_obj2) == DatabaseError.FILE_EXISTS, "Can't add file twice"
 
     file_obj2.file_path = "/test2"
     file_obj2.identifier = "not-real-2"
-    added = db.add_file(file_obj2)
-    assert added == DatabaseError.SUCCESS, "Second file added"
+    assert db.add_file(file_obj2) == DatabaseError.SUCCESS, "Second file added"
 
     assert db.get_files() == [file_obj, file_obj2], "Two files returned from DB"
 
@@ -238,11 +243,16 @@ def test_add_folder(monkeypatch):
         folder2
     ], "Specific folder retrieval works"
 
-    monkeypatch.setattr(db, "add_folder", lambda folder: DatabaseError.UNKNOWN_ERROR)
+    assert (
+        db.add_folder(folder2) == DatabaseError.FOLDER_EXISTS
+    ), "Should fail to add second folder twice"
 
-    duplicate = db.add_folder(folder2)
-    assert not duplicate, "Should fail to add second folder twice"
-    assert duplicate == DatabaseError.UNKNOWN_ERROR, "Should fail with unknown error"
+    folder3 = Folder()
+    folder3.set("/test3", "700", "test3", "test3")
+    monkeypatch.setattr(SQLiteCursor, "rowcount", 0)
+    assert (
+        db.add_folder(folder3) == DatabaseError.UNKNOWN_ERROR
+    ), "Unknown error is thrown if no rows added"
 
 
 def test_remove_file():

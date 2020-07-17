@@ -13,8 +13,8 @@ from logical_backup.objects.folder import Folder
 
 from logical_backup.utility import is_test, DirectoryEntries
 
-DB_FILE = join(dirname(__file__), "../files.db")
-DEV_FILE = join(dirname(__file__), "../files.db.test")
+DB_FILE = join(dirname(__file__), "../files.db")  # pragma: no mutate
+DEV_FILE = join(dirname(__file__), "../files.db.test")  # pragma: no mutate
 
 
 def __row_to_dict(row: list, column_names: list) -> dict:
@@ -80,9 +80,9 @@ class SQLiteCursor(sqlite3.Cursor):
         """
         super()
         self.__connection = None
+        self.__cursor = None
         self.__commit_on_close = commit_on_close
         self.__db_file = DEV_FILE if is_test() else DB_FILE
-        self.__cursor = None
 
     def __enter__(self):
         """
@@ -100,6 +100,20 @@ class SQLiteCursor(sqlite3.Cursor):
             self.__connection.commit()
 
         self.__connection.close()
+
+    @property
+    def connection(self) -> sqlite3.Connection:
+        """
+        Get the connection
+        """
+        return self.__connection
+
+    @property
+    def cursor(self) -> sqlite3.Cursor:
+        """
+        Get the cursor
+        """
+        return self.__cursor
 
     def execute(self, *args, **kwargs):
         """
@@ -248,8 +262,6 @@ def add_device(device: Device) -> int:
     integer
         True if added, False if it already exists
     """
-    result = DatabaseError.UNKNOWN_ERROR
-
     try:
         with SQLiteCursor() as cursor:
             cursor.execute(
@@ -395,8 +407,8 @@ def get_files(path: str = None) -> list:
             device.set(
                 row["DeviceName"],
                 row["DevicePath"],
-                row["DeviceIdentifier"],
                 row["IdentifierName"],
+                row["DeviceIdentifier"],
                 row["IdentifierID"],
             )
 
@@ -452,34 +464,38 @@ def add_folder(folder: Folder) -> bool:
     bool
         True if added False otherwise
     """
-    with SQLiteCursor() as cursor:
-        cursor.execute(
-            """
-            INSERT INTO tblFolder (
-              FolderPath,
-              FolderPermissions,
-              FolderOwnerName,
-              FolderGroupName
+    try:
+        with SQLiteCursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO tblFolder (
+                  FolderPath,
+                  FolderPermissions,
+                  FolderOwnerName,
+                  FolderGroupName
+                )
+                SELECT ?,
+                       ?,
+                       ?,
+                       ?
+                """,
+                (
+                    folder.folder_path,
+                    folder.folder_permissions,
+                    folder.folder_owner,
+                    folder.folder_group,
+                ),
             )
-            SELECT ?,
-                   ?,
-                   ?,
-                   ?
-            """,
-            (
-                folder.folder_path,
-                folder.folder_permissions,
-                folder.folder_owner,
-                folder.folder_group,
-            ),
-        )
 
-        return (
-            DatabaseError.SUCCESS
-            if cursor.rowcount > 0
-            else DatabaseError.UNKNOWN_ERROR
-        )
-        # TODO: try/catch error handling
+            # Folders have no dependencies, so no reason this should fail
+            # other than duplicate paths
+            return (
+                DatabaseError.SUCCESS
+                if cursor.rowcount > 0
+                else DatabaseError.UNKNOWN_ERROR
+            )
+    except sqlite3.IntegrityError:
+        return DatabaseError.FOLDER_EXISTS
 
 
 def get_folders(folder_path: str = None) -> list:
