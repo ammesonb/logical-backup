@@ -21,6 +21,7 @@ from logical_backup import db
 # pylint: disable=unused-import
 from logical_backup.utility import auto_set_testing, DirectoryEntries
 from logical_backup import utility
+from logical_backup.strings import Errors
 from tests.test_utility import patch_input
 
 # This is an auto-run fixture, so importing is sufficient
@@ -474,7 +475,7 @@ def test_add_directory(monkeypatch, capsys):
     monkeypatch.setattr(db, "get_folders", lambda folder_path: ["anything"])
     assert library.add_directory("/test"), "Succeeds if folder already exists"
     out = capsys.readouterr()
-    assert "Folder already added" in out.out, "Already exists message prints"
+    assert Errors.FOLDER_ALREADY_ADDED.value in out.out, "Already exists message prints"
 
     # Happy path
     monkeypatch.setattr(db, "get_folders", lambda folder_path: [])
@@ -530,7 +531,7 @@ def test_add_directory(monkeypatch, capsys):
     ), "Insufficient total device space should fail"
     out = capsys.readouterr()
     assert (
-        "Sum of available devices' space is insufficient" in out.out
+        Errors.INSUFFICIENT_SPACE_FOR_DIRECTORY(5) in out.out
     ), "Insufficient total space message should print"
 
     # In this case, the selected device does not have enough space
@@ -542,32 +543,39 @@ def test_add_directory(monkeypatch, capsys):
     )
     out = capsys.readouterr()
     assert (
-        "Sum of available devices' space is insufficient" in out.out
+        Errors.INSUFFICIENT_SPACE_FOR_DIRECTORY(5) in out.out
     ), "Insufficient total space message should print"
 
     # Insufficient space on selected device but enough on all drives,
     # User exits on prompt
-    monkeypatch.setattr(library, "__get_total_device_space", lambda: 10)
+    monkeypatch.setattr(library, "__get_total_device_space", lambda: 5)
     patch_input(monkeypatch, library, lambda prompt: "n")
     assert not library.add_directory(
         "/test", "/mnt"
     ), "Insufficient space on selected device, with exit input should fail"
     out = capsys.readouterr()
     assert (
-        "Selected device will not fit all files" in out.out
+        Errors.DEVICE_HAS_INSUFFICIENT_SPACE.value in out.out
     ), "Insufficient device space message should print"
     assert (
-        "Exiting since unable to fit all files on selected device" in out.out
+        Errors.SELECTED_DEVICE_FULL.value in out.out
     ), "Insufficient device space exit message should print"
 
+    # Enough space on given device should succeed
+    monkeypatch.setattr(utility, "get_device_space", lambda files: 5)
+    assert library.add_directory(
+        "/test", "/mnt"
+    ), "Adding directory to specific device works"
+
     # Check success if user does allow reassigning of device
+    monkeypatch.setattr(utility, "get_device_space", lambda files: 0)
     patch_input(monkeypatch, library, lambda prompt: "y")
     assert library.add_directory(
         "/test", "/mnt"
     ), "Insufficient space on selected device, with exit input should fail"
     out = capsys.readouterr()
     assert (
-        "Selected device will not fit all files" in out.out
+        Errors.DEVICE_HAS_INSUFFICIENT_SPACE.value in out.out
     ), "Insufficient device space message should print"
 
 

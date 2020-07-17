@@ -15,6 +15,7 @@ from logical_backup.objects.folder import Folder
 from logical_backup.db import DatabaseError
 from logical_backup import db
 from logical_backup import utility
+from logical_backup.strings import Errors, InputPrompts
 from logical_backup.pretty_print import (
     Color,
     readable_bytes,
@@ -29,7 +30,7 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
     See add_file
     """
     if db.get_folders(folder_path):
-        print_error("Folder already added!")
+        print_error(Errors.FOLDER_ALREADY_ADDED)
         return True
 
     entries = utility.list_entries_in_directory(folder_path)
@@ -46,24 +47,19 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
     # If the given mount point is too small for the folder,
     # but there is enough space across all drives to fit the folder
     if not device_has_space and sufficient_space:
-        PrettyStatusPrinter(
-            "Selected device will not fit all files!"
-        ).with_specific_color(Color.YELLOW).print_message()
-        switch_device = input(
-            "Continue with any available device? (y/N, 'n' will exit)"
-        ).lower()
+        PrettyStatusPrinter(Errors.DEVICE_HAS_INSUFFICIENT_SPACE).with_specific_color(
+            Color.YELLOW
+        ).print_message()
+        switch_device = input(InputPrompts.ALLOW_DEVICE_CHANGE).lower()
         if switch_device == "y":
             mount_point = None
         else:
-            print_error("Exiting since unable to fit all files on selected device")
+            print_error(Errors.SELECTED_DEVICE_FULL)
             return False
 
     if not sufficient_space:
         print_error(
-            "Sum of available devices' space is insufficient, "
-            "need {0} additional space! Exiting".format(
-                readable_bytes(folder_size - total_available_space)
-            )
+            Errors.INSUFFICIENT_SPACE_FOR_DIRECTORY(folder_size - total_available_space)
         )
         return False
 

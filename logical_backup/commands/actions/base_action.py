@@ -28,7 +28,7 @@ class BaseAction:
         """
         Runs the content of the specific action
         """
-        raise NotImplementedError(Errors.ERROR_ACTION_RUN_NOT_IMPLEMENTED)
+        raise NotImplementedError(Errors.ACTION_RUN_NOT_IMPLEMENTED)
 
     @property
     def success(self) -> bool:

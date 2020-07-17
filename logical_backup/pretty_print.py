@@ -94,7 +94,7 @@ class PrettyStatusPrinter:
         self.__results = {None: None, True: True, False: False}
         self.__background_color = None
         self.__styles = []
-        self.__message = message
+        self.__message = message.value if hasattr(message, "value") else message
         self.__line_ending = "\n"
         self.__started = False
 

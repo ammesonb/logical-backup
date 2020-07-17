@@ -31,13 +31,13 @@ class BaseCommand:
         """
         Validate that this action has a correct configuration
         """
-        raise NotImplementedError(Errors.ERROR_COMMAND_VALIDATE_NOT_IMPLEMENTED)
+        raise NotImplementedError(Errors.COMMAND_VALIDATE_NOT_IMPLEMENTED)
 
     def __create_actions(self) -> None:
         """
         Creates the component actions needing to be completed for this command
         """
-        raise NotImplementedError(Errors.ERROR_COMMAND_CREATE_ACTIONS_NOT_IMPLEMENTED)
+        raise NotImplementedError(Errors.COMMAND_CREATE_ACTIONS_NOT_IMPLEMENTED)
 
     @property
     def actions(self) -> list:
