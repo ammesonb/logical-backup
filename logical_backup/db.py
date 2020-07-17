@@ -14,7 +14,6 @@ from logical_backup.objects.folder import Folder
 from logical_backup.utility import is_test, DirectoryEntries
 
 DB_FILE = join(dirname(__file__), "../files.db")
-print(DB_FILE)
 DEV_FILE = join(dirname(__file__), "../files.db.test")
 
 
@@ -46,17 +45,17 @@ class DatabaseError(Enum):
     Database error codes
     """
 
-    UNKNOWN_ERROR = -1
-    SUCCESS = 0
-    DEVICE_NAME_EXISTS = 1
-    DEVICE_PATH_EXISTS = 2
-    DEVICE_IDENTIFIER_EXISTS = 3
-    INVALID_IDENTIFIER_TYPE = 4
-    NONEXISTENT_DEVICE = 5
-    NONEXISTENT_FILE = 6
-    NONEXISTENT_FOLDER = 7
-    FILE_EXISTS = 8
-    FOLDER_EXISTS = 9
+    UNKNOWN_ERROR = -1  # pragma: no mutate
+    SUCCESS = 0  # pragma: no mutate
+    DEVICE_NAME_EXISTS = 1  # pragma: no mutate
+    DEVICE_PATH_EXISTS = 2  # pragma: no mutate
+    DEVICE_IDENTIFIER_EXISTS = 3  # pragma: no mutate
+    INVALID_IDENTIFIER_TYPE = 4  # pragma: no mutate
+    NONEXISTENT_DEVICE = 5  # pragma: no mutate
+    NONEXISTENT_FILE = 6  # pragma: no mutate
+    NONEXISTENT_FOLDER = 7  # pragma: no mutate
+    FILE_EXISTS = 8  # pragma: no mutate
+    FOLDER_EXISTS = 9  # pragma: no mutate
 
     def __bool__(self):
         """

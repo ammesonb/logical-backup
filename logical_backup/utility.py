@@ -139,6 +139,8 @@ def get_device_serial(mount_point: str) -> str:
         commands = [
             ["udevadm", "info", "--query=all", "--name=" + partition],
             ["grep", " disk/by-uuid/"],
+            # pylint: disable=anomalous-backslash-in-string
+            # This is a bash escape, not regex
             ["sed", "s/.*by-uuid\///"],
         ]
         output = run_piped_command(commands)

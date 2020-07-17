@@ -117,7 +117,6 @@ def __parse_arguments(command_line_arguments: list) -> tuple:
     return arguments
 
 
-# pylint: disable=unused-argument
 def __validate_arguments(arguments: dict) -> bool:
     """
     Determines if the given command-line arguments are valid
