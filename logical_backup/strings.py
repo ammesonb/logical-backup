@@ -29,6 +29,7 @@ class Errors(Enum):
     FOLDER_NOT_BACKED_UP_AT = lambda path: (
         "Specified folder not backed up: '{0}'!".format(path)
     )
+    NONE_FOUND = "None found!"
 
 
 # pragma: no mutate
@@ -38,3 +39,22 @@ class InputPrompts(Enum):
     """
 
     ALLOW_DEVICE_CHANGE = "Continue with any available device? (y/N, 'n' will exit) "
+
+    RECURSIVE_REMOVE_DIRECTORY = (
+        "Found one or more backed-up folders that no longer exist! "
+        "Remove ALL missing directories recursively? "
+        "Type REMOVE uppdercase to do so "
+    )
+    RECURSIVE_REMOVE_FILE = (
+        "Found one or more backed-up files that no longer exist! "
+        "Remove all missing files? Type YES uppercase to do so "
+    )
+
+
+# pragma: no mutate
+class Info(Enum):
+    """
+    Informational messages
+    """
+
+    AUTO_SELECT_DEVICE = "Auto-selecting device"

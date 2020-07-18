@@ -172,7 +172,9 @@ class PrettyStatusPrinter:
         """
         Adds message postfix for for given result, e.g. "failed to do X" or "Y happened"
         """
-        self.__message_postfix[result] = postfix
+        self.__message_postfix[result] = (
+            postfix.value if hasattr(postfix, "value") else postfix
+        )
         return self
 
     def with_background_color(self, background: Background) -> PrettyStatusPrinter:

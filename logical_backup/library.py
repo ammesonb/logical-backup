@@ -15,7 +15,7 @@ from logical_backup.objects.folder import Folder
 from logical_backup.db import DatabaseError
 from logical_backup import db
 from logical_backup import utility
-from logical_backup.strings import Errors, InputPrompts
+from logical_backup.strings import Errors, InputPrompts, Info
 from logical_backup.pretty_print import (
     Color,
     readable_bytes,
@@ -241,8 +241,8 @@ def __get_device_with_space(
     # This also needs to happen if we unset it due to space problems
     if mount_point is None:
         auto_select_device = PrettyStatusPrinter(
-            "Auto-selecting device"
-        ).with_message_postfix_for_result(False, "None found!")
+            Info.AUTO_SELECT_DEVICE
+        ).with_message_postfix_for_result(False, Errors.NONE_FOUND)
         auto_select_device.print_start()
 
         devices = db.get_devices()
@@ -286,22 +286,17 @@ def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool
         True if all attempted removals succeed
     """
     recursive_prompted = False
-    remove_recursive = False
+    remove_recursive = False  # pragma: no mutate
     files_prompted = False
-    remove_files = False
+    remove_files = False  # pragma: no mutate
 
     success = True
 
     for folder_path in entries.folders:
         if not os_path.isdir(folder_path):
-            if not recursive_prompted:
+            if not recursive_prompted and recursive_prompted is not None:
                 remove_recursive = (
-                    input(
-                        "Found one or more backed-up folders that no longer exist! "
-                        "Remove ALL missing directories recursively? "
-                        "Type REMOVE uppdercase to do so "
-                    )
-                    == "REMOVE"
+                    input(InputPrompts.RECURSIVE_REMOVE_DIRECTORY.value) == "REMOVE"
                 )
                 recursive_prompted = True
 
@@ -310,14 +305,8 @@ def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool
 
     for file_path in entries.files:
         if not os_path.isfile(file_path):
-            if not files_prompted:
-                remove_files = (
-                    input(
-                        "Found one or more backed-up files that no longer exist! "
-                        "Remove all missing files? Type YES uppercase to do so "
-                    )
-                    == "YES"
-                )
+            if not files_prompted and files_prompted is not None:
+                remove_files = input(InputPrompts.RECURSIVE_REMOVE_FILE.value) == "YES"
                 files_prompted = True
 
             if remove_files:

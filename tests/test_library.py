@@ -21,7 +21,7 @@ from logical_backup import db
 # pylint: disable=unused-import
 from logical_backup.utility import auto_set_testing, DirectoryEntries
 from logical_backup import utility
-from logical_backup.strings import Errors
+from logical_backup.strings import Errors, Info
 from tests.test_utility import patch_input
 
 # This is an auto-run fixture, so importing is sufficient
@@ -254,7 +254,7 @@ def test_get_device_with_space(monkeypatch, capsys):
 
     name, path = library.__get_device_with_space(1, "/mnt1")
     output = capsys.readouterr()
-    assert not name and not path, "Insufficient space with exit should be empty"
+    assert name is None and path is None, "Insufficient space with exit should be empty"
     assert (
         "Checking drive space...Insufficient space" in output.out
     ), "insufficient space message printed"
@@ -280,7 +280,9 @@ def test_get_device_with_space(monkeypatch, capsys):
     assert (
         "Insufficient space" in output.out
     ), "Initial device should have insufficient space"
-    assert "Auto-selecting device" in output.out, "Should fall back to auto-selection"
+    assert (
+        Info.AUTO_SELECT_DEVICE.value in output.out
+    ), "Should fall back to auto-selection"
     assert "Selected test2" in output.out, "Selected device should be printed"
     assert name == "test2", "Second device should be selected"
     assert path == "/mnt2", "Second path should be selected"
@@ -295,10 +297,12 @@ def test_get_device_with_space(monkeypatch, capsys):
     monkeypatch.setattr(utility, "get_device_space", lambda path: 0)
     name, path = library.__get_device_with_space(1, "/mnt1")
     output = capsys.readouterr()
-    assert "Auto-selecting device" in output.out, "Should fall back to auto-selection"
-    assert "None found!" in output.out, "No device found printed"
-    assert not name, "No device name should be returned"
-    assert not path, "No device path should be returned"
+    assert (
+        Info.AUTO_SELECT_DEVICE.value in output.out
+    ), "Should fall back to auto-selection"
+    assert Errors.NONE_FOUND.value in output.out, "No device found printed"
+    assert name is None, "No device name should be returned"
+    assert path is None, "No device path should be returned"
 
     # Requested device is full, falls back to second (not third)
     device3 = Device()
@@ -312,7 +316,9 @@ def test_get_device_with_space(monkeypatch, capsys):
     name, path = library.__get_device_with_space(100, "/mnt1")
     output = capsys.readouterr()
 
-    assert "Auto-selecting device" in output.out, "Should fall back to auto-selection"
+    assert (
+        Info.AUTO_SELECT_DEVICE.value in output.out
+    ), "Should fall back to auto-selection"
     assert "Selected test2" in output.out, "Selected device should be printed"
     assert name == "test2", "Second device should be selected"
     assert path == "/mnt2", "Second path should be selected"
@@ -856,7 +862,7 @@ def test_remove_missing_database_entries(monkeypatch):
     """
     .
     """
-    entries = DirectoryEntries(["/test", "/test2"], ["/var", "/var2"])
+    entries = DirectoryEntries(["/test", "/test2"], ["/var", "/var2", "/var3"])
 
     # Test everything exists
     monkeypatch.setattr(library, "remove_directory", lambda path: False)
@@ -888,17 +894,43 @@ def test_remove_missing_database_entries(monkeypatch):
     ), "Removing only folders should succeed"
 
     # Removing everything should fail
+    def prompt_twice_only(prompt):
+        prompt_twice_only.counter += 1
+        if prompt_twice_only.counter > 2:
+            return ""
+
+        return "REMOVE" if "folders" in prompt else "YES"
+
+    prompt_twice_only.counter = 0
+
     monkeypatch.setattr(path, "isfile", lambda path: False)
-    patch_input(
-        monkeypatch, library, lambda prompt: "REMOVE" if "folders" in prompt else "YES"
-    )
+    patch_input(monkeypatch, library, prompt_twice_only)
     assert not library.__remove_missing_database_entries(
         entries
     ), "Removing everything should fail if file fails"
-    monkeypatch.setattr(library, "remove_file", lambda path: True)
+
+    # Success if everything removed
+    def rm_folder(path):
+        rm_folder.counter += 1
+        return True
+
+    def rm_file(path):
+        rm_file.counter += 1
+        return True
+
+    rm_folder.counter = 0
+    rm_file.counter = 0
+    prompt_twice_only.counter = 0
+
+    monkeypatch.setattr(library, "remove_file", rm_file)
+    monkeypatch.setattr(library, "remove_directory", rm_folder)
     assert library.__remove_missing_database_entries(
         entries
     ), "Removing everything should succeed"
+    assert rm_folder.counter == len(
+        entries.folders
+    ), "Correct folder count should be removed"
+    assert rm_file.counter == len(entries.files), "Correct file count should be removed"
 
     # Removing only files should fail if removal fails
     monkeypatch.setattr(path, "isdir", lambda path: True)
