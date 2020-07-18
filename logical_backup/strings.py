@@ -22,6 +22,13 @@ class Errors(Enum):
     )
     SELECTED_DEVICE_FULL = "Exiting since unable to fit all files on selected device"
     DEVICE_HAS_INSUFFICIENT_SPACE = "Selected device will not fit all files!"
+    CANNOT_OVERWRITE_EXISTING_FOLDER = "Cannot move folder over existing file!"
+    FOLDER_BACKED_UP_AT = lambda path: (
+        "Folder already backed up at path '{0}'!".format(path)
+    )
+    FOLDER_NOT_BACKED_UP_AT = lambda path: (
+        "Specified folder not backed up: '{0}'!".format(path)
+    )
 
 
 # pragma: no mutate

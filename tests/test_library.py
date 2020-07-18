@@ -268,6 +268,13 @@ def test_get_device_with_space(monkeypatch, capsys):
 
     monkeypatch.setattr(db, "get_devices", lambda: [device, device2])
 
+    # If we say size is checked on a device, it is passed through
+    assert library.__get_device_with_space(1, "/mnt1", True) == (
+        "test1",
+        "/mnt1",
+    ), "Size checked bypasses everything"
+
+    # Second device auto-selected
     name, path = library.__get_device_with_space(1, "/mnt1")
     output = capsys.readouterr()
     assert (
@@ -278,7 +285,13 @@ def test_get_device_with_space(monkeypatch, capsys):
     assert name == "test2", "Second device should be selected"
     assert path == "/mnt2", "Second path should be selected"
 
+    # Device could be auto-selected, but user exits instead
+    patch_input(monkeypatch, library, lambda message: "n")
+    name, path = library.__get_device_with_space(1, "/mnt1")
+    assert not name and not path, "Potential second device should be empty due to exit"
+
     # No devices have enough space
+    patch_input(monkeypatch, library, lambda message: "y")
     monkeypatch.setattr(utility, "get_device_space", lambda path: 0)
     name, path = library.__get_device_with_space(1, "/mnt1")
     output = capsys.readouterr()
@@ -296,7 +309,7 @@ def test_get_device_with_space(monkeypatch, capsys):
         utility, "get_device_space", lambda path: 0 if path == "/mnt1" else 100
     )
 
-    name, path = library.__get_device_with_space(1, "/mnt1")
+    name, path = library.__get_device_with_space(100, "/mnt1")
     output = capsys.readouterr()
 
     assert "Auto-selecting device" in output.out, "Should fall back to auto-selection"
@@ -304,6 +317,7 @@ def test_get_device_with_space(monkeypatch, capsys):
     assert name == "test2", "Second device should be selected"
     assert path == "/mnt2", "Second path should be selected"
 
+    monkeypatch.setattr(utility, "get_device_space", lambda path: 1)
     name, path = library.__get_device_with_space(1, "/mnt3")
     output = capsys.readouterr()
 
@@ -1042,12 +1056,12 @@ def test_move_directory_local(monkeypatch, capsys):
     monkeypatch.setattr(
         db, "update_folder_path", lambda current, new: DatabaseError.NONEXISTENT_FOLDER
     )
-    assert not library.move_directory_local(
-        "/test/foo", "/test2"
+    assert (
+        library.move_directory_local("/test/foo", "/test2") == False
     ), "Un backed-up folder should fail"
     out = capsys.readouterr()
     assert (
-        "Specified folder not backed up" in out.out
+        Errors.FOLDER_NOT_BACKED_UP_AT("/test/foo") in out.out
     ), "Un backed-up folder message prints"
 
     # This ensures that it accepts a directory as output, as well as a specific folder
@@ -1058,12 +1072,12 @@ def test_move_directory_local(monkeypatch, capsys):
         if new == "/test2/foo"
         else DatabaseError.FOLDER_EXISTS,
     )
-    assert not library.move_directory_local(
-        "/test/foo", "/failure"
+    assert (
+        library.move_directory_local("/test/foo", "/failure") == False
     ), "Backed up to duplicate folder should fail"
     out = capsys.readouterr()
     assert (
-        "Folder already backed up at path" in out.out
+        Errors.FOLDER_BACKED_UP_AT("/failure") in out.out
     ), "Backed up to duplicate folder message prints"
 
     # Success cases
@@ -1080,14 +1094,14 @@ def test_move_directory_local(monkeypatch, capsys):
     ), "Folder back up to file location should fail"
     out = capsys.readouterr()
     assert (
-        "Cannot move folder over existing file"
+        Errors.CANNOT_OVERWRITE_EXISTING_FOLDER.value in out.out
     ), "Folder back up to file message prints"
 
     # If file fails, should fail move
     monkeypatch.setattr(library, "move_file_local", lambda current, new: False)
     monkeypatch.setattr(path, "isfile", lambda directory: False)
-    assert not library.move_directory_local(
-        "/test/foo", "/test2/foo"
+    assert (
+        library.move_directory_local("/test/foo", "/test2/foo") == False
     ), "File move failure should fail"
 
 
@@ -1208,14 +1222,14 @@ def test_move_directory_device(monkeypatch, capsys):
         lambda folder: DirectoryEntries(["abc", "def"], ["ghi"]),
     )
     monkeypatch.setattr(utility, "sum_file_size", lambda files: 1)
-    monkeypatch.setattr(utility, "get_device_space", lambda device_path: 0)
+    monkeypatch.setattr(utility, "get_device_space", lambda device_path: 1)
 
     assert not library.move_directory_device(
         "/test", "/dev"
     ), "Insufficient device space fails"
     out = capsys.readouterr()
     assert (
-        "Selected device cannot fit all the requested files" in out.out
+        Errors.DEVICE_HAS_INSUFFICIENT_SPACE.value in out.out
     ), "Insufficient device space message prints"
 
     monkeypatch.setattr(utility, "get_device_space", lambda device_path: 10)

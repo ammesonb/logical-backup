@@ -50,7 +50,7 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
         PrettyStatusPrinter(Errors.DEVICE_HAS_INSUFFICIENT_SPACE).with_specific_color(
             Color.YELLOW
         ).print_message()
-        switch_device = input(InputPrompts.ALLOW_DEVICE_CHANGE).lower()
+        switch_device = input(InputPrompts.ALLOW_DEVICE_CHANGE.value).lower()
         if switch_device == "y":
             mount_point = None
         else:
@@ -104,7 +104,7 @@ def remove_directory(folder_path: str) -> bool:
 
     files_removed = all([remove_file(file_path) for file_path in entries.files])
     all_removed = files_removed
-    if files_removed:
+    if all_removed:
         file_removal.print_complete()
 
         folder_removal = PrettyStatusPrinter(
@@ -141,7 +141,7 @@ def move_directory_local(current_path: str, new_path: str) -> bool:
             absolute_new_path, os_path.basename(current_path)
         )
     elif os_path.isfile(new_path):
-        print_error("Cannot move folder over existing file!")
+        print_error(Errors.CANNOT_OVERWRITE_EXISTING_FOLDER)
         return False
 
     # Should include base folder as well
@@ -149,15 +149,15 @@ def move_directory_local(current_path: str, new_path: str) -> bool:
         new_folder = folder.replace(current_path, absolute_new_path)
         result = db.update_folder_path(folder, new_folder)
         if result == DatabaseError.FOLDER_EXISTS:
-            print_error("Folder already backed up at path '{0}'!".format(new_folder))
+            print_error(Errors.FOLDER_BACKED_UP_AT(new_folder))
             all_success = False
         elif result == DatabaseError.NONEXISTENT_FOLDER:
-            print_error("Specified folder not backed up: '{0}'!".format(new_folder))
+            print_error(Errors.FOLDER_NOT_BACKED_UP_AT(folder))
             all_success = False
 
     for file_path in entries.files:
         new_file = file_path.replace(current_path, absolute_new_path)
-        if not move_file_local(file_path, new_file):
+        if not new_file or not move_file_local(file_path, new_file):
             all_success = False
 
     return all_success
@@ -173,7 +173,7 @@ def move_directory_device(current_path: str, device: str) -> bool:
     device_space = utility.get_device_space(device)
 
     if total_file_size >= device_space:
-        print_error("Selected device cannot fit all the requested files!")
+        print_error(Errors.DEVICE_HAS_INSUFFICIENT_SPACE)
         return False
 
     return all([move_file_device(file_path, device) for file_path in entries.files])
@@ -227,9 +227,9 @@ def __get_device_with_space(
         space_message.print_start()
 
         drive_space = utility.get_device_space(mount_point)
-        if file_size >= drive_space:
+        if drive_space < file_size:
             space_message.print_complete(False)
-            confirm = input("Switch drive? (Y/n, n exits) ")
+            confirm = input(InputPrompts.ALLOW_DEVICE_CHANGE.value)
             if confirm != "n":
                 mount_point = None
             else:
@@ -239,7 +239,7 @@ def __get_device_with_space(
 
     device_name = None
     # This also needs to happen if we unset it due to space problems
-    if not mount_point:
+    if mount_point is None:
         auto_select_device = PrettyStatusPrinter(
             "Auto-selecting device"
         ).with_message_postfix_for_result(False, "None found!")
@@ -248,7 +248,7 @@ def __get_device_with_space(
         devices = db.get_devices()
         for device in devices:
             space = utility.get_device_space(device.device_path)
-            if space > file_size:
+            if space >= file_size:
                 auto_select_device.with_message_postfix_for_result(
                     True, "Selected " + device.device_name
                 ).print_complete()
