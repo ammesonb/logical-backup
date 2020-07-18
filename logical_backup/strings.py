@@ -44,6 +44,21 @@ class Errors(Enum):
         "Cannot move folder over existing file!"  # pragma: no mutate
     )
 
+    UNRECOGNIZED_DEVICE_IDENTIFIER = (
+        "Failed. Unrecognized device identifier!"  # pragma: no mutate
+    )
+    DEVICE_NAME_TAKEN = "Failed. Name already taken!"  # pragma: no mutate
+    DEVICE_MOUNT_POINT_USED = (
+        "Failed. Device already registered at mount point!"  # pragma: no mutate
+    )
+    DEVICE_SERIAL_USED = (
+        "Failed. Serial already registered for another device!"  # pragma: no mutate
+    )
+    DEVICE_UNKNOWN_ERROR = "Failed. Unknown error occurred!"  # pragma: no mutate
+    DEVICE_SUPER_UNKNOWN_ERROR = (
+        "Failed. Super-unknown error occurred!"  # pragma: no mutate
+    )
+
     NO_SAVED_DEVICES = "No devices saved!"  # pragma: no mutate
     SELECTED_DEVICE_FULL = (
         "Exiting since unable to fit all files on selected device"  # pragma: no mutate
@@ -88,7 +103,6 @@ class Errors(Enum):
     FAILED_REMOVE_FILE = "Failed to remove file from the database!"  # pragma: no mutate
 
 
-# pragma: no mutate
 class InputPrompts(Enum):
     """
     Input prompt messages
@@ -109,8 +123,13 @@ class InputPrompts(Enum):
         "Remove all missing files? Type YES uppercase to do so "  # pragma: no mutate
     )
 
+    DEVICE_NAME = "Device name: "  # pragma: no mutate
+    DEVICE_IDENTIFIER = (
+        "Unable to find systemic identifier. "  # pragma: no mutate
+        "Please provide a unique identifier for the device: "  # pragma: no mutate
+    )
 
-# pragma: no mutate
+
 class Info(Enum):
     """
     Informational messages
@@ -120,6 +139,7 @@ class Info(Enum):
     GET_FILE_SIZE = "Getting file size"  # pragma: no mutate
     FILE_SIZE_OUTPUT = lambda size: "Read. File size is " + size  # pragma: no mutate
 
+    SAVING_DEVICE = "Saving device"  # pragma: no mutate
     SAVING_FILE_TO_DB = "Saving file record to DB"  # pragma: no mutate
 
     COPYING_FILE_DEVICE = "Copying file to new device"  # pragma: no mutate

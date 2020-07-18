@@ -2,6 +2,11 @@
 A device for backing up files
 """
 
+DEVICE_SERIAL = "Device Serial"  # pragma: no mutate
+SYSTEM_UUID = "System UUID"  # pragma: no mutate
+USER_SPECIFIED = "User Specified"  # pragma: no mutate
+
+
 # pylint: disable=too-many-instance-attributes
 class Device:
     """

@@ -9,7 +9,12 @@ import pwd
 import shutil
 from texttable import Texttable
 
-from logical_backup.objects.device import Device
+from logical_backup.objects.device import (
+    Device,
+    DEVICE_SERIAL,
+    SYSTEM_UUID,
+    USER_SPECIFIED,
+)
 from logical_backup.objects.file import File
 from logical_backup.objects.folder import Folder
 from logical_backup.db import DatabaseError
@@ -533,7 +538,7 @@ def move_file_device(original_path: str, device: str) -> bool:
         print_error(Errors.CANNOT_FIND_BACKUP)
         file_valid = False
 
-    if not file_valid:
+    if not file_valid and file_valid is not None:
         return False
 
     copy_printer = PrettyStatusPrinter(Info.COPYING_FILE_DEVICE).print_start()
@@ -551,7 +556,7 @@ def move_file_device(original_path: str, device: str) -> bool:
     else:
         print_error(Errors.CHECKSUM_MISMATCH_AFTER_COPY)
 
-    if not device_updated:
+    if not device_updated and device_updated is not None:
         print_error(Errors.FAILED_FILE_DEVICE_DB_UPDATE)
     else:
         os.remove(current_path)
@@ -577,39 +582,32 @@ def add_device(mount_point: str) -> bool:
         True if added, False otherwise
           - due to database failure, or if it path does not exist
     """
-    device_name = input("Device name: ")
+    device_name = input(InputPrompts.DEVICE_NAME)
     identifier = utility.get_device_serial(mount_point)
-    identifier_type = "Device Serial"
+    identifier_type = DEVICE_SERIAL
     if not identifier:
         identifier = utility.get_device_uuid(mount_point)
-        identifier_type = "System UUID"
+        identifier_type = SYSTEM_UUID
 
     if not identifier:
-        identifier = input(
-            "Unable to find systemic identifier. "
-            "Please provide a unique identifier for the device: "
-        )
-        identifier_type = "User Specified"
+        identifier = input(InputPrompts.DEVICE_IDENTIFIER)
+        identifier_type = USER_SPECIFIED
 
     save_message = (
-        PrettyStatusPrinter("Saving device")
-        .print_start()
+        PrettyStatusPrinter(Info.SAVING_DEVICE)
         .with_custom_result(2, False)
-        .with_message_postfix_for_result(2, "Failed. Unrecognized device identifier!")
+        .with_message_postfix_for_result(2, Errors.UNRECOGNIZED_DEVICE_IDENTIFIER)
         .with_custom_result(3, False)
-        .with_message_postfix_for_result(3, "Failed. Name already taken!")
+        .with_message_postfix_for_result(3, Errors.DEVICE_NAME_TAKEN)
         .with_custom_result(4, False)
-        .with_message_postfix_for_result(
-            4, "Failed. Device already registered at mount point!"
-        )
+        .with_message_postfix_for_result(4, Errors.DEVICE_MOUNT_POINT_USED)
         .with_custom_result(5, False)
-        .with_message_postfix_for_result(
-            5, "Failed. Serial already registered for another device!"
-        )
+        .with_message_postfix_for_result(5, Errors.DEVICE_SERIAL_USED)
         .with_custom_result(6, False)
-        .with_message_postfix_for_result(6, "Failed. Unknown error occurred!")
+        .with_message_postfix_for_result(6, Errors.DEVICE_UNKNOWN_ERROR)
         .with_custom_result(7, False)
-        .with_message_postfix_for_result(7, "Failed. Super-unknown error occurred!")
+        .with_message_postfix_for_result(7, Errors.DEVICE_SUPER_UNKNOWN_ERROR)
+        .print_start()
     )
 
     device = Device()

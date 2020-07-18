@@ -6,7 +6,12 @@ from enum import Enum
 from os.path import dirname, join
 import sqlite3
 
-from logical_backup.objects.device import Device
+from logical_backup.objects.device import (
+    Device,
+    DEVICE_SERIAL,
+    SYSTEM_UUID,
+    USER_SPECIFIED,
+)
 from logical_backup.objects.file import File
 from logical_backup.objects.folder import Folder
 
@@ -166,17 +171,18 @@ def initialize_database():
             "INSERT INTO tblplDeviceIdentifier (IdentifierName)"
             "SELECT Name "
             "FROM ("
-            "  SELECT 'System UUID' AS Name"
+            "  SELECT ? AS Name"
             "  UNION"
-            "  SELECT 'Device Serial'"
+            "  SELECT ?"
             "  UNION"
-            "  SELECT 'User Specified'"
+            "  SELECT ?"
             " ) t "
             "WHERE NOT EXISTS ("
             "  SELECT *"
             "  FROM   tblplDeviceIdentifier"
             ")"
-            "ORDER BY t.Name;"
+            "ORDER BY t.Name;",
+            (DEVICE_SERIAL, SYSTEM_UUID, USER_SPECIFIED),
         )
 
         cursor.execute(

@@ -136,6 +136,22 @@ def test_add_device(capsys, monkeypatch):
 
     arguments = make_arguments("add")
 
+    save_device = (
+        PrettyStatusPrinter(Info.SAVING_DEVICE)
+        .with_custom_result(2, False)
+        .with_message_postfix_for_result(2, Errors.UNRECOGNIZED_DEVICE_IDENTIFIER)
+        .with_custom_result(3, False)
+        .with_message_postfix_for_result(3, Errors.DEVICE_NAME_TAKEN)
+        .with_custom_result(4, False)
+        .with_message_postfix_for_result(4, Errors.DEVICE_MOUNT_POINT_USED)
+        .with_custom_result(5, False)
+        .with_message_postfix_for_result(5, Errors.DEVICE_SERIAL_USED)
+        .with_custom_result(6, False)
+        .with_message_postfix_for_result(6, Errors.DEVICE_UNKNOWN_ERROR)
+        .with_custom_result(7, False)
+        .with_message_postfix_for_result(7, Errors.DEVICE_SUPER_UNKNOWN_ERROR)
+    )
+
     # Happy path one
     arguments["device"] = "/mnt/test1"
     monkeypatch.setattr(path, "ismount", lambda path: True)
@@ -147,7 +163,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Saving device...Completed" in output.out
+        save_device.get_styled_message(True) in output.out
     ), "First device, by serial, should be saved"
 
     # Happy path two
@@ -162,7 +178,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Saving device...Completed" in output.out
+        save_device.get_styled_message(True) in output.out
     ), "Second device, by UUID, should be saved"
 
     # Happy path three
@@ -179,7 +195,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Saving device...Completed" in output.out
+        save_device.get_styled_message(True) in output.out
     ), "Third device, specified by user, should be saved"
 
     # Sad path one
@@ -191,7 +207,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Name already taken" in output.out
+        save_device.get_styled_message(3) in output.out
     ), "Fourth device should fail due to name conflict"
 
     # Sad path two
@@ -203,7 +219,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Device already registered at mount point" in output.out
+        save_device.get_styled_message(4) in output.out
     ), "Fifth device should fail due to path conflict"
 
     # Sad path three
@@ -215,7 +231,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Serial already registered" in output.out
+        save_device.get_styled_message(5) in output.out
     ), "Sixth device should fail due to serial conflict"
 
     # Invalid identifier, should only happen on DB corruption
@@ -226,7 +242,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Unrecognized device identifier" in output.out
+        save_device.get_styled_message(2) in output.out
     ), "Invalid identifier for device should fail to add"
 
     # Unknown error can occur in weird circumstances
@@ -235,7 +251,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Unknown error occurred" in output.out
+        save_device.get_styled_message(6) in output.out
     ), "Unknown error should cause a failure"
 
     # Some bizarre return value
@@ -244,7 +260,7 @@ def test_add_device(capsys, monkeypatch):
     assert command == "add-device", "Command called should be add device"
     output = capsys.readouterr()
     assert (
-        "Super-unknown error occurred" in output.out
+        save_device.get_styled_message(7) in output.out
     ), "Bizarre return value should cause a failure"
 
 
