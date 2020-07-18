@@ -5,8 +5,8 @@ from __future__ import annotations
 
 from enum import Enum
 
-CHECK_UNICODE = "\u2714"
-CROSS_UNICODE = "\u274c"
+CHECK_UNICODE = "\u2714"  # pragma: no mutate
+CROSS_UNICODE = "\u274c"  # pragma: no mutate
 
 
 class Color(Enum):
@@ -14,16 +14,16 @@ class Color(Enum):
     Contains foreground colors for the command line
     """
 
-    BLACK = "\033[30m"
-    RED = "\033[31m"
-    PURPLE = "\033[35m"
-    CYAN = "\033[36m"
-    ERROR = "\033[91m"  # Salmon-ish
-    GREEN = "\033[92m"
-    YELLOW = "\033[93m"
-    BLUE = "\033[94m"
-    MAGENTA = "\033[95m"
-    WHITE = "\033[95m"
+    BLACK = "\033[30m"  # pragma: no mutate
+    RED = "\033[31m"  # pragma: no mutate
+    PURPLE = "\033[35m"  # pragma: no mutate
+    CYAN = "\033[36m"  # pragma: no mutate
+    ERROR = "\033[91m"  # pragma: no mutate
+    GREEN = "\033[92m"  # pragma: no mutate
+    YELLOW = "\033[93m"  # pragma: no mutate
+    BLUE = "\033[94m"  # pragma: no mutate
+    MAGENTA = "\033[95m"  # pragma: no mutate
+    WHITE = "\033[95m"  # pragma: no mutate
 
 
 class Background(Enum):
@@ -31,14 +31,14 @@ class Background(Enum):
     Contains background colors for the command line
     """
 
-    BLACK = "\033[40m"
-    RED = "\033[41m"
-    GREEN = "\033[42m"
-    YELLOW = "\033[43m"
-    BLUE = "\033[44m"
-    PURPLE = "\033[45m"
-    CYAN = "\033[46m"
-    WHITE = "\033[47m"
+    BLACK = "\033[40m"  # pragma: no mutate
+    RED = "\033[41m"  # pragma: no mutate
+    GREEN = "\033[42m"  # pragma: no mutate
+    YELLOW = "\033[43m"  # pragma: no mutate
+    BLUE = "\033[44m"  # pragma: no mutate
+    PURPLE = "\033[45m"  # pragma: no mutate
+    CYAN = "\033[46m"  # pragma: no mutate
+    WHITE = "\033[47m"  # pragma: no mutate
 
 
 class Format(Enum):
@@ -46,11 +46,11 @@ class Format(Enum):
     Contains text formatting options
     """
 
-    END = "\033[0m"
-    BOLD = "\033[1m"
-    DIM = "\033[2m"
-    UNDERLINE = "\033[4m"
-    HIDDEN = "\033[8m"
+    END = "\033[0m"  # pragma: no mutate
+    BOLD = "\033[1m"  # pragma: no mutate
+    DIM = "\033[2m"  # pragma: no mutate
+    UNDERLINE = "\033[4m"  # pragma: no mutate
+    HIDDEN = "\033[8m"  # pragma: no mutate
 
 
 def get_success_prefix(succeeded: bool = None) -> str:
@@ -233,7 +233,7 @@ def readable_bytes(size: int, suffix: str = "B") -> str:
     suffix='B' : str
         What to print after the SI prefix
     """
-    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:  # pragma: no mutate
         if abs(size) < 1024.0:
             return "%3.1f%s%s" % (size, unit, suffix)
         size /= 1024.0
