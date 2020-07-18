@@ -293,8 +293,9 @@ def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool
     success = True
 
     for folder_path in entries.folders:
-        if not os_path.isdir(folder_path):
-            if not recursive_prompted and recursive_prompted is not None:
+        # Only remove if MISSING on the file system
+        if not os_path.isdir(folder_path) and recursive_prompted is not None:
+            if not recursive_prompted:
                 remove_recursive = (
                     input(InputPrompts.RECURSIVE_REMOVE_DIRECTORY.value) == "REMOVE"
                 )
@@ -304,8 +305,8 @@ def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool
                 success = success and remove_directory(folder_path)
 
     for file_path in entries.files:
-        if not os_path.isfile(file_path):
-            if not files_prompted and files_prompted is not None:
+        if not os_path.isfile(file_path) and files_prompted is not None:
+            if not files_prompted:
                 remove_files = input(InputPrompts.RECURSIVE_REMOVE_FILE.value) == "YES"
                 files_prompted = True
 
@@ -341,28 +342,28 @@ def add_file(
           - or if it already exists
     """
     if db.file_exists(file_path):
-        print_error("File is already backed up!")
+        print_error(Errors.FILE_ALREADY_BACKED_UP)
         return False
 
     security_details = utility.get_file_security(file_path)
     checksum = utility.checksum_file(file_path)
     if not checksum:
-        print_error("Failed to get checksum!")
+        print_error(Errors.FAILED_GET_CHECKSUM)
         return False
 
-    file_size_message = PrettyStatusPrinter("Getting file size")
+    file_size_message = PrettyStatusPrinter(Info.GET_FILE_SIZE)
     file_size_message.print_start()
 
     file_size = utility.get_file_size(file_path)
     file_size_message.with_message_postfix_for_result(
-        True, "Read. File is " + readable_bytes(file_size)
+        True, Info.FILE_SIZE_OUTPUT(readable_bytes(file_size))
     ).print_complete()
 
     device_name, mount_point = __get_device_with_space(
         file_size, mount_point, size_checked
     )
     if not device_name:
-        print_error("No device with space available!")
+        print_error(Errors.NO_DEVICE_WITH_SPACE_AVAILABLE)
         return False
 
     backup_name = utility.create_backup_name(file_path)
@@ -372,7 +373,7 @@ def add_file(
     checksum2 = utility.checksum_file(backup_path)
 
     if checksum != checksum2:
-        print_error("Checksum mismatch after copy!")
+        print_error(Errors.CHECKSUM_MISMATCH)
         os.remove(backup_path)
         return False
 
@@ -381,7 +382,7 @@ def add_file(
     file_obj.set_properties(backup_name, file_path, checksum)
     file_obj.set_security(**security_details)
 
-    db_save = PrettyStatusPrinter("Saving file record to DB").print_start()
+    db_save = PrettyStatusPrinter(Info.SAVING_FILE_TO_DB).print_start()
 
     succeeded = db.add_file(file_obj)
     if succeeded == DatabaseError.SUCCESS:

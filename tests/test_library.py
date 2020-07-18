@@ -22,6 +22,7 @@ from logical_backup import db
 from logical_backup.utility import auto_set_testing, DirectoryEntries
 from logical_backup import utility
 from logical_backup.strings import Errors, Info
+from logical_backup.pretty_print import CHECK_UNICODE, CROSS_UNICODE
 from tests.test_utility import patch_input
 
 # This is an auto-run fixture, so importing is sufficient
@@ -357,7 +358,9 @@ def test_add_file_success(monkeypatch, capsys):
     monkeypatch.setattr(
         library,
         "__get_device_with_space",
-        lambda size, mount=None, checked=False: ("test-device-1", test_mount_1),
+        lambda size, mount=None, checked=False: ("test-device-1", test_mount_1)
+        if not checked
+        else (None, None),
     )
 
     test_file, test_checksum = __make_temp_file()
@@ -386,6 +389,10 @@ def test_add_file_success(monkeypatch, capsys):
 
     remove(test_file)
     assert db.remove_file(test_file), "Test file should be removed"
+    out = capsys.readouterr()
+    assert Info.GET_FILE_SIZE.value in out.out, "File size message printed"
+    assert CHECK_UNICODE in out.out, "Getting file size succeeds"
+    assert Info.SAVING_FILE_TO_DB.value in out.out, "Saving file message prints"
 
 
 def test_add_file_failures(monkeypatch, capsys):
@@ -399,7 +406,7 @@ def test_add_file_failures(monkeypatch, capsys):
     output = capsys.readouterr()
     assert not added, "Existing path should not be added"
     assert (
-        "File is already backed up" in output.out
+        Errors.FILE_ALREADY_BACKED_UP.value in output.out
     ), "Existing path output should be printed"
 
     # Check a failed checksum exits
@@ -411,7 +418,7 @@ def test_add_file_failures(monkeypatch, capsys):
     output = capsys.readouterr()
     assert not added, "Failed checksum should exit"
     assert (
-        "Failed to get checksum" in output.out
+        Errors.FAILED_GET_CHECKSUM.value in output.out
     ), "Failed checksum should print message"
 
     # Check no device available exits
@@ -430,7 +437,7 @@ def test_add_file_failures(monkeypatch, capsys):
     output = capsys.readouterr()
     assert not added, "No device available should fail"
     assert (
-        "No device with space available" in output.out
+        Errors.NO_DEVICE_WITH_SPACE_AVAILABLE.value in output.out
     ), "No device available message printed"
 
     # Checksum mismatch after copy - file should be removed
@@ -450,7 +457,7 @@ def test_add_file_failures(monkeypatch, capsys):
 
     assert not added, "Mismatched checksum should fail"
     assert (
-        "Checksum mismatch after copy" in output.out
+        Errors.CHECKSUM_MISMATCH.value in output.out
     ), "Mismatch checksum message should print"
     output_file = path.join(test_mount_1, path.basename(test_file))
     assert not path.isfile(
@@ -479,6 +486,7 @@ def test_add_file_failures(monkeypatch, capsys):
     assert (
         "Saving file record to DB...Failed" in output.out
     ), "Database exception message should print"
+    assert CROSS_UNICODE in output.out, "Database exception should print cross"
     output_file = path.join(test_mount_1, path.basename(test_file))
     assert not path.isfile(
         output_file

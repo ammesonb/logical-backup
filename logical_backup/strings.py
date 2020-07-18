@@ -15,6 +15,8 @@ class Errors(Enum):
 
     ACTION_RUN_NOT_IMPLEMENTED = "Action must override run function"
 
+    FILE_ALREADY_BACKED_UP = "File is already backed up!"
+    FAILED_GET_CHECKSUM = "Failed to get checksum"
     FOLDER_ALREADY_ADDED = "Folder already added!"
     INSUFFICIENT_SPACE_FOR_DIRECTORY = lambda bytes_needed: (
         "Sum of available devices' space is insufficient, "
@@ -30,6 +32,8 @@ class Errors(Enum):
         "Specified folder not backed up: '{0}'!".format(path)
     )
     NONE_FOUND = "None found!"
+    NO_DEVICE_WITH_SPACE_AVAILABLE = "No device with space available!"
+    CHECKSUM_MISMATCH = "Checksum mismatch after copy!"
 
 
 # pragma: no mutate
@@ -58,3 +62,7 @@ class Info(Enum):
     """
 
     AUTO_SELECT_DEVICE = "Auto-selecting device"
+    GET_FILE_SIZE = "Getting file size"
+    FILE_SIZE_OUTPUT = lambda size: "Read. File size is " + size
+
+    SAVING_FILE_TO_DB = "Saving file record to DB"
