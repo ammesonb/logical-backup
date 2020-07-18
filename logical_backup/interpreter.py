@@ -17,15 +17,15 @@ commands = [
 ]
 
 command_parameters = {
-    "add": [Targets.FILE.value, Targets.FOLDER, Targets.DEVICE.value],
-    "restore": [Targets.FILE.value, Targets.FOLDER, Targets.ALL.value],
-    "verify": [Targets.FILE.value, Targets.FOLDER, Targets.ALL.value],
-    "update": [Targets.FILE.value, Targets.FOLDER.value],
-    "remove": [Targets.FILE.value, Targets.FOLDER.value],
-    "move": [
+    Commands.ADD.value: [Targets.FILE.value, Targets.FOLDER, Targets.DEVICE.value],
+    Commands.RESTORE.value: [Targets.FILE.value, Targets.FOLDER, Targets.ALL.value],
+    Commands.VERIFY.value: [Targets.FILE.value, Targets.FOLDER, Targets.ALL.value],
+    Commands.UPDATE.value: [Targets.FILE.value, Targets.FOLDER.value],
+    Commands.REMOVE.value: [Targets.FILE.value, Targets.FOLDER.value],
+    Commands.MOVE.value: [
         Targets.FILE.value,
-        Targets.FOLDER,
-        Targets.DEVICE,
+        Targets.FOLDER.value,
+        Targets.DEVICE.value,
         Targets.MOVE_PATH.value,
     ],
 }

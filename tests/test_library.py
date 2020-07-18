@@ -525,7 +525,11 @@ def test_add_directory(monkeypatch, capsys):
     )
     monkeypatch.setattr(utility, "sum_file_size", lambda files: 5)
     monkeypatch.setattr(library, "__get_total_device_space", lambda: 10)
-    monkeypatch.setattr(library, "add_file", lambda file_path, mount_point=None: True)
+    monkeypatch.setattr(
+        library,
+        "add_file",
+        lambda file_path, mount_point=None: mount_point is None or len(mount_point) > 0,
+    )
     monkeypatch.setattr(
         utility,
         "get_file_security",
@@ -1199,7 +1203,7 @@ def test_move_file_device(monkeypatch, capsys):
         Errors.DEVICE_HAS_INSUFFICIENT_SPACE.value in out.out
     ), "Insufficient space message prints"
 
-    monkeypatch.setattr(utility, "get_device_space", lambda file_path: 100000)
+    monkeypatch.setattr(utility, "get_device_space", lambda file_path: 1024)
     monkeypatch.setattr(db, "get_files", lambda file_path: [])
     assert not library.move_file_device(
         origin_file, dev2

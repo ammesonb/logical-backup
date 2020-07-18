@@ -426,20 +426,23 @@ def remove_file(file_path: str) -> bool:
         .print_start()
     )
 
-    device = None
+    path_on_device = None
     file_entry = db.get_files(file_path)
     if len(file_entry) > 0:
         file_entry = file_entry[0]
         device = db.get_devices(file_entry.device_name)
 
-    if device is not None and len(device) > 0:
-        device = device[0]
+        if device is not None and len(device) > 0:
+            device = device[0]
+            path_on_device = os_path.join(device.device_path, file_entry.file_name)
+        else:
+            device = None
 
-    path_on_device = None
-    if file_entry and device not in [None, []] and path_on_device is None:
-        path_on_device = os_path.join(device.device_path, file_entry.file_name)
+    path_exists = (
+        os_path.exists(path_on_device) if path_on_device is not None else False
+    )
 
-    valid = bool(file_entry) and bool(device) and os_path.exists(path_on_device)
+    valid = bool(file_entry) and "device" in vars() and bool(device) and path_exists
 
     db_entry_removed = False
     if valid:
@@ -450,9 +453,9 @@ def remove_file(file_path: str) -> bool:
         validate_message.print_complete()
     elif not file_entry:
         validate_message.print_complete(2)
-    elif not device:
+    elif device is None:
         validate_message.print_complete(3)
-    elif not os_path.exists(path_on_device):
+    elif not path_exists:
         validate_message.print_complete(4)
     else:
         validate_message.print_complete(5)
@@ -510,7 +513,7 @@ def move_file_device(original_path: str, device: str) -> bool:
     file_size = utility.get_file_size(original_path)
     device_space = utility.get_device_space(device)
 
-    if file_size >= device_space:
+    if file_size > device_space:
         print_error(Errors.DEVICE_HAS_INSUFFICIENT_SPACE)
         return False
 
