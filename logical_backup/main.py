@@ -17,6 +17,7 @@ from logical_backup import db
 from logical_backup import library
 from logical_backup import utility
 from logical_backup.pretty_print import PrettyStatusPrinter, Color, print_error
+from logical_backup.strings import Info, Commands, Targets
 
 
 def __prepare():
@@ -42,71 +43,48 @@ def __parse_arguments(command_line_arguments: list) -> tuple:
         arguments
     """
     parser = argparse.ArgumentParser(
-        description=(
-            "Back up and restore files across multiple hard drives\n\n"
-            "Actions:\n"
-            "         add: add a file or folder to the backup selection\n"
-            "      remove: remove a file or folder from the backup selection\n"
-            "        move: move a file or folder in the backup selection, "
-            "OR files/folders between devices\n"
-            "     restore: restore a file/folder/all files to their original location\n"
-            "      verify: check a backed-up file/folder/all files for integrity "
-            "(this will NOT check the local filesystem copy, "
-            "as that is assumed to be correct)\n"
-            "list-devices: list all the registered backup devices\n"
-            "Example uses:\n"
-            "  # Will add a new device\n"
-            "  add --device /mnt/dev1\n"
-            "  # Will add this file to the backup set\n"
-            "  add --file /home/user/foo.txt\n"
-            "  # Will remove the /etc folder recursively from backup\n"
-            "  remove --folder /etc\n"
-            "  # Will check all backed up files for integrity\n"
-            "  verify --all\n"
-            "  # Will restore the documents folder from backup\n"
-            "  restore /home/user/documents\n"
-            "  # Will rehome the file, "
-            "updating the backup archive with the new location\n"
-            "  move --file /backups/large.bak --move-path /backups/archive/\n"
-            "  # Will move the backed up folder from its current drive to another, "
-            "if one particular drive is too full to take a needed operation\n"
-            "  move --file /backups --device dev2\n"
-        ),
+        description=(Info.PROGRAM_DESCRIPTION.value),
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "action",
         help="The action to take",
         choices=[
-            "add",
-            "move",
-            "remove",
-            "update",
-            "verify",
-            "restore",
-            "list-devices",
-            "search",
+            Commands.ADD.value,
+            Commands.MOVE.value,
+            Commands.REMOVE.value,
+            Commands.UPDATE.value,
+            Commands.VERIFY.value,
+            Commands.RESTORE.value,
+            Commands.LIST_DEVICES.value,
+            Commands.SEARCH.value,
         ],
     )
-    parser.add_argument("--file", help="The file to take action on", required=False)
-    parser.add_argument("--folder", help="The file to take action on", required=False)
-    parser.add_argument("--device", help="Mount path for a device", required=False)
     parser.add_argument(
-        "--from-device",
+        Targets.FILE.value, help=Info.TARGET_FILE_HELP.value, required=False
+    )
+    parser.add_argument(
+        Targets.FOLDER.value, help=Info.TARGET_FOLDER_HELP.value, required=False
+    )
+    parser.add_argument(
+        Targets.DEVICE.value, help=Info.TARGET_DEVICE_HELP.value, required=False
+    )
+    parser.add_argument(
+        Targets.FROM_DEVICE.value,
         dest="from_device",
-        help="Use to restrict operation to a specific device",
+        help=Info.TARGET_FROM_DEVICE_HELP.value,
         required=False,
     )
     parser.add_argument(
-        "--all",
-        help="Perform operation on all files",
+        Targets.ALL.value,
+        help=Info.TARGET_ALL_HELP.value,
         action="store_true",
         required=False,
     )
     parser.add_argument(
-        "--move-path",
+        Targets.MOVE_PATH.value,
         dest="move_path",
-        help="Target for move operation",
+        help=Info.TARGET_MOVE_PATH_HELP.value,
         required=False,
     )
     args = parser.parse_args(command_line_arguments)

@@ -5,22 +5,29 @@ from os import path as os_path
 import glob
 import readline
 
+from logical_backup.strings import Commands, Targets
+
 commands = [
-    "add",
-    "restore",
-    "move",
-    "update",
-    "verify",
-    "remove",
+    Commands.ADD.value,
+    Commands.RESTORE.value,
+    Commands.MOVE.value,
+    Commands.UPDATE.value,
+    Commands.VERIFY.value,
+    Commands.REMOVE.value,
 ]
 
 command_parameters = {
-    "add": ["--file", "--folder", "--device"],
-    "restore": ["--file", "--folder", "--all"],
-    "verify": ["--file", "--folder", "--all"],
-    "update": ["--file", "--folder",],
-    "remove": ["--file", "--folder",],
-    "move": ["--file", "--folder", "--device", "--move-path"],
+    "add": [Targets.FILE.value, Targets.FOLDER, Targets.DEVICE.value],
+    "restore": [Targets.FILE.value, Targets.FOLDER, Targets.ALL.value],
+    "verify": [Targets.FILE.value, Targets.FOLDER, Targets.ALL.value],
+    "update": [Targets.FILE.value, Targets.FOLDER.value],
+    "remove": [Targets.FILE.value, Targets.FOLDER.value],
+    "move": [
+        Targets.FILE.value,
+        Targets.FOLDER,
+        Targets.DEVICE,
+        Targets.MOVE_PATH.value,
+    ],
 }
 
 

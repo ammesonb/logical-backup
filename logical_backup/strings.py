@@ -126,3 +126,79 @@ class Info(Enum):
 
     VALIDATE_FILE_REMOVAL = "Validating file removal"  # pragma: no mutate
     FILE_REMOVED = "File removed"  # pragma: no mutate
+
+    PROGRAM_DESCRIPTION = (
+        "Back up and restore files across multiple hard drives\n\n"  # pragma: no mutate
+        "Actions:\n"  # pragma: no mutate
+        "         add: add a file or folder "  # pragma: no mutate
+        "to the backup selection\n"  # pragma: no mutate
+        "      remove: remove a file or folder "  # pragma: no mutate
+        "from the backup selection\n"  # pragma: no mutate
+        "        move: move a file or folder "  # pragma: no mutate
+        "in the backup selection, "  # pragma: no mutate
+        "OR files/folders between devices\n"  # pragma: no mutate
+        "     restore: restore a file/folder/all files "  # pragma: no mutate
+        "to their original location\n"  # pragma: no mutate
+        "      verify: check a backed-up file/folder/all "  # pragma: no mutate
+        "files for integrity "  # pragma: no mutate
+        "(this will NOT check the local filesystem copy, "  # pragma: no mutate
+        "as that is assumed to be correct)\n"  # pragma: no mutate
+        "list-devices: list all the registered backup devices\n"  # pragma: no mutate
+        "Example uses:\n"  # pragma: no mutate
+        "  # Will add a new device\n"  # pragma: no mutate
+        "  add --device /mnt/dev1\n"  # pragma: no mutate
+        "  # Will add this file to the backup set\n"  # pragma: no mutate
+        "  add --file /home/user/foo.txt\n"  # pragma: no mutate
+        "  # Will remove the /etc folder recursively from backup\n"  # pragma: no mutate
+        "  remove --folder /etc\n"  # pragma: no mutate
+        "  # Will check all backed up files for integrity\n"  # pragma: no mutate
+        "  verify --all\n"  # pragma: no mutate
+        "  # Will restore the documents folder from backup\n"  # pragma: no mutate
+        "  restore /home/user/documents\n"  # pragma: no mutate
+        "  # Will rehome the file, "  # pragma: no mutate
+        "updating the backup archive with the new location\n"  # pragma: no mutate
+        "  move --file /backups/large.bak "  # pragma: no mutate
+        "--move-path /backups/archive/\n"  # pragma: no mutate
+        "  # Will move the backed up folder from "  # pragma: no mutate
+        "its current drive to another, "  # pragma: no mutate
+        "if one particular drive is too full to "  # pragma: no mutate
+        "take a needed operation\n"  # pragma: no mutate
+        "  move --file /backups --device dev2\n"  # pragma: no mutate
+    )
+
+    TARGET_FILE_HELP = "The file to take action on"  # pragma: no mutate
+    TARGET_FOLDER_HELP = "The folder to take action on"  # pragma: no mutate
+    TARGET_DEVICE_HELP = "Mount path for a device"  # pragma: no mutate
+    TARGET_FROM_DEVICE_HELP = (
+        "Use to restrict operation to a specific device"  # pragma: no mutate
+    )
+    TARGET_ALL_HELP = "Perform operation on all files"  # pragma: no mutate
+    TARGET_MOVE_PATH_HELP = "Target for move operaetion"  # pragma: no mutate
+
+
+class Commands(Enum):
+    """
+    Possible commands
+    """
+
+    ADD = "add"  # pragma: no mutate
+    MOVE = "move"  # pragma: no mutate
+    REMOVE = "remove"  # pragma: no mutate
+    UPDATE = "update"  # pragma: no mutate
+    VERIFY = "verify"  # pragma: no mutate
+    RESTORE = "restore"  # pragma: no mutate
+    LIST_DEVICES = "list-devices"  # pragma: no mutate
+    SEARCH = "search"  # pragma: no mutate
+
+
+class Targets(Enum):
+    """
+    Possible target of a command
+    """
+
+    ALL = "--all"  # pragma: no mutate
+    FILE = "--file"  # pragma: no mutate
+    FOLDER = "--folder"  # pragma: no mutate
+    DEVICE = "--device"  # pragma: no mutate
+    FROM_DEVICE = "--from-device"  # pragma: no mutate
+    MOVE_PATH = "--move-path"  # pragma: no mutate
