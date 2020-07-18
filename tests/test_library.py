@@ -90,7 +90,9 @@ def test_list_devices(monkeypatch, capsys):
     mock_devices(monkeypatch, [])
     __dispatch_command(arguments)
     output = capsys.readouterr()
-    assert "No devices saved!" in output.out, "No devices should be present in list"
+    assert (
+        Errors.NO_SAVED_DEVICES.value in output.out
+    ), "No devices should be present in list"
 
     mock_devices(
         monkeypatch,
@@ -457,7 +459,7 @@ def test_add_file_failures(monkeypatch, capsys):
 
     assert not added, "Mismatched checksum should fail"
     assert (
-        Errors.CHECKSUM_MISMATCH.value in output.out
+        Errors.CHECKSUM_MISMATCH_AFTER_COPY.value in output.out
     ), "Mismatch checksum message should print"
     output_file = path.join(test_mount_1, path.basename(test_file))
     assert not path.isfile(
@@ -774,12 +776,14 @@ def test_verify_file(monkeypatch, capsys):
     ), "Local file path verification fails"
 
     out = capsys.readouterr()
-    assert "Checksum mismatch" in out.out, "Device verifcation failed message printed"
+    assert (
+        Errors.CHECKSUM_MISMATCH.value in out.out
+    ), "Device verifcation failed message printed"
 
     monkeypatch.setattr(db, "get_files", lambda path: [])
     assert not library.verify_file("/test", False), "Nonexistent file should fail"
     out = capsys.readouterr()
-    assert "File record not in database" in out.out, "Missing file message prints"
+    assert Errors.FILE_NOT_BACKED_UP.value in out.out, "Missing file message prints"
 
 
 def test_verify_folder(monkeypatch):
@@ -829,7 +833,7 @@ def test_update_file(monkeypatch, capsys):
     assert not library.update_file("/test"), "New file fails to add via update"
     out = capsys.readouterr()
     assert (
-        "Failed to add file during update" in out.out
+        Errors.FAILED_ADD_FILE_UPDATE.value in out.out
     ), "New file failure prints message"
 
     # Registered file has checksum match, so no need to update
@@ -862,7 +866,7 @@ def test_update_file(monkeypatch, capsys):
     assert not library.update_file("/test"), "Fails to remove updated file"
     out = capsys.readouterr()
     assert (
-        "Failed to remove file, so cannot update" in out.out
+        Errors.FAILED_REMOVE_FILE_UPDATE.value in out.out
     ), "Failure to remove updated file prints message"
 
 
@@ -1053,7 +1057,9 @@ def test_move_file_local(monkeypatch, capsys):
         "/test/foo", "/test2"
     ), "Un backed-up file should fail"
     out = capsys.readouterr()
-    assert "File path not backed up" in out.out, "Un backed-up file message prints"
+    assert (
+        Errors.FILE_NOT_BACKED_UP.value in out.out
+    ), "Un backed-up file message prints"
 
     # This ensures that it accepts a directory as output, as well as a specific file
     monkeypatch.setattr(
@@ -1068,7 +1074,7 @@ def test_move_file_local(monkeypatch, capsys):
     ), "Backed up to duplicate file should fail"
     out = capsys.readouterr()
     assert (
-        "File already backed up at new location" in out.out
+        Errors.NEW_FILE_ALREADY_BACKED_UP.value in out.out
     ), "Backed up to duplicate file message prints"
 
     # Success cases
@@ -1166,7 +1172,7 @@ def test_move_file_device(monkeypatch, capsys):
     ), "Insufficient space should fail"
     out = capsys.readouterr()
     assert (
-        "Device selected has insufficient space" in out.out
+        Errors.DEVICE_HAS_INSUFFICIENT_SPACE.value in out.out
     ), "Insufficient space message prints"
 
     monkeypatch.setattr(utility, "get_device_space", lambda file_path: 100000)
@@ -1176,7 +1182,7 @@ def test_move_file_device(monkeypatch, capsys):
     ), "Non-backed up file should fail"
     out = capsys.readouterr()
     assert (
-        "Selected path does not exist in back up" in out.out
+        Errors.FILE_NOT_BACKED_UP.value in out.out
     ), "Non-backed up file message prints"
 
     file_obj = File()
@@ -1192,7 +1198,7 @@ def test_move_file_device(monkeypatch, capsys):
     assert not library.move_file_device(origin_file, dev2), "Missing mount should fail"
     out = capsys.readouterr()
     assert (
-        "Device for backed-up file is not attached" in out.out
+        Errors.FILE_DEVICE_NOT_MOUNTED.value in out.out
     ), "Missing mount message prints"
 
     monkeypatch.setattr(path, "ismount", lambda mount_path: True)
@@ -1203,7 +1209,7 @@ def test_move_file_device(monkeypatch, capsys):
     ), "Missing backup file should fail"
     out = capsys.readouterr()
     assert (
-        "Cannot find back up of file" in out.out
+        Errors.CANNOT_FIND_BACKUP.value in out.out
     ), "Missing backup file message prints"
 
     monkeypatch.setattr(
@@ -1217,8 +1223,9 @@ def test_move_file_device(monkeypatch, capsys):
         origin_file, dev2
     ), "Invalid checksum verification fails"
     out = capsys.readouterr()
+    assert Info.COPYING_FILE_DEVICE.value in out.out, "File copying message prints"
     assert (
-        "Checksum verification mismatch" in out.out
+        Errors.CHECKSUM_MISMATCH_AFTER_COPY.value in out.out
     ), "Invalid checksum verification message prints"
 
     moved_path = path.join(dev2, path.basename(backup_file))
@@ -1234,7 +1241,7 @@ def test_move_file_device(monkeypatch, capsys):
     ), "Fail to update file device in database fails"
     out = capsys.readouterr()
     assert (
-        "Failed to update device for file in database" in out.out
+        Errors.FAILED_FILE_DEVICE_DB_UPDATE.value in out.out
     ), "Update file device in DB message prints"
     assert path.isfile(
         backup_file
@@ -1302,7 +1309,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Restore succeeds if file already exists"
     out = capsys.readouterr()
     assert (
-        "Path to restore already exists" in out.out
+        Errors.RESTORE_PATH_EXISTS.value in out.out
     ), "File already exists message prints"
     remove(original_file)
 
@@ -1312,7 +1319,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Restore fails if back up of file has invalid checksum"
     out = capsys.readouterr()
     assert (
-        "Backed-up file has mismatched checksum" in out.out
+        Errors.CHECKSUM_MISMATCH.value in out.out
     ), "Invalid back-up checksum message prints"
 
     monkeypatch.setattr(library, "verify_file", lambda file_path, for_restore: True)
@@ -1322,7 +1329,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Restore fails if file not backed up"
     out = capsys.readouterr()
     assert (
-        "Requested path was not backed up" in out.out
+        Errors.FILE_NOT_BACKED_UP.value in out.out
     ), "Not backed-up file message prints"
 
     file_obj = File()
@@ -1343,7 +1350,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Checksum verification after copy fails"
     out = capsys.readouterr()
     assert (
-        "Restored file has mismatched checksum" in out.out
+        Errors.CHECKSUM_MISMATCH_AFTER_COPY.value in out.out
     ), "Checksum verification after copy prints message"
     assert not path.isfile(
         original_file
@@ -1361,7 +1368,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Fails permission verification after copy files"
     out = capsys.readouterr()
     assert (
-        "Failed to set file permissions/owner, but able to remove file" in out.out
+        Errors.FAIL_SET_PERMISSIONS_REMOVED.value in out.out
     ), "Permission verification after copy prints message"
     assert not path.isfile(
         original_file
@@ -1380,7 +1387,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Fails permission verification after copy files"
     out = capsys.readouterr()
     assert (
-        "Failed to set file permissions/owner, manual removal required" in out.out
+        Errors.FAIL_SET_PERMISSIONS_MANUAL.value in out.out
     ), "Permission verification after copy prints message, cannot remove file"
     assert path.isfile(
         original_file
@@ -1406,7 +1413,9 @@ def test_restore_folder(monkeypatch, capsys):
     )
     assert not library.restore_folder("/test"), "No returned entries should fail"
     out = capsys.readouterr()
-    assert "Folder not backed up" in out.out, "No entries returned message printed"
+    assert (
+        Errors.FOLDER_NOT_BACKED_UP.value in out.out
+    ), "No entries returned message printed"
 
     folder1 = __make_temp_directory()
     folder2 = __make_temp_directory(folder1)
@@ -1426,7 +1435,9 @@ def test_restore_folder(monkeypatch, capsys):
     monkeypatch.setattr(os, "makedirs", throw_error)
     assert not library.restore_folder(folder1), "Should fail due to permissions"
     out = capsys.readouterr()
-    assert "Failed to create folder" in out.out, "Permission failure message prints"
+    assert (
+        Errors.FOLDER_NOT_CREATED(folder1) in out.out
+    ), "Permission failure message prints"
     assert not path.isdir(folder1), "Folders should not be created yet"
 
     monkeypatch.setattr(os, "makedirs", makedirs_func)

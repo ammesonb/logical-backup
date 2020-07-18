@@ -373,7 +373,7 @@ def add_file(
     checksum2 = utility.checksum_file(backup_path)
 
     if checksum != checksum2:
-        print_error(Errors.CHECKSUM_MISMATCH)
+        print_error(Errors.CHECKSUM_MISMATCH_AFTER_COPY)
         os.remove(backup_path)
         return False
 
@@ -483,9 +483,9 @@ def move_file_local(original_path: str, new_path: str) -> bool:
 
     result = db.update_file_path(original_path, new_path)
     if result == DatabaseError.NONEXISTENT_FILE:
-        print_error("File path not backed up!")
+        print_error(Errors.FILE_NOT_BACKED_UP)
     elif result == DatabaseError.FILE_EXISTS:
-        print_error("File already backed up at new location!")
+        print_error(Errors.NEW_FILE_ALREADY_BACKED_UP)
 
     return bool(result)
 
@@ -511,12 +511,12 @@ def move_file_device(original_path: str, device: str) -> bool:
     device_space = utility.get_device_space(device)
 
     if file_size >= device_space:
-        print_error("Device selected has insufficient space!")
+        print_error(Errors.DEVICE_HAS_INSUFFICIENT_SPACE)
         return False
 
     file_result = db.get_files(original_path)
     if not file_result:
-        print_error("Selected path does not exist in back up!")
+        print_error(Errors.FILE_NOT_BACKED_UP)
         return False
 
     backup_name = file_result[0].file_name
@@ -524,16 +524,16 @@ def move_file_device(original_path: str, device: str) -> bool:
 
     file_valid = True
     if not os_path.ismount(file_result[0].device.device_path):
-        print_error("Device for backed-up file is not attached!")
+        print_error(Errors.FILE_DEVICE_NOT_MOUNTED)
         file_valid = False
     elif not os_path.isfile(current_path):
-        print_error("Cannot find back up of file!")
+        print_error(Errors.CANNOT_FIND_BACKUP)
         file_valid = False
 
     if not file_valid:
         return False
 
-    copy_printer = PrettyStatusPrinter("Copying file to new device").print_start()
+    copy_printer = PrettyStatusPrinter(Info.COPYING_FILE_DEVICE).print_start()
     new_path = os_path.join(device, backup_name)
     shutil.copyfile(current_path, new_path)
     copy_printer.print_complete()
@@ -546,10 +546,10 @@ def move_file_device(original_path: str, device: str) -> bool:
     if checksum_match:
         device_updated = db.update_file_device(original_path, device)
     else:
-        print_error("Checksum verification mismatch!")
+        print_error(Errors.CHECKSUM_MISMATCH_AFTER_COPY)
 
     if not device_updated:
-        print_error("Failed to update device for file in database!")
+        print_error(Errors.FAILED_FILE_DEVICE_DB_UPDATE)
     else:
         os.remove(current_path)
 
@@ -676,7 +676,7 @@ def verify_file(file_path: str, for_restore: bool) -> bool:
     """
     file_result = db.get_files(file_path)
     if not file_result:
-        print_error("File record not in database")
+        print_error(Errors.FILE_NOT_BACKED_UP)
         return False
 
     file_obj = file_result[0]
@@ -688,7 +688,7 @@ def verify_file(file_path: str, for_restore: bool) -> bool:
     )
     actual_checksum = utility.checksum_file(path_to_check)
     if actual_checksum != file_obj.checksum:
-        print_error("Checksum mismatch for " + file_path)
+        print_error(Errors.CHECKSUM_MISMATCH)
 
     return actual_checksum == file_obj.checksum
 
@@ -773,7 +773,7 @@ def restore_folder(folder_path: str) -> bool:
     """
     entries = db.get_entries_for_folder(folder_path)
     if not entries.folders and not entries.files:
-        print_error("Folder not backed up!")
+        print_error(Errors.FOLDER_NOT_BACKED_UP)
         return False
 
     # Sort folders by length, so can create folders in order
@@ -783,7 +783,7 @@ def restore_folder(folder_path: str) -> bool:
         try:
             os.makedirs(folder, exist_ok=True)
         except PermissionError:
-            print_error("Failed to create folder: {0}!".format(folder))
+            print_error(Errors.FOLDER_NOT_CREATED(folder))
             return False
 
     files_created = True
@@ -841,16 +841,16 @@ def restore_file(file_path: str) -> bool:
     """
     # Check path is valid for restoring
     if os_path.isfile(file_path):
-        print_error("Path to restore already exists!")
+        print_error(Errors.RESTORE_PATH_EXISTS)
         return True  # Not an error, since just means no action needed
 
     if not verify_file(file_path, True):
-        print_error("Backed-up file has mismatched checksum!")
+        print_error(Errors.CHECKSUM_MISMATCH)
         return False
 
     file_result = db.get_files(file_path)
     if not file_result:
-        print_error("Requested path was not backed up!")
+        print_error(Errors.FILE_NOT_BACKED_UP)
         return False
 
     file_obj = file_result[0]
@@ -861,7 +861,7 @@ def restore_file(file_path: str) -> bool:
 
     # Verify it copied successfully
     if utility.checksum_file(file_path) != file_obj.checksum:
-        print_error("Restored file has mismatched checksum!")
+        print_error(Errors.CHECKSUM_MISMATCH_AFTER_COPY)
         # Can remove file here because we just created it
         # MAy not be true after this, once we restore file permissions and ownership
         os.remove(file_path)
@@ -884,11 +884,9 @@ def restore_file(file_path: str) -> bool:
     if not security_verified:
         try:
             os.remove(file_path)
-            print_error("Failed to set file permissions/owner, but able to remove file")
+            print_error(Errors.FAIL_SET_PERMISSIONS_REMOVED)
         except PermissionError:
-            print_error(
-                "Failed to set file permissions/owner, manual removal required!"
-            )
+            print_error(Errors.FAIL_SET_PERMISSIONS_MANUAL)
 
     return security_verified
 
@@ -931,7 +929,7 @@ def update_file(file_path: str) -> bool:
     if file_registered and not checksum_match:
         file_removed = remove_file(file_obj.file_path)
         if not file_removed:
-            print_error("Failed to remove file, so cannot update!")
+            print_error(Errors.FAILED_REMOVE_FILE_UPDATE)
 
     # Add the file if:
     #   - file is NOT already registered
@@ -939,7 +937,7 @@ def update_file(file_path: str) -> bool:
     if not file_registered or (not checksum_match and file_removed):
         file_added = add_file(file_path)
         if not file_added:
-            print_error("Failed to add file during update!")
+            print_error(Errors.FAILED_ADD_FILE_UPDATE)
 
     # pylint: disable=consider-using-ternary
     # outcome must be one of:
@@ -1017,4 +1015,4 @@ def list_devices():
 
         print(table.draw())
     else:
-        print_error("No devices saved!")
+        print_error(Errors.NO_SAVED_DEVICES)
