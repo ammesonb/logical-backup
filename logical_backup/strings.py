@@ -27,6 +27,7 @@ class Errors(Enum):
         "File already backed up at new location!"  # pragma: no mutate
     )
     CANNOT_FIND_BACKUP = "Cannot find back up of file!"  # pragma: no mutate
+    FILE_DEVICE_INVALID = "Unable to find device for file"  # pragma: no mutate
 
     FOLDER_ALREADY_ADDED = "Folder already added!"  # pragma: no mutate
     FOLDER_BACKED_UP_AT = lambda path: (  # pragma: no mutate
@@ -84,6 +85,8 @@ class Errors(Enum):
     )
     FAILED_ADD_FILE_UPDATE = "Failed to add file during update!"  # pragma: no mutate
 
+    FAILED_REMOVE_FILE = "Failed to remove file from the database!"  # pragma: no mutate
+
 
 # pragma: no mutate
 class InputPrompts(Enum):
@@ -120,3 +123,6 @@ class Info(Enum):
     SAVING_FILE_TO_DB = "Saving file record to DB"  # pragma: no mutate
 
     COPYING_FILE_DEVICE = "Copying file to new device"  # pragma: no mutate
+
+    VALIDATE_FILE_REMOVAL = "Validating file removal"  # pragma: no mutate
+    FILE_REMOVED = "File removed"  # pragma: no mutate

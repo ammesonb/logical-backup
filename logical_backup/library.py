@@ -59,7 +59,9 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
 
     if not sufficient_space:
         print_error(
-            Errors.INSUFFICIENT_SPACE_FOR_DIRECTORY(folder_size - total_available_space)
+            Errors.INSUFFICIENT_SPACE_FOR_DIRECTORY(
+                readable_bytes(folder_size - total_available_space)
+            )
         )
         return False
 
@@ -411,32 +413,30 @@ def remove_file(file_path: str) -> bool:
           - or if it does not exist
     """
     validate_message = (
-        PrettyStatusPrinter("Validating file removal")
-        .with_message_postfix_for_result(True, "File removed")
+        PrettyStatusPrinter(Info.VALIDATE_FILE_REMOVAL)
+        .with_message_postfix_for_result(True, Info.FILE_REMOVED)
         .with_custom_result(2, False)
-        .with_message_postfix_for_result(2, "File not registered in database!")
+        .with_message_postfix_for_result(2, Errors.FILE_NOT_BACKED_UP)
         .with_custom_result(3, False)
-        .with_message_postfix_for_result(3, "Unable to find device")
+        .with_message_postfix_for_result(3, Errors.FILE_DEVICE_INVALID)
         .with_custom_result(4, False)
-        .with_message_postfix_for_result(4, "File path does not exist!")
+        .with_message_postfix_for_result(4, Errors.FILE_DEVICE_NOT_MOUNTED)
         .with_custom_result(5, False)
-        .with_message_postfix_for_result(5, "Failed to remove file from database!")
+        .with_message_postfix_for_result(5, Errors.FAILED_REMOVE_FILE)
         .print_start()
     )
 
-    file_entry = db.get_files(file_path)
-    if file_entry and len(file_entry) > 0:
-        file_entry = file_entry[0]
-
     device = None
-    if file_entry:
+    file_entry = db.get_files(file_path)
+    if len(file_entry) > 0:
+        file_entry = file_entry[0]
         device = db.get_devices(file_entry.device_name)
 
-    if device and len(device) > 0:
+    if device is not None and len(device) > 0:
         device = device[0]
 
     path_on_device = None
-    if file_entry and device:
+    if file_entry and device not in [None, []] and path_on_device is None:
         path_on_device = os_path.join(device.device_path, file_entry.file_name)
 
     valid = bool(file_entry) and bool(device) and os_path.exists(path_on_device)

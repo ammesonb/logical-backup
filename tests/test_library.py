@@ -22,7 +22,12 @@ from logical_backup import db
 from logical_backup.utility import auto_set_testing, DirectoryEntries
 from logical_backup import utility
 from logical_backup.strings import Errors, Info
-from logical_backup.pretty_print import CHECK_UNICODE, CROSS_UNICODE
+from logical_backup.pretty_print import (
+    CHECK_UNICODE,
+    CROSS_UNICODE,
+    readable_bytes,
+    PrettyStatusPrinter,
+)
 from tests.test_utility import patch_input
 
 # This is an auto-run fixture, so importing is sufficient
@@ -392,8 +397,6 @@ def test_add_file_success(monkeypatch, capsys):
     remove(test_file)
     assert db.remove_file(test_file), "Test file should be removed"
     out = capsys.readouterr()
-    assert Info.GET_FILE_SIZE.value in out.out, "File size message printed"
-    assert CHECK_UNICODE in out.out, "Getting file size succeeds"
     assert Info.SAVING_FILE_TO_DB.value in out.out, "Saving file message prints"
 
 
@@ -437,6 +440,12 @@ def test_add_file_failures(monkeypatch, capsys):
 
     added = library.add_file(test_file, test_mount_1)
     output = capsys.readouterr()
+    file_size_message = PrettyStatusPrinter(
+        Info.GET_FILE_SIZE
+    ).with_message_postfix_for_result(True, Info.FILE_SIZE_OUTPUT(readable_bytes(1)))
+    assert (
+        file_size_message.get_styled_message(True) in output.out
+    ), "File size message printed"
     assert not added, "No device available should fail"
     assert (
         Errors.NO_DEVICE_WITH_SPACE_AVAILABLE.value in output.out
@@ -555,13 +564,13 @@ def test_add_directory(monkeypatch, capsys):
     assert library.add_directory("/test"), "Adding files and subfolders should succeed"
 
     # Not enough space across all devices
-    monkeypatch.setattr(library, "__get_total_device_space", lambda: 0)
+    monkeypatch.setattr(library, "__get_total_device_space", lambda: 1)
     assert not library.add_directory(
         "/test"
     ), "Insufficient total device space should fail"
     out = capsys.readouterr()
     assert (
-        Errors.INSUFFICIENT_SPACE_FOR_DIRECTORY(5) in out.out
+        Errors.INSUFFICIENT_SPACE_FOR_DIRECTORY(readable_bytes(4)) in out.out
     ), "Insufficient total space message should print"
 
     # In this case, the selected device does not have enough space
@@ -573,7 +582,7 @@ def test_add_directory(monkeypatch, capsys):
     )
     out = capsys.readouterr()
     assert (
-        Errors.INSUFFICIENT_SPACE_FOR_DIRECTORY(5) in out.out
+        Errors.INSUFFICIENT_SPACE_FOR_DIRECTORY(readable_bytes(4)) in out.out
     ), "Insufficient total space message should print"
 
     # Insufficient space on selected device but enough on all drives,
@@ -639,10 +648,23 @@ def test_remove_file(monkeypatch, capsys):
     # No file returned
     monkeypatch.setattr(db, "get_files", lambda path=None: [])
 
+    validate_message = (
+        PrettyStatusPrinter(Info.VALIDATE_FILE_REMOVAL)
+        .with_message_postfix_for_result(True, Info.FILE_REMOVED)
+        .with_custom_result(2, False)
+        .with_message_postfix_for_result(2, Errors.FILE_NOT_BACKED_UP)
+        .with_custom_result(3, False)
+        .with_message_postfix_for_result(3, Errors.FILE_DEVICE_INVALID)
+        .with_custom_result(4, False)
+        .with_message_postfix_for_result(4, Errors.FILE_DEVICE_NOT_MOUNTED)
+        .with_custom_result(5, False)
+        .with_message_postfix_for_result(5, Errors.FAILED_REMOVE_FILE)
+    )
+
     assert not library.remove_file("/test"), "Unadded file cannot be removed"
     out = capsys.readouterr()
     assert (
-        "Validating file removal...File not registered in database" in out.out
+        validate_message.get_styled_message(2) in out.out
     ), "Unadded file prints message"
 
     # Having a file, but no device, fails
@@ -658,7 +680,7 @@ def test_remove_file(monkeypatch, capsys):
     assert not library.remove_file(test_file), "Missing device causes failure"
     out = capsys.readouterr()
     assert (
-        "Validating file removal...Unable to find device" in out.out
+        validate_message.get_styled_message(3) in out.out
     ), "Missing device message printed"
 
     # A device exists, but the file is not there
@@ -666,10 +688,12 @@ def test_remove_file(monkeypatch, capsys):
     device1.set("dev", "/dev1", "Device Serial", "fake", "1")
     monkeypatch.setattr(db, "get_devices", lambda device: [device1])
 
-    assert not library.remove_file(test_file), "Nonexistent system path causes failure"
+    assert (
+        library.remove_file(test_file) == False
+    ), "Nonexistent system path causes failure"
     out = capsys.readouterr()
     assert (
-        "Validating file removal...File path does not exist" in out.out
+        validate_message.get_styled_message(4) in out.out
     ), "Nonexistent system path message prints"
 
     # Database removal failure, with a file in a directory
@@ -691,7 +715,7 @@ def test_remove_file(monkeypatch, capsys):
     assert not library.remove_file(test_file), "Database failure causes failure"
     out = capsys.readouterr()
     assert (
-        "Validating file removal...Failed to remove file from database" in out.out
+        validate_message.get_styled_message(5) in out.out
     ), "Database failure message prints"
     assert path.exists(test_file_2), "Test file should not be removed yet"
 
@@ -700,7 +724,7 @@ def test_remove_file(monkeypatch, capsys):
     assert library.remove_file(test_file), "File removed successfully"
     out = capsys.readouterr()
     assert (
-        "Validating file removal...File removed" in out.out
+        validate_message.get_styled_message(True) in out.out
     ), "File removal success message should print"
 
     assert not path.exists(test_file_2), "Test file is removed"

@@ -207,6 +207,15 @@ class PrettyStatusPrinter:
         line_ending = "\r" if to_overwrite else self.__line_ending
         print(self.__get_styled_message(result), end=line_ending, flush=True)
 
+    def get_styled_message(self, result=None) -> str:
+        """
+        Returns styled message
+        Used mainly for testing
+        """
+        if result is not None:
+            self.__started = True
+        return self.__get_styled_message(result)
+
     def print_start(self) -> PrettyStatusPrinter:
         """
         Prints the starting message
