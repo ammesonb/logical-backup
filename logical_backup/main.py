@@ -43,48 +43,48 @@ def __parse_arguments(command_line_arguments: list) -> tuple:
         arguments
     """
     parser = argparse.ArgumentParser(
-        description=(Info.PROGRAM_DESCRIPTION.value),
+        description=(str(Info.PROGRAM_DESCRIPTION)),
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "action",
         help="The action to take",
         choices=[
-            Commands.ADD.value,
-            Commands.MOVE.value,
-            Commands.REMOVE.value,
-            Commands.UPDATE.value,
-            Commands.VERIFY.value,
-            Commands.RESTORE.value,
-            Commands.LIST_DEVICES.value,
-            Commands.SEARCH.value,
+            str(Commands.ADD),
+            str(Commands.MOVE),
+            str(Commands.REMOVE),
+            str(Commands.UPDATE),
+            str(Commands.VERIFY),
+            str(Commands.RESTORE),
+            str(Commands.LIST_DEVICES),
+            str(Commands.SEARCH),
         ],
     )
     parser.add_argument(
-        Targets.FILE.value, help=Info.TARGET_FILE_HELP.value, required=False
+        str(Targets.FILE), help=str(Info.TARGET_FILE_HELP), required=False
     )
     parser.add_argument(
-        Targets.FOLDER.value, help=Info.TARGET_FOLDER_HELP.value, required=False
+        str(Targets.FOLDER), help=str(Info.TARGET_FOLDER_HELP), required=False
     )
     parser.add_argument(
-        Targets.DEVICE.value, help=Info.TARGET_DEVICE_HELP.value, required=False
+        str(Targets.DEVICE), help=str(Info.TARGET_DEVICE_HELP), required=False
     )
     parser.add_argument(
-        Targets.FROM_DEVICE.value,
+        str(Targets.FROM_DEVICE),
         dest="from_device",
-        help=Info.TARGET_FROM_DEVICE_HELP.value,
+        help=str(Info.TARGET_FROM_DEVICE_HELP),
         required=False,
     )
     parser.add_argument(
-        Targets.ALL.value,
-        help=Info.TARGET_ALL_HELP.value,
+        str(Targets.ALL),
+        help=str(Info.TARGET_ALL_HELP),
         action="store_true",
         required=False,
     )
     parser.add_argument(
-        Targets.MOVE_PATH.value,
+        str(Targets.MOVE_PATH),
         dest="move_path",
-        help=Info.TARGET_MOVE_PATH_HELP.value,
+        help=str(Info.TARGET_MOVE_PATH_HELP),
         required=False,
     )
     args = parser.parse_args(command_line_arguments)

@@ -21,7 +21,7 @@ from logical_backup import db
 # pylint: disable=unused-import
 from logical_backup.utility import auto_set_testing, DirectoryEntries
 from logical_backup import utility
-from logical_backup.strings import Errors, Info
+from logical_backup.strings import Errors, Info, InputPrompts
 from logical_backup.pretty_print import (
     CHECK_UNICODE,
     CROSS_UNICODE,
@@ -96,7 +96,7 @@ def test_list_devices(monkeypatch, capsys):
     __dispatch_command(arguments)
     output = capsys.readouterr()
     assert (
-        Errors.NO_SAVED_DEVICES.value in output.out
+        str(Errors.NO_SAVED_DEVICES) in output.out
     ), "No devices should be present in list"
 
     mock_devices(
@@ -156,7 +156,11 @@ def test_add_device(capsys, monkeypatch):
     arguments["device"] = "/mnt/test1"
     monkeypatch.setattr(path, "ismount", lambda path: True)
 
-    patch_input(monkeypatch, library, lambda message: "device-1")
+    patch_input(
+        monkeypatch,
+        library,
+        lambda message: "device-1" if message == InputPrompts.DEVICE_NAME else None,
+    )
     monkeypatch.setattr(utility, "get_device_serial", lambda path: "12345")
 
     command = __dispatch_command(arguments)
@@ -168,7 +172,11 @@ def test_add_device(capsys, monkeypatch):
 
     # Happy path two
     arguments["device"] = "/mnt/test2"
-    patch_input(monkeypatch, library, lambda message: "device-2")
+    patch_input(
+        monkeypatch,
+        library,
+        lambda message: "device-2" if message == InputPrompts.DEVICE_NAME else None,
+    )
     monkeypatch.setattr(utility, "get_device_serial", lambda path: None)
     monkeypatch.setattr(
         utility, "get_device_uuid", lambda path: "2ba7b22c-89c6-4125-a4e0-ed5609b81b14"
@@ -305,7 +313,7 @@ def test_get_device_with_space(monkeypatch, capsys):
         "Insufficient space" in output.out
     ), "Initial device should have insufficient space"
     assert (
-        Info.AUTO_SELECT_DEVICE.value in output.out
+        str(Info.AUTO_SELECT_DEVICE) in output.out
     ), "Should fall back to auto-selection"
     assert "Selected test2" in output.out, "Selected device should be printed"
     assert name == "test2", "Second device should be selected"
@@ -322,9 +330,9 @@ def test_get_device_with_space(monkeypatch, capsys):
     name, path = library.__get_device_with_space(1, "/mnt1")
     output = capsys.readouterr()
     assert (
-        Info.AUTO_SELECT_DEVICE.value in output.out
+        str(Info.AUTO_SELECT_DEVICE) in output.out
     ), "Should fall back to auto-selection"
-    assert Errors.NONE_FOUND.value in output.out, "No device found printed"
+    assert str(Errors.NONE_FOUND) in output.out, "No device found printed"
     assert name is None, "No device name should be returned"
     assert path is None, "No device path should be returned"
 
@@ -341,7 +349,7 @@ def test_get_device_with_space(monkeypatch, capsys):
     output = capsys.readouterr()
 
     assert (
-        Info.AUTO_SELECT_DEVICE.value in output.out
+        str(Info.AUTO_SELECT_DEVICE) in output.out
     ), "Should fall back to auto-selection"
     assert "Selected test2" in output.out, "Selected device should be printed"
     assert name == "test2", "Second device should be selected"
@@ -413,7 +421,7 @@ def test_add_file_success(monkeypatch, capsys):
     remove(test_file)
     assert db.remove_file(test_file), "Test file should be removed"
     out = capsys.readouterr()
-    assert Info.SAVING_FILE_TO_DB.value in out.out, "Saving file message prints"
+    assert str(Info.SAVING_FILE_TO_DB) in out.out, "Saving file message prints"
 
 
 def test_add_file_failures(monkeypatch, capsys):
@@ -427,7 +435,7 @@ def test_add_file_failures(monkeypatch, capsys):
     output = capsys.readouterr()
     assert not added, "Existing path should not be added"
     assert (
-        Errors.FILE_ALREADY_BACKED_UP.value in output.out
+        str(Errors.FILE_ALREADY_BACKED_UP) in output.out
     ), "Existing path output should be printed"
 
     # Check a failed checksum exits
@@ -439,7 +447,7 @@ def test_add_file_failures(monkeypatch, capsys):
     output = capsys.readouterr()
     assert not added, "Failed checksum should exit"
     assert (
-        Errors.FAILED_GET_CHECKSUM.value in output.out
+        str(Errors.FAILED_GET_CHECKSUM) in output.out
     ), "Failed checksum should print message"
 
     # Check no device available exits
@@ -464,7 +472,7 @@ def test_add_file_failures(monkeypatch, capsys):
     ), "File size message printed"
     assert not added, "No device available should fail"
     assert (
-        Errors.NO_DEVICE_WITH_SPACE_AVAILABLE.value in output.out
+        str(Errors.NO_DEVICE_WITH_SPACE_AVAILABLE) in output.out
     ), "No device available message printed"
 
     # Checksum mismatch after copy - file should be removed
@@ -484,7 +492,7 @@ def test_add_file_failures(monkeypatch, capsys):
 
     assert not added, "Mismatched checksum should fail"
     assert (
-        Errors.CHECKSUM_MISMATCH_AFTER_COPY.value in output.out
+        str(Errors.CHECKSUM_MISMATCH_AFTER_COPY) in output.out
     ), "Mismatch checksum message should print"
     output_file = path.join(test_mount_1, path.basename(test_file))
     assert not path.isfile(
@@ -530,7 +538,7 @@ def test_add_directory(monkeypatch, capsys):
     monkeypatch.setattr(db, "get_folders", lambda folder_path: ["anything"])
     assert library.add_directory("/test"), "Succeeds if folder already exists"
     out = capsys.readouterr()
-    assert Errors.FOLDER_ALREADY_ADDED.value in out.out, "Already exists message prints"
+    assert str(Errors.FOLDER_ALREADY_ADDED) in out.out, "Already exists message prints"
 
     # Happy path
     monkeypatch.setattr(db, "get_folders", lambda folder_path: [])
@@ -614,10 +622,10 @@ def test_add_directory(monkeypatch, capsys):
     ), "Insufficient space on selected device, with exit input should fail"
     out = capsys.readouterr()
     assert (
-        Errors.DEVICE_HAS_INSUFFICIENT_SPACE.value in out.out
+        str(Errors.DEVICE_HAS_INSUFFICIENT_SPACE) in out.out
     ), "Insufficient device space message should print"
     assert (
-        Errors.SELECTED_DEVICE_FULL.value in out.out
+        str(Errors.SELECTED_DEVICE_FULL) in out.out
     ), "Insufficient device space exit message should print"
 
     # Enough space on given device should succeed
@@ -634,7 +642,7 @@ def test_add_directory(monkeypatch, capsys):
     ), "Insufficient space on selected device, with exit input should fail"
     out = capsys.readouterr()
     assert (
-        Errors.DEVICE_HAS_INSUFFICIENT_SPACE.value in out.out
+        str(Errors.DEVICE_HAS_INSUFFICIENT_SPACE) in out.out
     ), "Insufficient device space message should print"
 
 
@@ -815,19 +823,22 @@ def test_verify_file(monkeypatch, capsys):
     assert library.verify_file(
         file_obj.file_path, True
     ), "Device path verification works"
+    out = capsys.readouterr()
+    assert str(Errors.CHECKSUM_MISMATCH) not in out.out, "No error message prints"
+
     assert not library.verify_file(
         file_obj.file_path, False
     ), "Local file path verification fails"
 
     out = capsys.readouterr()
     assert (
-        Errors.CHECKSUM_MISMATCH.value in out.out
+        str(Errors.CHECKSUM_MISMATCH) in out.out
     ), "Device verifcation failed message printed"
 
     monkeypatch.setattr(db, "get_files", lambda path: [])
     assert not library.verify_file("/test", False), "Nonexistent file should fail"
     out = capsys.readouterr()
-    assert Errors.FILE_NOT_BACKED_UP.value in out.out, "Missing file message prints"
+    assert str(Errors.FILE_NOT_BACKED_UP) in out.out, "Missing file message prints"
 
 
 def test_verify_folder(monkeypatch):
@@ -877,7 +888,7 @@ def test_update_file(monkeypatch, capsys):
     assert not library.update_file("/test"), "New file fails to add via update"
     out = capsys.readouterr()
     assert (
-        Errors.FAILED_ADD_FILE_UPDATE.value in out.out
+        str(Errors.FAILED_ADD_FILE_UPDATE) in out.out
     ), "New file failure prints message"
 
     # Registered file has checksum match, so no need to update
@@ -910,7 +921,7 @@ def test_update_file(monkeypatch, capsys):
     assert not library.update_file("/test"), "Fails to remove updated file"
     out = capsys.readouterr()
     assert (
-        Errors.FAILED_REMOVE_FILE_UPDATE.value in out.out
+        str(Errors.FAILED_REMOVE_FILE_UPDATE) in out.out
     ), "Failure to remove updated file prints message"
 
 
@@ -939,7 +950,9 @@ def test_remove_missing_database_entries(monkeypatch):
     # Removing only folders should fail if removal fails, and succeed otherwise
     monkeypatch.setattr(path, "isdir", lambda path: False)
     patch_input(
-        monkeypatch, library, lambda prompt: "REMOVE" if "folders" in prompt else "n"
+        monkeypatch,
+        library,
+        lambda prompt: "REMOVE" if "folders" in str(prompt) else "n",
     )
     assert not library.__remove_missing_database_entries(
         entries
@@ -955,7 +968,7 @@ def test_remove_missing_database_entries(monkeypatch):
         if prompt_twice_only.counter > 2:
             return ""
 
-        return "REMOVE" if "folders" in prompt else "YES"
+        return "REMOVE" if "folders" in str(prompt) else "YES"
 
     prompt_twice_only.counter = 0
 
@@ -992,7 +1005,7 @@ def test_remove_missing_database_entries(monkeypatch):
     monkeypatch.setattr(path, "isdir", lambda path: True)
     monkeypatch.setattr(library, "remove_file", lambda path: False)
     patch_input(
-        monkeypatch, library, lambda prompt: "n" if "folders" in prompt else "YES"
+        monkeypatch, library, lambda prompt: "n" if "folders" in str(prompt) else "YES"
     )
     assert not library.__remove_missing_database_entries(
         entries
@@ -1101,9 +1114,7 @@ def test_move_file_local(monkeypatch, capsys):
         "/test/foo", "/test2"
     ), "Un backed-up file should fail"
     out = capsys.readouterr()
-    assert (
-        Errors.FILE_NOT_BACKED_UP.value in out.out
-    ), "Un backed-up file message prints"
+    assert str(Errors.FILE_NOT_BACKED_UP) in out.out, "Un backed-up file message prints"
 
     # This ensures that it accepts a directory as output, as well as a specific file
     monkeypatch.setattr(
@@ -1118,7 +1129,7 @@ def test_move_file_local(monkeypatch, capsys):
     ), "Backed up to duplicate file should fail"
     out = capsys.readouterr()
     assert (
-        Errors.NEW_FILE_ALREADY_BACKED_UP.value in out.out
+        str(Errors.NEW_FILE_ALREADY_BACKED_UP) in out.out
     ), "Backed up to duplicate file message prints"
 
     # Success cases
@@ -1184,7 +1195,7 @@ def test_move_directory_local(monkeypatch, capsys):
     ), "Folder back up to file location should fail"
     out = capsys.readouterr()
     assert (
-        Errors.CANNOT_OVERWRITE_EXISTING_FOLDER.value in out.out
+        str(Errors.CANNOT_OVERWRITE_EXISTING_FOLDER) in out.out
     ), "Folder back up to file message prints"
 
     # If file fails, should fail move
@@ -1216,7 +1227,7 @@ def test_move_file_device(monkeypatch, capsys):
     ), "Insufficient space should fail"
     out = capsys.readouterr()
     assert (
-        Errors.DEVICE_HAS_INSUFFICIENT_SPACE.value in out.out
+        str(Errors.DEVICE_HAS_INSUFFICIENT_SPACE) in out.out
     ), "Insufficient space message prints"
 
     monkeypatch.setattr(utility, "get_device_space", lambda file_path: 1024)
@@ -1226,7 +1237,7 @@ def test_move_file_device(monkeypatch, capsys):
     ), "Non-backed up file should fail"
     out = capsys.readouterr()
     assert (
-        Errors.FILE_NOT_BACKED_UP.value in out.out
+        str(Errors.FILE_NOT_BACKED_UP) in out.out
     ), "Non-backed up file message prints"
 
     file_obj = File()
@@ -1242,7 +1253,7 @@ def test_move_file_device(monkeypatch, capsys):
     assert not library.move_file_device(origin_file, dev2), "Missing mount should fail"
     out = capsys.readouterr()
     assert (
-        Errors.FILE_DEVICE_NOT_MOUNTED.value in out.out
+        str(Errors.FILE_DEVICE_NOT_MOUNTED) in out.out
     ), "Missing mount message prints"
 
     monkeypatch.setattr(path, "ismount", lambda mount_path: True)
@@ -1253,7 +1264,7 @@ def test_move_file_device(monkeypatch, capsys):
     ), "Missing backup file should fail"
     out = capsys.readouterr()
     assert (
-        Errors.CANNOT_FIND_BACKUP.value in out.out
+        str(Errors.CANNOT_FIND_BACKUP) in out.out
     ), "Missing backup file message prints"
 
     monkeypatch.setattr(
@@ -1267,9 +1278,9 @@ def test_move_file_device(monkeypatch, capsys):
         origin_file, dev2
     ), "Invalid checksum verification fails"
     out = capsys.readouterr()
-    assert Info.COPYING_FILE_DEVICE.value in out.out, "File copying message prints"
+    assert str(Info.COPYING_FILE_DEVICE) in out.out, "File copying message prints"
     assert (
-        Errors.CHECKSUM_MISMATCH_AFTER_COPY.value in out.out
+        str(Errors.CHECKSUM_MISMATCH_AFTER_COPY) in out.out
     ), "Invalid checksum verification message prints"
 
     moved_path = path.join(dev2, path.basename(backup_file))
@@ -1285,7 +1296,7 @@ def test_move_file_device(monkeypatch, capsys):
     ), "Fail to update file device in database fails"
     out = capsys.readouterr()
     assert (
-        Errors.FAILED_FILE_DEVICE_DB_UPDATE.value in out.out
+        str(Errors.FAILED_FILE_DEVICE_DB_UPDATE) in out.out
     ), "Update file device in DB message prints"
     assert path.isfile(
         backup_file
@@ -1320,7 +1331,7 @@ def test_move_directory_device(monkeypatch, capsys):
     ), "Insufficient device space fails"
     out = capsys.readouterr()
     assert (
-        Errors.DEVICE_HAS_INSUFFICIENT_SPACE.value in out.out
+        str(Errors.DEVICE_HAS_INSUFFICIENT_SPACE) in out.out
     ), "Insufficient device space message prints"
 
     monkeypatch.setattr(utility, "get_device_space", lambda device_path: 10)
@@ -1353,7 +1364,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Restore succeeds if file already exists"
     out = capsys.readouterr()
     assert (
-        Errors.RESTORE_PATH_EXISTS.value in out.out
+        str(Errors.RESTORE_PATH_EXISTS) in out.out
     ), "File already exists message prints"
     remove(original_file)
 
@@ -1363,7 +1374,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Restore fails if back up of file has invalid checksum"
     out = capsys.readouterr()
     assert (
-        Errors.CHECKSUM_MISMATCH.value in out.out
+        str(Errors.CHECKSUM_MISMATCH) in out.out
     ), "Invalid back-up checksum message prints"
 
     monkeypatch.setattr(library, "verify_file", lambda file_path, for_restore: True)
@@ -1373,7 +1384,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Restore fails if file not backed up"
     out = capsys.readouterr()
     assert (
-        Errors.FILE_NOT_BACKED_UP.value in out.out
+        str(Errors.FILE_NOT_BACKED_UP) in out.out
     ), "Not backed-up file message prints"
 
     file_obj = File()
@@ -1394,7 +1405,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Checksum verification after copy fails"
     out = capsys.readouterr()
     assert (
-        Errors.CHECKSUM_MISMATCH_AFTER_COPY.value in out.out
+        str(Errors.CHECKSUM_MISMATCH_AFTER_COPY) in out.out
     ), "Checksum verification after copy prints message"
     assert not path.isfile(
         original_file
@@ -1412,7 +1423,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Fails permission verification after copy files"
     out = capsys.readouterr()
     assert (
-        Errors.FAIL_SET_PERMISSIONS_REMOVED.value in out.out
+        str(Errors.FAIL_SET_PERMISSIONS_REMOVED) in out.out
     ), "Permission verification after copy prints message"
     assert not path.isfile(
         original_file
@@ -1431,7 +1442,7 @@ def test_restore_file(monkeypatch, capsys):
     ), "Fails permission verification after copy files"
     out = capsys.readouterr()
     assert (
-        Errors.FAIL_SET_PERMISSIONS_MANUAL.value in out.out
+        str(Errors.FAIL_SET_PERMISSIONS_MANUAL) in out.out
     ), "Permission verification after copy prints message, cannot remove file"
     assert path.isfile(
         original_file
@@ -1458,7 +1469,7 @@ def test_restore_folder(monkeypatch, capsys):
     assert not library.restore_folder("/test"), "No returned entries should fail"
     out = capsys.readouterr()
     assert (
-        Errors.FOLDER_NOT_BACKED_UP.value in out.out
+        str(Errors.FOLDER_NOT_BACKED_UP) in out.out
     ), "No entries returned message printed"
 
     folder1 = __make_temp_directory()
@@ -1466,7 +1477,7 @@ def test_restore_folder(monkeypatch, capsys):
     # Also removes parent directory, since it is empty
     os.removedirs(folder2)
 
-    entries = DirectoryEntries(["/test", "/foo"], [folder1, folder2])
+    entries = DirectoryEntries([], [folder1, folder2])
     monkeypatch.setattr(db, "get_entries_for_folder", lambda folder: entries)
 
     def throw_error(file_path, exist_ok):
@@ -1483,6 +1494,9 @@ def test_restore_folder(monkeypatch, capsys):
         Errors.FOLDER_NOT_CREATED(folder1) in out.out
     ), "Permission failure message prints"
     assert not path.isdir(folder1), "Folders should not be created yet"
+
+    entries = DirectoryEntries(["/test", "/foo"], [folder1, folder2])
+    monkeypatch.setattr(db, "get_entries_for_folder", lambda folder: entries)
 
     monkeypatch.setattr(os, "makedirs", makedirs_func)
     monkeypatch.setattr(library, "restore_file", lambda file_path: False)
@@ -1528,6 +1542,12 @@ def test_restore_folder(monkeypatch, capsys):
     assert (
         utility.get_file_security(folder2)["permissions"] == "700"
     ), "Folder two permissions set"
+
+    # Check ok for folder to already exist
+    assert library.restore_folder(
+        folder1
+    ), "Folder restoration should succeed, even if they already exist"
+    os.removedirs(folder2)
 
 
 def test_get_unique_folders(monkeypatch):

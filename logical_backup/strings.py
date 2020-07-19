@@ -4,8 +4,33 @@ Contains printed messages, errors, etc
 
 from enum import Enum
 
+from logical_backup.utilities.printable_enum import PrintableEnum
 
-class Errors(Enum):
+
+class Flags(Enum):
+    """
+    Constants to use in place of true/false, for places
+    mutation wants to INSIST they can be None as default
+    """
+
+    TRUE = True  # pragma: no mutate
+    FALSE = False  # pragma: no mutate
+
+    def __bool__(self):
+        """
+        If this is true
+        """
+        return bool(self.value)
+
+    def __eq__(self, other):
+        return (
+            bool(self) == other
+            if isinstance(other, bool)
+            else bool(self) == other.value
+        )
+
+
+class Errors(PrintableEnum):
     """
     Printed error messages
     """
@@ -103,7 +128,7 @@ class Errors(Enum):
     FAILED_REMOVE_FILE = "Failed to remove file from the database!"  # pragma: no mutate
 
 
-class InputPrompts(Enum):
+class InputPrompts(PrintableEnum):
     """
     Input prompt messages
     """
@@ -130,7 +155,7 @@ class InputPrompts(Enum):
     )
 
 
-class Info(Enum):
+class Info(PrintableEnum):
     """
     Informational messages
     """
@@ -196,7 +221,7 @@ class Info(Enum):
     TARGET_MOVE_PATH_HELP = "Target for move operaetion"  # pragma: no mutate
 
 
-class Commands(Enum):
+class Commands(PrintableEnum):
     """
     Possible commands
     """
@@ -211,7 +236,7 @@ class Commands(Enum):
     SEARCH = "search"  # pragma: no mutate
 
 
-class Targets(Enum):
+class Targets(PrintableEnum):
     """
     Possible target of a command
     """

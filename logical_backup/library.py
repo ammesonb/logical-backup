@@ -20,7 +20,7 @@ from logical_backup.objects.folder import Folder
 from logical_backup.db import DatabaseError
 from logical_backup import db
 from logical_backup import utility
-from logical_backup.strings import Errors, InputPrompts, Info
+from logical_backup.strings import Errors, InputPrompts, Info, Flags
 from logical_backup.pretty_print import (
     Color,
     readable_bytes,
@@ -55,7 +55,7 @@ def add_directory(folder_path: str, mount_point: str = None) -> bool:
         PrettyStatusPrinter(Errors.DEVICE_HAS_INSUFFICIENT_SPACE).with_specific_color(
             Color.YELLOW
         ).print_message()
-        switch_device = input(InputPrompts.ALLOW_DEVICE_CHANGE.value).lower()
+        switch_device = input(InputPrompts.ALLOW_DEVICE_CHANGE).lower()
         if switch_device == "y":
             mount_point = None
         else:
@@ -236,7 +236,7 @@ def __get_device_with_space(
         drive_space = utility.get_device_space(mount_point)
         if drive_space < file_size:
             space_message.print_complete(False)
-            confirm = input(InputPrompts.ALLOW_DEVICE_CHANGE.value)
+            confirm = input(InputPrompts.ALLOW_DEVICE_CHANGE)
             if confirm != "n":
                 mount_point = None
             else:
@@ -292,30 +292,30 @@ def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool
     bool
         True if all attempted removals succeed
     """
-    recursive_prompted = False
-    remove_recursive = False  # pragma: no mutate
-    files_prompted = False
-    remove_files = False  # pragma: no mutate
+    recursive_prompted = Flags.FALSE
+    remove_recursive = Flags.FALSE
+    files_prompted = Flags.FALSE
+    remove_files = Flags.FALSE
 
-    success = True
+    success = Flags.TRUE
 
     for folder_path in entries.folders:
         # Only remove if MISSING on the file system
-        if not os_path.isdir(folder_path) and recursive_prompted is not None:
+        if not os_path.isdir(folder_path):
             if not recursive_prompted:
                 remove_recursive = (
-                    input(InputPrompts.RECURSIVE_REMOVE_DIRECTORY.value) == "REMOVE"
+                    input(InputPrompts.RECURSIVE_REMOVE_DIRECTORY) == "REMOVE"
                 )
-                recursive_prompted = True
+                recursive_prompted = Flags.TRUE
 
             if remove_recursive:
                 success = success and remove_directory(folder_path)
 
     for file_path in entries.files:
-        if not os_path.isfile(file_path) and files_prompted is not None:
+        if not os_path.isfile(file_path):
             if not files_prompted:
-                remove_files = input(InputPrompts.RECURSIVE_REMOVE_FILE.value) == "YES"
-                files_prompted = True
+                remove_files = input(InputPrompts.RECURSIVE_REMOVE_FILE) == "YES"
+                files_prompted = Flags.TRUE
 
             if remove_files:
                 success = success and remove_file(file_path)
@@ -530,7 +530,7 @@ def move_file_device(original_path: str, device: str) -> bool:
     backup_name = file_result[0].file_name
     current_path = os_path.join(file_result[0].device.device_path, backup_name)
 
-    file_valid = True
+    file_valid = Flags.TRUE
     if not os_path.ismount(file_result[0].device.device_path):
         print_error(Errors.FILE_DEVICE_NOT_MOUNTED)
         file_valid = False
@@ -538,7 +538,7 @@ def move_file_device(original_path: str, device: str) -> bool:
         print_error(Errors.CANNOT_FIND_BACKUP)
         file_valid = False
 
-    if not file_valid and file_valid is not None:
+    if not file_valid:
         return False
 
     copy_printer = PrettyStatusPrinter(Info.COPYING_FILE_DEVICE).print_start()
@@ -548,7 +548,7 @@ def move_file_device(original_path: str, device: str) -> bool:
 
     new_checksum = utility.checksum_file(new_path)
 
-    device_updated = False
+    device_updated = Flags.FALSE
 
     checksum_match = file_result[0].checksum == new_checksum
     if checksum_match:
@@ -556,7 +556,7 @@ def move_file_device(original_path: str, device: str) -> bool:
     else:
         print_error(Errors.CHECKSUM_MISMATCH_AFTER_COPY)
 
-    if not device_updated and device_updated is not None:
+    if not device_updated:
         print_error(Errors.FAILED_FILE_DEVICE_DB_UPDATE)
     else:
         os.remove(current_path)
@@ -703,8 +703,11 @@ def __get_unique_folders() -> list:
     folders = [folder_obj.folder_path for folder_obj in db.get_folders()]
     deduplicated_folders = []
     for folder in folders:
-        other_folder_found = False
+        other_folder_found = Flags.FALSE
         for other_folder in folders:
+            if other_folder_found:
+                raise StopIteration("Already found folder, but did not break")
+
             if other_folder == folder:
                 continue
 
@@ -714,7 +717,7 @@ def __get_unique_folders() -> list:
                     folder[len(other_folder)] == "/" or other_folder[-1] == "/"
                 )
                 if folder_index == 0 and next_char_slash:
-                    other_folder_found = True
+                    other_folder_found = Flags.TRUE
                     break
             # Okay if this doesn't exist
             except ValueError:
@@ -736,11 +739,13 @@ def __get_files_outside_directories() -> list:
     external_files = []
 
     for file_path in all_files:
-        folder_matched = False
+        folder_matched = Flags.FALSE
         for folder in folders:
+            if folder_matched:
+                raise StopIteration("Folder already matched, but did not break")
             next_char_slash = file_path[len(folder)] == "/" or folder == "/"
             if file_path.startswith(folder) and next_char_slash:
-                folder_matched = True
+                folder_matched = Flags.TRUE
                 break
 
         if not folder_matched:
@@ -790,7 +795,7 @@ def restore_folder(folder_path: str) -> bool:
     files_created = True
     for file_path in entries.files:
         if not restore_file(file_path):
-            files_created = False
+            files_created = Flags.FALSE
 
     # Only set permissions if all files restored, since otherwise
     # can't retry file restoration, given missing permissions

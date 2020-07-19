@@ -8,26 +8,21 @@ import readline
 from logical_backup.strings import Commands, Targets
 
 commands = [
-    Commands.ADD.value,
-    Commands.RESTORE.value,
-    Commands.MOVE.value,
-    Commands.UPDATE.value,
-    Commands.VERIFY.value,
-    Commands.REMOVE.value,
+    Commands.ADD,
+    Commands.RESTORE,
+    Commands.MOVE,
+    Commands.UPDATE,
+    Commands.VERIFY,
+    Commands.REMOVE,
 ]
 
 command_parameters = {
-    Commands.ADD.value: [Targets.FILE.value, Targets.FOLDER, Targets.DEVICE.value],
-    Commands.RESTORE.value: [Targets.FILE.value, Targets.FOLDER, Targets.ALL.value],
-    Commands.VERIFY.value: [Targets.FILE.value, Targets.FOLDER, Targets.ALL.value],
-    Commands.UPDATE.value: [Targets.FILE.value, Targets.FOLDER.value],
-    Commands.REMOVE.value: [Targets.FILE.value, Targets.FOLDER.value],
-    Commands.MOVE.value: [
-        Targets.FILE.value,
-        Targets.FOLDER.value,
-        Targets.DEVICE.value,
-        Targets.MOVE_PATH.value,
-    ],
+    Commands.ADD: [Targets.FILE, Targets.FOLDER, Targets.DEVICE],
+    Commands.RESTORE: [Targets.FILE, Targets.FOLDER, Targets.ALL],
+    Commands.VERIFY: [Targets.FILE, Targets.FOLDER, Targets.ALL],
+    Commands.UPDATE: [Targets.FILE, Targets.FOLDER],
+    Commands.REMOVE: [Targets.FILE, Targets.FOLDER],
+    Commands.MOVE: [Targets.FILE, Targets.FOLDER, Targets.DEVICE, Targets.MOVE_PATH,],
 }
 
 
