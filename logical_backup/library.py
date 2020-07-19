@@ -431,7 +431,7 @@ def remove_file(file_path: str) -> bool:
         .print_start()
     )
 
-    path_on_device = None
+    path_on_device = Flags.NONE
     file_entry = db.get_files(file_path)
     if len(file_entry) > 0:
         file_entry = file_entry[0]
@@ -441,15 +441,13 @@ def remove_file(file_path: str) -> bool:
             device = device[0]
             path_on_device = os_path.join(device.device_path, file_entry.file_name)
         else:
-            device = None
+            device = Flags.NONE
 
-    path_exists = (
-        os_path.exists(path_on_device) if path_on_device is not None else False
-    )
+    path_exists = os_path.exists(path_on_device) if path_on_device else False
 
     valid = bool(file_entry) and "device" in vars() and bool(device) and path_exists
 
-    db_entry_removed = False
+    db_entry_removed = Flags.FALSE
     if valid:
         db_entry_removed = db.remove_file(file_path)
 

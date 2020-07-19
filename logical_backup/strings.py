@@ -13,6 +13,7 @@ class Flags(Enum):
     mutation wants to INSIST they can be None as default
     """
 
+    NONE = None  # pragma: no mutate
     TRUE = True  # pragma: no mutate
     FALSE = False  # pragma: no mutate
 
