@@ -87,6 +87,7 @@ def __make_temp_directory(parent: str = None) -> str:
     return tempfile.mkdtemp(dir=parent)
 
 
+# pylint: disable=protected-access
 def test_list_devices(monkeypatch, capsys):
     """
     Test listing of devices
@@ -120,6 +121,10 @@ def test_list_devices(monkeypatch, capsys):
     output = capsys.readouterr()
     assert command == "list-devices", "Command called should be list devices"
     assert (
+        "device_name   | device_path | identifier_name | device_identifier"
+        in output.out
+    ), "Headers are missing"
+    assert (
         "| test_device   | /mnt/dev1   | Device Serial   | ABCDEF1234" in output.out
     ), "Test device 1 missing"
     assert (
@@ -128,6 +133,7 @@ def test_list_devices(monkeypatch, capsys):
     ), "Seagate test device 2 missing"
 
 
+# pylint: disable=protected-access
 def test_add_device(capsys, monkeypatch):
     """
     Test output of adding a device
@@ -272,6 +278,7 @@ def test_add_device(capsys, monkeypatch):
     ), "Bizarre return value should cause a failure"
 
 
+# pylint: disable=protected-access
 def test_get_device_with_space(monkeypatch, capsys):
     """
     Check device resolution for given space constraints
@@ -909,6 +916,8 @@ def test_update_file(monkeypatch, capsys):
     monkeypatch.setattr(library, "remove_file", lambda file_path: True)
     monkeypatch.setattr(library, "add_file", lambda file_path: True)
     assert library.update_file("/test"), "Updating file works"
+    out = capsys.readouterr()
+    assert CROSS_UNICODE not in out.out, "No errors occurred"
 
     monkeypatch.setattr(library, "add_file", lambda file_path: False)
     assert not library.update_file("/test"), "Fails to add updated file"
@@ -925,6 +934,7 @@ def test_update_file(monkeypatch, capsys):
     ), "Failure to remove updated file prints message"
 
 
+# pylint: disable=protected-access
 def test_remove_missing_database_entries(monkeypatch):
     """
     .
@@ -979,11 +989,11 @@ def test_remove_missing_database_entries(monkeypatch):
     ), "Removing everything should fail if file fails"
 
     # Success if everything removed
-    def rm_folder(path):
+    def rm_folder(rm_path):
         rm_folder.counter += 1
         return True
 
-    def rm_file(path):
+    def rm_file(rm_path):
         rm_file.counter += 1
         return True
 
@@ -1085,7 +1095,7 @@ def test_update_folder(monkeypatch, capsys):
     assert not library.update_folder(folder_path), "Folder removal failure should error"
     out = capsys.readouterr()
     assert (
-        "Failed to remove folder" in out.out
+        Errors.FAILED_FOLDER_REMOVE(folder_path) in out.out
     ), "Folder removal failure should print message"
 
     monkeypatch.setattr(db, "remove_folder", lambda folder_path: True)
@@ -1095,7 +1105,7 @@ def test_update_folder(monkeypatch, capsys):
     ), "Folder addition failure should error"
     out = capsys.readouterr()
     assert (
-        "Failed to add folder" in out.out
+        Errors.FAILED_FOLDER_ADD(folder_path) in out.out
     ), "Folder adding failure should print message"
 
     monkeypatch.setattr(db, "add_folder", lambda folder_path: True)

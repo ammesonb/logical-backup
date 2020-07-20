@@ -12,6 +12,8 @@ from logical_backup import main  # for input mocking
 from logical_backup import library  # for input mocking
 from logical_backup.main import __check_devices
 from logical_backup.objects.device import Device
+from logical_backup.pretty_print import PrettyStatusPrinter, Color
+from logical_backup.strings import Info, Errors
 from tests.test_arguments import (
     make_arguments,
     MOCK_FILE,
@@ -58,6 +60,18 @@ def test_check_devices(capsys, monkeypatch):
     """
     Test device checking code
     """
+    device_message = (
+        PrettyStatusPrinter(Info.CHECKING_DEVICES)
+        .with_message_postfix_for_result(True, Info.ALL_DEVICES_FOUND)
+        .with_message_postfix_for_result(False, Errors.NO_DEVICES_FOUND)
+        .with_custom_result(2, True)
+        .with_color_for_result(2, Color.YELLOW)
+        .with_message_postfix_for_result(2, Info.NO_DEVICES_FOUND)
+        .with_custom_result(3, True)
+        .with_color_for_result(3, Color.YELLOW)
+        .with_message_postfix_for_result(3, Errors.SOME_DEVICES_FOUND)
+    )
+
     # DB should return nothing, to start
     mock_devices(monkeypatch, [])
     arguments = make_arguments("verify")
@@ -70,7 +84,7 @@ def test_check_devices(capsys, monkeypatch):
     assert pytest_exception.value.code == 3, "No device exit status should be 3"
     output = capsys.readouterr()
     assert (
-        "A device must be added before" in output.out
+        str(Errors.DEVICE_MUST_BE_ADDED) in output.out
     ), "No device message was not printed"
 
     # Adding only is not sufficient
@@ -85,7 +99,7 @@ def test_check_devices(capsys, monkeypatch):
     assert pytest_exception.value.code == 3, "No device for add exit status should be 3"
     output = capsys.readouterr()
     assert (
-        "A device must be added before" in output.out
+        str(Errors.DEVICE_MUST_BE_ADDED) in output.out
     ), "No device for add message was not printed"
 
     arguments["device"] = MOCK_FILE
@@ -93,7 +107,7 @@ def test_check_devices(capsys, monkeypatch):
     __check_devices(arguments)
     output = capsys.readouterr()
     assert (
-        "devices...None found, but OK" in output.out
+        device_message.get_styled_message(2) in output.out
     ), "Adding device message did not print"
 
     make_mock_folder()
@@ -109,7 +123,7 @@ def test_check_devices(capsys, monkeypatch):
     __check_devices(arguments)
     output = capsys.readouterr()
     assert (
-        "All devices found" in output.out
+        device_message.get_styled_message(True) in output.out
     ), "All devices found did not print expected message"
 
     mock_devices(
@@ -125,24 +139,25 @@ def test_check_devices(capsys, monkeypatch):
     ), "Some device found (n) exception should be system exit"
     assert (
         pytest_exception.value.code == 3
-    ), "Soem device found (n) exit status should be 3"
+    ), "Some device found (n) exit status should be 3"
     output = capsys.readouterr()
     assert (
-        "Found some devices" in output.out
+        device_message.get_styled_message(3) in output.out
     ), "Some devices found (n) did not print expected message"
 
     patch_input(monkeypatch, main, lambda message: "y")
     __check_devices(arguments)
     output = capsys.readouterr()
     assert (
-        "Found some devices" in output.out
+        device_message.get_styled_message(3) in output.out
     ), "Some devices found (y) did not print expected message"
     assert (
-        "Continuing without all devices" in output.out
+        str(Info.CONTINUING_WITHOUT_DEVICE) in output.out
     ), "Some devices found (y) did not print expected continuation message"
     remove_mock()
 
 
+# pylint: disable=protected-access
 def test_parse_arguments():
     """
     .
@@ -195,7 +210,7 @@ def test_invalid_arguments():
         assert pytest_exception.value.code == 1, "Invalid arguments should exit 1"
 
 
-def test_command_run(monkeypatch, capsys):
+def test_command_run(monkeypatch):
     """
     Checks which command was run, end-to-end analysis
     """

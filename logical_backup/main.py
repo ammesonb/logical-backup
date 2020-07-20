@@ -17,7 +17,7 @@ from logical_backup import db
 from logical_backup import library
 from logical_backup import utility
 from logical_backup.pretty_print import PrettyStatusPrinter, Color, print_error
-from logical_backup.strings import Info, Commands, Targets
+from logical_backup.strings import Info, Commands, Targets, Flags, Errors
 
 
 def __prepare():
@@ -120,8 +120,8 @@ def __validate_arguments(arguments: dict) -> bool:
         "update": [["file", "folder"]],
     }
 
-    command_valid = True
-    path_exists = True
+    command_valid = Flags.TRUE
+    path_exists = Flags.TRUE
     # Check at least one of each command set required is in the arguments
     for command_set in required_parameter_set_by_action.get(arguments["action"], []):
 
@@ -131,18 +131,18 @@ def __validate_arguments(arguments: dict) -> bool:
                 commands_in_set_found += 1
 
         if commands_in_set_found != 1:
-            command_valid = False
+            command_valid = Flags.FALSE
             break
 
     if arguments["file"]:
         path_exists = isfile(arguments["file"]) or arguments["action"] in [
-            "restore",
-            "verify",
+            Commands.RESTORE,
+            Commands.VERIFY,
         ]
     elif arguments["folder"]:
         path_exists = isdir(arguments["folder"]) or arguments["action"] in [
-            "restore",
-            "verify",
+            Commands.RESTORE,
+            Commands.VERIFY,
         ]
 
     if arguments["device"] or arguments["from_device"]:
@@ -150,7 +150,7 @@ def __validate_arguments(arguments: dict) -> bool:
 
     if arguments["device"]:
         path_exists = path_exists and path.ismount(arguments["device"])
-        if arguments["action"] != "add":
+        if arguments["action"] != Commands.ADD:
             path_exists = path_exists and [
                 device
                 for device in devices
@@ -179,26 +179,26 @@ def __check_devices(args: dict):
         in dictionary form for easier injection with testing
     """
     device_message = (
-        PrettyStatusPrinter("Checking for devices")
-        .with_message_postfix_for_result(True, "All devices found")
-        .with_message_postfix_for_result(False, "None!")
+        PrettyStatusPrinter(Info.CHECKING_DEVICES)
+        .with_message_postfix_for_result(True, Info.ALL_DEVICES_FOUND)
+        .with_message_postfix_for_result(False, Errors.NO_DEVICES_FOUND)
         .with_custom_result(2, True)
         .with_color_for_result(2, Color.YELLOW)
-        .with_message_postfix_for_result(2, "None found, but OK")
+        .with_message_postfix_for_result(2, Info.NO_DEVICES_FOUND)
         .with_custom_result(3, True)
         .with_color_for_result(3, Color.YELLOW)
-        .with_message_postfix_for_result(3, "Found some devices:")
+        .with_message_postfix_for_result(3, Errors.SOME_DEVICES_FOUND)
+        .print_start()
     )
-    device_message.print_start()
 
     devices = db.get_devices()
     if not devices:
         # pylint: disable=bad-continuation
-        if (args["action"] != "add" or not args["device"]) and args[
+        if (args["action"] != str(Commands.ADD) or not args["device"]) and args[
             "action"
         ] != "list-devices":
             device_message.print_complete(False)
-            print_error("A device must be added before any other actions can occur")
+            print_error(Errors.DEVICE_MUST_BE_ADDED)
             sys.exit(3)
         else:
             device_message.print_complete(2)
@@ -232,7 +232,7 @@ def __check_devices(args: dict):
             confirm = input("Proceed? (y/N) ")
             if confirm != "y":
                 sys.exit(3)
-            PrettyStatusPrinter("Continuing without all devices").with_specific_color(
+            PrettyStatusPrinter(Info.CONTINUING_WITHOUT_DEVICE).with_specific_color(
                 Color.YELLOW
             ).print_message()
 

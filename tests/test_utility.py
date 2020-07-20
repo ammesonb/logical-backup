@@ -5,12 +5,12 @@ from collections import namedtuple
 import hashlib
 import os
 import os.path as os_path
-import psutil
 import pwd
 import grp
-from pathlib import Path
 import shutil
 import tempfile
+
+import psutil
 
 from logical_backup.utility import __get_device_path
 import logical_backup.utility as utility
@@ -30,9 +30,7 @@ GrID = namedtuple("struct_group", "gr_name gr_passwd gr_gid gr_mem")
 
 
 def __compare_lists(list1: list, list2: list) -> bool:
-    return len(list1) == len(list2) and all(
-        [True if item in list2 else False for item in list1]
-    )
+    return len(list1) == len(list2) and all([item in list2 for item in list1])
 
 
 def patch_input(monkeypatch, module, func) -> None:
@@ -309,7 +307,7 @@ def test_list_files():
     )
 
     test_directory = tempfile.mkdtemp()
-    fd, filename = tempfile.mkstemp(dir=test_directory)
+    descriptor, filename = tempfile.mkstemp(dir=test_directory)
     file1 = temp_file_path(filename)
 
     nested_directory_1 = temp_file_path(tempfile.mkdtemp(dir=test_directory))
@@ -321,7 +319,7 @@ def test_list_files():
         entries.folders, [nested_directory_1, nested_directory_2]
     ), "Directory and empty directories should be included"
 
-    fd, filename = tempfile.mkstemp(dir=nested_directory_2)
+    descriptor, filename = tempfile.mkstemp(dir=nested_directory_2)
     file2 = temp_file_path(filename)
 
     entries = utility.list_entries_in_directory(test_directory)
@@ -334,7 +332,7 @@ def test_list_files():
     ), "Nested files in directory"
 
     nested_directory_3 = temp_file_path(tempfile.mkdtemp(dir=nested_directory_1))
-    fd, filename = tempfile.mkstemp(dir=nested_directory_1)
+    descriptor, filename = tempfile.mkstemp(dir=nested_directory_1)
     file3 = temp_file_path(filename)
 
     entries = utility.list_entries_in_directory(test_directory)
@@ -355,20 +353,20 @@ def test_sum_files():
     """
 
     test_directory = tempfile.mkdtemp()
-    fd, filename = tempfile.mkstemp(dir=test_directory)
-    fd = open(filename, "wb")
-    fd.write(os.urandom(100))
-    fd.close()
+    descriptor, filename = tempfile.mkstemp(dir=test_directory)
+    file_handle = open(filename, "wb")
+    file_handle.write(os.urandom(100))
+    file_handle.close()
 
     file_list = [os_path.join(test_directory, filename)]
     print(file_list)
 
     assert utility.sum_file_size(file_list) == 100, "Single file size summed"
 
-    fd, filename = tempfile.mkstemp(dir=test_directory)
-    fd = open(filename, "wb")
-    fd.write(os.urandom(50))
-    fd.close()
+    descriptor, filename = tempfile.mkstemp(dir=test_directory)
+    file_handle = open(filename, "wb")
+    file_handle.write(os.urandom(50))
+    file_handle.close()
     file_list.append(os_path.join(test_directory, filename))
 
     assert utility.sum_file_size(file_list) == 150, "Two files summed"

@@ -34,6 +34,6 @@ def test_iteration_containment():
     assert characters == ["f", "o", "o"], "Iteration works as expected"
 
     assert "foo" in PrintableEnum.TEST_VALUE, "Basic 'in' works"
-    assert not "foobar" in PrintableEnum.TEST_VALUE, "Basic 'in' fails"
+    assert "foobar" not in PrintableEnum.TEST_VALUE, "Basic 'in' fails"
     assert PrintableEnum.TEST_VALUE in "foobar", "Basic reverse 'in' works"
-    assert not PrintableEnum.TEST_VALUE in "fo", "Basic reverse 'in' fails"
+    assert PrintableEnum.TEST_VALUE not in "fo", "Basic reverse 'in' fails"

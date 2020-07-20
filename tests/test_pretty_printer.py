@@ -39,6 +39,7 @@ def test_formatted_print(capsys):
     psp.print_message()
 
     out = capsys.readouterr()
+    # pylint: disable=bad-continuation
     for part in [
         "a message" + Format.END.value + "\r\n",
         Color.MAGENTA.value,

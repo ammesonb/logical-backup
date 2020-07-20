@@ -432,20 +432,19 @@ def remove_file(file_path: str) -> bool:
     )
 
     path_on_device = Flags.NONE
+    device = Flags.NONE
     file_entry = db.get_files(file_path)
     if len(file_entry) > 0:
         file_entry = file_entry[0]
         device = db.get_devices(file_entry.device_name)
 
-        if device is not None and len(device) > 0:
+        if device and len(device) > 0:
             device = device[0]
             path_on_device = os_path.join(device.device_path, file_entry.file_name)
-        else:
-            device = Flags.NONE
 
     path_exists = os_path.exists(path_on_device) if path_on_device else False
 
-    valid = bool(file_entry) and "device" in vars() and bool(device) and path_exists
+    valid = bool(file_entry) and device and path_exists
 
     db_entry_removed = Flags.FALSE
     if valid:
@@ -456,7 +455,7 @@ def remove_file(file_path: str) -> bool:
         validate_message.print_complete()
     elif not file_entry:
         validate_message.print_complete(2)
-    elif device is None:
+    elif not device:
         validate_message.print_complete(3)
     elif not path_exists:
         validate_message.print_complete(4)
@@ -790,7 +789,7 @@ def restore_folder(folder_path: str) -> bool:
             print_error(Errors.FOLDER_NOT_CREATED(folder))
             return False
 
-    files_created = True
+    files_created = Flags.TRUE
     for file_path in entries.files:
         if not restore_file(file_path):
             files_created = Flags.FALSE
@@ -818,7 +817,7 @@ def restore_folder(folder_path: str) -> bool:
                 print_error(
                     "Failed to set folder security options for {0}!".format(subfolder)
                 )
-                security_set = False
+                security_set = Flags.FALSE
 
     return files_created and security_set
 
@@ -917,9 +916,11 @@ def update_file(file_path: str) -> bool:
     # If these checks are irrelevant, then allow them to pass
     # checksum is relevant if file is registered, otherwise
     # success is solely dependent on file being added
-    checksum_match = file_registered
-    file_removed = True
-    file_added = True
+    # Do not mutate, since if file is not registered then
+    # this does not actually affect outcome, at all
+    checksum_match = file_registered  # pragma: no mutate
+    file_removed = Flags.TRUE
+    file_added = Flags.TRUE
 
     # Only need to compare checksums if the file is registered
     # Otherwise will simply add it
@@ -982,17 +983,13 @@ def update_folder(folder: str) -> bool:
                 continue
 
             if not db.remove_folder(folder_path):
-                print_error(
-                    "Failed to remove folder {0} from database!".format(folder_path)
-                )
-                all_success = False
+                print_error(Errors.FAILED_FOLDER_REMOVE(folder_path))
+                all_success = Flags.FALSE
                 continue
 
         if not db.add_folder(folder):
-            print_error(
-                "Failed to add folder {0} back to database!".format(folder_path)
-            )
-            all_success = False
+            print_error(Errors.FAILED_FOLDER_ADD(folder_path))
+            all_success = Flags.FALSE
 
     for file_path in disk_files.files:
         all_success = all_success and update_file(file_path)

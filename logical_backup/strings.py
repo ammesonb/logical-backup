@@ -24,11 +24,7 @@ class Flags(Enum):
         return bool(self.value)
 
     def __eq__(self, other):
-        return (
-            bool(self) == other
-            if isinstance(other, bool)
-            else bool(self) == other.value
-        )
+        return bool(self) == other
 
 
 class Errors(PrintableEnum):
@@ -69,7 +65,18 @@ class Errors(PrintableEnum):
     CANNOT_OVERWRITE_EXISTING_FOLDER = (
         "Cannot move folder over existing file!"  # pragma: no mutate
     )
+    FAILED_FOLDER_REMOVE = lambda folder: (
+        "Failed to remove folder '{0}' "  # pragma: no mutate
+        "from database!".format(folder)  # pragma: no mutate
+    )
+    FAILED_FOLDER_ADD = lambda folder: (
+        "Failed to add folder '{0}' "  # pragma: no mutate
+        "back to the database!".format(folder)  # pragma: no mutate
+    )
 
+    DEVICE_MUST_BE_ADDED = "A device must be added before any other actions can occur!"  # pragma: no mutate
+    NO_DEVICES_FOUND = "None!"  # pragma: no mutate
+    SOME_DEVICES_FOUND = "Found some devices:"
     UNRECOGNIZED_DEVICE_IDENTIFIER = (
         "Failed. Unrecognized device identifier!"  # pragma: no mutate
     )
@@ -160,6 +167,11 @@ class Info(PrintableEnum):
     """
     Informational messages
     """
+
+    CHECKING_DEVICES = "Checking for devices"  # pragma: no mutate
+    ALL_DEVICES_FOUND = "All devices found"  # pragma: no mutate
+    NO_DEVICES_FOUND = "None found, but command can continue"
+    CONTINUING_WITHOUT_DEVICE = "Continuing without all devices"  # pragma: no mutate
 
     AUTO_SELECT_DEVICE = "Auto-selecting device"  # pragma: no mutate
     GET_FILE_SIZE = "Getting file size"  # pragma: no mutate
