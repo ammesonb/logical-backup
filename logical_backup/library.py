@@ -20,7 +20,7 @@ from logical_backup.objects.folder import Folder
 from logical_backup.db import DatabaseError
 from logical_backup import db
 from logical_backup import utility
-from logical_backup.strings import Errors, InputPrompts, Info, Flags
+from logical_backup.strings import Errors, InputPrompts, Info
 from logical_backup.pretty_print import (
     Color,
     readable_bytes,
@@ -292,12 +292,12 @@ def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool
     bool
         True if all attempted removals succeed
     """
-    recursive_prompted = Flags.FALSE
-    remove_recursive = Flags.FALSE
-    files_prompted = Flags.FALSE
-    remove_files = Flags.FALSE
+    recursive_prompted = False  # pragma: no mutate
+    remove_recursive = False  # pragma: no mutate
+    files_prompted = False  # pragma: no mutate
+    remove_files = False  # pragma: no mutate
 
-    success = Flags.TRUE
+    success = True  # pragma: no mutate
 
     for folder_path in entries.folders:
         # Only remove if MISSING on the file system
@@ -306,7 +306,7 @@ def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool
                 remove_recursive = (
                     input(InputPrompts.RECURSIVE_REMOVE_DIRECTORY) == "REMOVE"
                 )
-                recursive_prompted = Flags.TRUE
+                recursive_prompted = True  # pragma: no mutate
 
             if remove_recursive:
                 success = success and remove_directory(folder_path)
@@ -315,7 +315,7 @@ def __remove_missing_database_entries(entries: utility.DirectoryEntries) -> bool
         if not os_path.isfile(file_path):
             if not files_prompted:
                 remove_files = input(InputPrompts.RECURSIVE_REMOVE_FILE) == "YES"
-                files_prompted = Flags.TRUE
+                files_prompted = True  # pragma: no mutate
 
             if remove_files:
                 success = success and remove_file(file_path)
@@ -431,8 +431,8 @@ def remove_file(file_path: str) -> bool:
         .print_start()
     )
 
-    path_on_device = Flags.NONE
-    device = Flags.NONE
+    path_on_device = None  # pragma: no mutate
+    device = None  # pragma: no mutate
     file_entry = db.get_files(file_path)
     if len(file_entry) > 0:
         file_entry = file_entry[0]
@@ -442,11 +442,11 @@ def remove_file(file_path: str) -> bool:
             device = device[0]
             path_on_device = os_path.join(device.device_path, file_entry.file_name)
 
-    path_exists = os_path.exists(path_on_device) if path_on_device else False
+    path_exists = bool(path_on_device) and os_path.exists(path_on_device)
 
     valid = bool(file_entry) and device and path_exists
 
-    db_entry_removed = Flags.FALSE
+    db_entry_removed = False  # pragma: no mutate
     if valid:
         db_entry_removed = db.remove_file(file_path)
 
@@ -527,13 +527,13 @@ def move_file_device(original_path: str, device: str) -> bool:
     backup_name = file_result[0].file_name
     current_path = os_path.join(file_result[0].device.device_path, backup_name)
 
-    file_valid = Flags.TRUE
+    file_valid = True  # pragma: no mutate
     if not os_path.ismount(file_result[0].device.device_path):
         print_error(Errors.FILE_DEVICE_NOT_MOUNTED)
-        file_valid = False
+        file_valid = False  # pragma: no mutate
     elif not os_path.isfile(current_path):
         print_error(Errors.CANNOT_FIND_BACKUP)
-        file_valid = False
+        file_valid = False  # pragma: no mutate
 
     if not file_valid:
         return False
@@ -545,7 +545,7 @@ def move_file_device(original_path: str, device: str) -> bool:
 
     new_checksum = utility.checksum_file(new_path)
 
-    device_updated = Flags.FALSE
+    device_updated = False  # pragma: no mutate
 
     checksum_match = file_result[0].checksum == new_checksum
     if checksum_match:
@@ -700,7 +700,7 @@ def __get_unique_folders() -> list:
     folders = [folder_obj.folder_path for folder_obj in db.get_folders()]
     deduplicated_folders = []
     for folder in folders:
-        other_folder_found = Flags.FALSE
+        other_folder_found = False  # pragma: no mutate
         for other_folder in folders:
             if other_folder_found:
                 raise StopIteration("Already found folder, but did not break")
@@ -714,7 +714,7 @@ def __get_unique_folders() -> list:
                     folder[len(other_folder)] == "/" or other_folder[-1] == "/"
                 )
                 if folder_index == 0 and next_char_slash:
-                    other_folder_found = Flags.TRUE
+                    other_folder_found = True  # pragma: no mutate
                     break
             # Okay if this doesn't exist
             except ValueError:
@@ -736,13 +736,13 @@ def __get_files_outside_directories() -> list:
     external_files = []
 
     for file_path in all_files:
-        folder_matched = Flags.FALSE
+        folder_matched = False  # pragma: no mutate
         for folder in folders:
             if folder_matched:
                 raise StopIteration("Folder already matched, but did not break")
             next_char_slash = file_path[len(folder)] == "/" or folder == "/"
             if file_path.startswith(folder) and next_char_slash:
-                folder_matched = Flags.TRUE
+                folder_matched = True  # pragma: no mutate
                 break
 
         if not folder_matched:
@@ -789,10 +789,10 @@ def restore_folder(folder_path: str) -> bool:
             print_error(Errors.FOLDER_NOT_CREATED(folder))
             return False
 
-    files_created = Flags.TRUE
+    files_created = True  # pragma: no mutate
     for file_path in entries.files:
         if not restore_file(file_path):
-            files_created = Flags.FALSE
+            files_created = False  # pragma: no mutate
 
     # Only set permissions if all files restored, since otherwise
     # can't retry file restoration, given missing permissions
@@ -817,7 +817,7 @@ def restore_folder(folder_path: str) -> bool:
                 print_error(
                     "Failed to set folder security options for {0}!".format(subfolder)
                 )
-                security_set = Flags.FALSE
+                security_set = False  # pragma: no mutate
 
     return files_created and security_set
 
@@ -919,8 +919,8 @@ def update_file(file_path: str) -> bool:
     # Do not mutate, since if file is not registered then
     # this does not actually affect outcome, at all
     checksum_match = file_registered  # pragma: no mutate
-    file_removed = Flags.TRUE
-    file_added = Flags.TRUE
+    file_removed = True  # pragma: no mutate
+    file_added = True  # pragma: no mutate
 
     # Only need to compare checksums if the file is registered
     # Otherwise will simply add it
@@ -984,12 +984,12 @@ def update_folder(folder: str) -> bool:
 
             if not db.remove_folder(folder_path):
                 print_error(Errors.FAILED_FOLDER_REMOVE(folder_path))
-                all_success = Flags.FALSE
+                all_success = False  # pragma: no mutate
                 continue
 
         if not db.add_folder(folder):
             print_error(Errors.FAILED_FOLDER_ADD(folder_path))
-            all_success = Flags.FALSE
+            all_success = False  # pragma: no mutate
 
     for file_path in disk_files.files:
         all_success = all_success and update_file(file_path)

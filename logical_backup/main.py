@@ -17,7 +17,7 @@ from logical_backup import db
 from logical_backup import library
 from logical_backup import utility
 from logical_backup.pretty_print import PrettyStatusPrinter, Color, print_error
-from logical_backup.strings import Info, Commands, Targets, Flags, Errors
+from logical_backup.strings import Info, Commands, Targets, Errors
 
 
 def __prepare():
@@ -120,8 +120,8 @@ def __validate_arguments(arguments: dict) -> bool:
         "update": [["file", "folder"]],
     }
 
-    command_valid = Flags.TRUE
-    path_exists = Flags.TRUE
+    command_valid = True  # pragma: no mutate
+    path_exists = True  # pragma: no mutate
     # Check at least one of each command set required is in the arguments
     for command_set in required_parameter_set_by_action.get(arguments["action"], []):
 
@@ -131,7 +131,7 @@ def __validate_arguments(arguments: dict) -> bool:
                 commands_in_set_found += 1
 
         if commands_in_set_found != 1:
-            command_valid = Flags.FALSE
+            command_valid = False  # pragma: no mutate
             break
 
     if arguments["file"]:

@@ -7,26 +7,6 @@ from enum import Enum
 from logical_backup.utilities.printable_enum import PrintableEnum
 
 
-class Flags(Enum):
-    """
-    Constants to use in place of true/false, for places
-    mutation wants to INSIST they can be None as default
-    """
-
-    NONE = None  # pragma: no mutate
-    TRUE = True  # pragma: no mutate
-    FALSE = False  # pragma: no mutate
-
-    def __bool__(self):
-        """
-        If this is true
-        """
-        return bool(self.value)
-
-    def __eq__(self, other):
-        return bool(self) == other
-
-
 class Errors(PrintableEnum):
     """
     Printed error messages
