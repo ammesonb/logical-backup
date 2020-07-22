@@ -2,8 +2,6 @@
 Contains printed messages, errors, etc
 """
 
-from enum import Enum
-
 from logical_backup.utilities.printable_enum import PrintableEnum
 
 
@@ -54,7 +52,10 @@ class Errors(PrintableEnum):
         "back to the database!".format(folder)  # pragma: no mutate
     )
 
-    DEVICE_MUST_BE_ADDED = "A device must be added before any other actions can occur!"  # pragma: no mutate
+    DEVICE_MUST_BE_ADDED = (
+        "A device must be added before "  # pragma: no mutate
+        "any other actions can occur!"  # pragma: no mutate
+    )
     NO_DEVICES_FOUND = "None!"  # pragma: no mutate
     SOME_DEVICES_FOUND = "Found some devices:"
     UNRECOGNIZED_DEVICE_IDENTIFIER = (

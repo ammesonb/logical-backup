@@ -359,8 +359,15 @@ def sum_file_size(files: list) -> int:
 
 
 def counter_wrapper(func):
+    """
+    Adds a "counter" variable to the function, incrementing each time it is called
+    """
+
     @functools.wraps(func)
     def execute(*args, **kwargs):
+        """
+        Adds a "counter" variable to the function, incrementing each time it is called
+        """
         execute.counter += 1
         return func(*args, **kwargs)
 
