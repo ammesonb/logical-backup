@@ -2,6 +2,7 @@
 Some helper functions
 """
 from collections import namedtuple
+import functools
 import grp
 import hashlib
 from os import getenv, environ
@@ -355,3 +356,14 @@ def sum_file_size(files: list) -> int:
         total_size += get_file_size(file_path)
 
     return total_size
+
+
+def counter_wrapper(func):
+    @functools.wraps(func)
+    def execute(*args, **kwargs):
+        execute.counter += 1
+        return func(*args, **kwargs)
+
+    execute.counter = 0
+
+    return execute

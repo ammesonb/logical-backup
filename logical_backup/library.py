@@ -438,7 +438,7 @@ def remove_file(file_path: str) -> bool:
         file_entry = file_entry[0]
         device = db.get_devices(file_entry.device_name)
 
-        if device and len(device) > 0:
+        if device:
             device = device[0]
             path_on_device = os_path.join(device.device_path, file_entry.file_name)
 
@@ -702,9 +702,6 @@ def __get_unique_folders() -> list:
     for folder in folders:
         other_folder_found = False  # pragma: no mutate
         for other_folder in folders:
-            if other_folder_found:
-                raise StopIteration("Already found folder, but did not break")
-
             if other_folder == folder:
                 continue
 
@@ -738,8 +735,6 @@ def __get_files_outside_directories() -> list:
     for file_path in all_files:
         folder_matched = False  # pragma: no mutate
         for folder in folders:
-            if folder_matched:
-                raise StopIteration("Folder already matched, but did not break")
             next_char_slash = file_path[len(folder)] == "/" or folder == "/"
             if file_path.startswith(folder) and next_char_slash:
                 folder_matched = True  # pragma: no mutate

@@ -19,7 +19,7 @@ from logical_backup import db
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
-from logical_backup.utility import auto_set_testing, DirectoryEntries
+from logical_backup.utility import auto_set_testing, DirectoryEntries, counter_wrapper
 from logical_backup import utility
 from logical_backup.strings import Errors, Info, InputPrompts
 from logical_backup.pretty_print import (
@@ -973,14 +973,12 @@ def test_remove_missing_database_entries(monkeypatch):
     ), "Removing only folders should succeed"
 
     # Removing everything should fail
+    @counter_wrapper
     def prompt_twice_only(prompt):
-        prompt_twice_only.counter += 1
         if prompt_twice_only.counter > 2:
             return ""
 
         return "REMOVE" if "folders" in str(prompt) else "YES"
-
-    prompt_twice_only.counter = 0
 
     monkeypatch.setattr(path, "isfile", lambda path: False)
     patch_input(monkeypatch, library, prompt_twice_only)
@@ -989,16 +987,15 @@ def test_remove_missing_database_entries(monkeypatch):
     ), "Removing everything should fail if file fails"
 
     # Success if everything removed
+    @counter_wrapper
     def rm_folder(rm_path):
-        rm_folder.counter += 1
         return True
 
+    @counter_wrapper
     def rm_file(rm_path):
-        rm_file.counter += 1
         return True
 
-    rm_folder.counter = 0
-    rm_file.counter = 0
+    # Need to reset call count here
     prompt_twice_only.counter = 0
 
     monkeypatch.setattr(library, "remove_file", rm_file)
@@ -1032,6 +1029,7 @@ def test_update_folder(monkeypatch, capsys):
     """
     folder_entries = DirectoryEntries(["bar"], [])
     both_entries = DirectoryEntries(["foo"], ["bar"])
+    multiple_folders = DirectoryEntries(["foo"], ["bar", "baz"])
 
     # First, test files only
     monkeypatch.setattr(db, "get_entries_for_folder", lambda folder: folder_entries)
@@ -1064,7 +1062,7 @@ def test_update_folder(monkeypatch, capsys):
     monkeypatch.setattr(
         utility, "list_entries_in_directory", lambda folder: both_entries
     )
-    monkeypatch.setattr(db, "remove_folder", lambda folder_path: False)
+
     monkeypatch.setattr(db, "add_folder", lambda folder: False)
 
     # First, test equivalence for folder succeeds
@@ -1091,8 +1089,22 @@ def test_update_folder(monkeypatch, capsys):
     assert library.update_folder(folder_path), "Directory unchanged should succeed"
 
     # Check removal/adding of folder causes failures
+    @counter_wrapper
+    def rm_folder(folder_path):
+        return False
+
+    monkeypatch.setattr(
+        utility, "list_entries_in_directory", lambda folder: multiple_folders
+    )
+    monkeypatch.setattr(db, "get_entries_for_folder", lambda folder: multiple_folders)
+    monkeypatch.setattr(db, "remove_folder", rm_folder)
+    folder2 = Folder()
+    folder2.set("baz", "755", "user", "group")
+    monkeypatch.setattr(db, "get_folders", lambda folder_path: [folder, folder2])
     folder.folder_group = "other"
     assert not library.update_folder(folder_path), "Folder removal failure should error"
+    assert rm_folder.counter == 2, "Remove folder should be called twice"
+
     out = capsys.readouterr()
     assert (
         Errors.FAILED_FOLDER_REMOVE(folder_path) in out.out
