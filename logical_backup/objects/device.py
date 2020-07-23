@@ -17,11 +17,11 @@ class Device:
         """
         .
         """
-        self.__device_name = None
-        self.__device_path = None
-        self.__identifier_type_id = None
-        self.__identifier_type = None
-        self.__identifier = None
+        self.__device_name = None  # pragma: no mutate
+        self.__device_path = None  # pragma: no mutate
+        self.__identifier_type_id = None  # pragma: no mutate
+        self.__identifier_type = None  # pragma: no mutate
+        self.__identifier = None  # pragma: no mutate
 
     @property
     def device_name(self) -> str:
@@ -30,7 +30,7 @@ class Device:
         """
         return self.__device_name
 
-    @device_name.setter
+    @device_name.setter  # pragma: no mutate
     def device_name(self, device_name: str):
         """
         Sets name of device
@@ -44,7 +44,7 @@ class Device:
         """
         return self.__device_path
 
-    @device_path.setter
+    @device_path.setter  # pragma: no mutate
     def device_path(self, device_path: str):
         """
         .
@@ -58,7 +58,7 @@ class Device:
         """
         return self.__identifier_type_id
 
-    @identifier_type_id.setter
+    @identifier_type_id.setter  # pragma: no mutate
     def identifier_type_id(self, identifier_type_id: int):
         """
         .
@@ -72,7 +72,7 @@ class Device:
         """
         return self.__identifier_type
 
-    @identifier_type.setter
+    @identifier_type.setter  # pragma: no mutate
     def identifier_type(self, identifier_type: str):
         """
         .
@@ -86,7 +86,7 @@ class Device:
         """
         return self.__identifier
 
-    @identifier.setter
+    @identifier.setter  # pragma: no mutate
     def identifier(self, identifier: str):
         """
         .

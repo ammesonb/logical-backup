@@ -38,6 +38,7 @@ def test_help():
     assert "usage: logical_backup_script.py" in result["stdout"].decode(
         "utf-8"
     ), "Usage should be printed"
+    assert result["stderr"].decode("utf-8") == "", "No standard error"
 
 
 def test_missing_action():

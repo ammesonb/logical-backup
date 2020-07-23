@@ -32,7 +32,7 @@ def is_test() -> bool:
     bool
         True if being run as a test
     """
-    return bool(getenv(TEST_VARIABLE))
+    return getenv(TEST_VARIABLE) == "1"
 
 
 def set_testing() -> None:
@@ -101,7 +101,7 @@ def auto_set_testing():
     Will automatically set environment to testing
     """
     set_testing()
-    yield "test"
+    yield
     remove_testing()
 
 
@@ -134,16 +134,21 @@ def get_device_serial(mount_point: str) -> str:
         .print_start()
     )
 
-    serial = None
+    serial = None  # pragma: no mutate
     partition = __get_device_path(mount_point)
     if partition:
-        commands = [
-            ["udevadm", "info", "--query=all", "--name=" + partition],
-            ["grep", " disk/by-uuid/"],
+        commands = [  # pragma: no mutate
+            [
+                "udevadm",
+                "info",
+                "--query=all",
+                "--name=" + partition,
+            ],  # pragma: no mutate
+            ["grep", " disk/by-uuid/"],  # pragma: no mutate
             # pylint: disable=anomalous-backslash-in-string
             # This is a bash escape, not regex
-            ["sed", "s/.*by-uuid\///"],
-        ]
+            ["sed", "s/.*by-uuid\///"],  # pragma: no mutate
+        ]  # pragma: no mutate
         output = run_piped_command(commands)
 
         if output["stdout"].strip():
@@ -174,10 +179,13 @@ def get_device_uuid(mount_point: str) -> str:
         .print_start()
     )
 
-    uuid = None
+    uuid = None  # pragma: no mutate
     partition = __get_device_path(mount_point)
     if partition:
-        commands = [["blkid", partition, "-o", "value"], ["head", "-1"]]
+        commands = [  # pragma: no mutate
+            ["blkid", partition, "-o", "value"],
+            ["head", "-1"],  # pragma: no mutate
+        ]  # pragma: no mutate
         output = run_piped_command(commands)
 
         if output["stdout"].strip():
@@ -258,7 +266,7 @@ def checksum_file(path: str) -> str:
         message.with_message_postfix_for_result(
             False, "Failed! Exit code: {0}".format(result["exit_code"])
         ).print_complete(False)
-        checksum = None
+        checksum = None  # pragma: no mutate
     else:
         message.print_complete()
         checksum = result["stdout"].strip().decode()
@@ -363,7 +371,7 @@ def counter_wrapper(func):
     Adds a "counter" variable to the function, incrementing each time it is called
     """
 
-    @functools.wraps(func)
+    @functools.wraps(func)  # pragma: no mutate
     def execute(*args, **kwargs):
         """
         Adds a "counter" variable to the function, incrementing each time it is called

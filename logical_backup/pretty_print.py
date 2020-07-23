@@ -60,10 +60,10 @@ def get_success_prefix(succeeded: bool = None) -> str:
     Check for True, Cross for False, spaces for None
     """
     if succeeded is None:
-        string = "  "
+        string = "  "  # pragma: no mutate
     elif succeeded:
         # The check has a smaller width than the cross, so pad it
-        string = CHECK_UNICODE + " "
+        string = CHECK_UNICODE + " "  # pragma: no mutate
     else:
         string = CROSS_UNICODE
 
@@ -87,27 +87,33 @@ class PrettyStatusPrinter:
         """
         .
         """
-        self.__with_ellipsis = True
-        self.__specific_color = None
-        self.__result_colors = {True: Color.GREEN, False: Color.ERROR}
-        self.__message_postfix = {True: "Completed", False: "Failed"}
-        self.__results = {None: None, True: True, False: False}
-        self.__background_color = None
-        self.__styles = []
-        self.__message = message.value if hasattr(message, "value") else message
-        self.__line_ending = "\n"
-        self.__started = False
+        self.__with_ellipsis = True  # pragma: no mutate
+        self.__specific_color = None  # pragma: no mutate
+        self.__result_colors = {
+            True: Color.GREEN,  # pragma: no mutate
+            False: Color.ERROR,  # pragma: no mutate
+        }
+        self.__message_postfix = {
+            True: "Completed",  # pragma: no mutate
+            False: "Failed",  # pragma: no mutate
+        }
+        self.__results = {None: None, True: True, False: False}  # pragma: no mutate
+        self.__background_color = None  # pragma: no mutate
+        self.__styles = []  # pragma: no mutate
+        self.__message = str(message)  # pragma: no mutate
+        self.__line_ending = "\n"  # pragma: no mutate
+        self.__started = False  # pragma: no mutate
 
     def __get_styled_message(self, result=None) -> str:
         """
         Returns the styled message
         Needs to know success status to resolve color correctly
         """
-        styled_message = ""
+        styled_message = ""  # pragma: no mutate
         if self.__specific_color:
-            styled_message += self.__specific_color.value
+            styled_message = self.__specific_color.value
         elif result is not None:
-            styled_message += (
+            styled_message = (
                 self.__result_colors[result].value
                 if result in self.__result_colors
                 else self.__result_colors[self.__results[result]].value
@@ -172,9 +178,7 @@ class PrettyStatusPrinter:
         """
         Adds message postfix for for given result, e.g. "failed to do X" or "Y happened"
         """
-        self.__message_postfix[result] = (
-            postfix.value if hasattr(postfix, "value") else postfix
-        )
+        self.__message_postfix[result] = str(postfix)
         return self
 
     def with_background_color(self, background: Background) -> PrettyStatusPrinter:
@@ -205,7 +209,11 @@ class PrettyStatusPrinter:
         Succeeded can also be specified, to pass through for formatting
         """
         line_ending = "\r" if to_overwrite else self.__line_ending
-        print(self.__get_styled_message(result), end=line_ending, flush=True)
+        print(
+            self.__get_styled_message(result),
+            end=line_ending,
+            flush=True,  # pragma: no mutate
+        )
 
     def get_styled_message(self, result=None) -> str:
         """
@@ -214,7 +222,7 @@ class PrettyStatusPrinter:
         """
         if result is not None:
             self.__started = True
-        return self.__get_styled_message(result)
+        return self.__get_styled_message(result) + self.__line_ending
 
     def print_start(self) -> PrettyStatusPrinter:
         """

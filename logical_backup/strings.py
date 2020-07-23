@@ -38,8 +38,8 @@ class Errors(PrintableEnum):
         "Specified folder not backed up: '{0}'!".format(path)  # pragma: no mutate
     )
     FOLDER_NOT_CREATED = lambda path: (
-        "Failed to create folder: {0}".format(path)
-    )  # pragma: no mutate
+        "Failed to create folder: {0}".format(path)  # pragma: no mutate
+    )
     CANNOT_OVERWRITE_EXISTING_FOLDER = (
         "Cannot move folder over existing file!"  # pragma: no mutate
     )
@@ -139,7 +139,7 @@ class InputPrompts(PrintableEnum):
     RECURSIVE_REMOVE_FILE = (  # pragma: no mutate
         "Found one or more backed-up files that no longer exist! "  # pragma: no mutate
         "Remove all missing files? Type YES uppercase to do so "  # pragma: no mutate
-    )
+    )  # pragma: no mutate
 
     DEVICE_NAME = "Device name: "  # pragma: no mutate
     DEVICE_IDENTIFIER = (
@@ -153,6 +153,7 @@ class Info(PrintableEnum):
     Informational messages
     """
 
+    ACTION = "The action to take"  # pragma: no mutate
     CHECKING_DEVICES = "Checking for devices"  # pragma: no mutate
     ALL_DEVICES_FOUND = "All devices found"  # pragma: no mutate
     NO_DEVICES_FOUND = "None found, but command can continue"

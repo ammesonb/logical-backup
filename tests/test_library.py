@@ -312,9 +312,11 @@ def test_get_device_with_space(monkeypatch, capsys):
     )
     patch_input(monkeypatch, library, lambda message: "n")
 
-    name, path = library.__get_device_with_space(1, "/mnt1")
+    name, device_path = library.__get_device_with_space(1, "/mnt1")
     output = capsys.readouterr()
-    assert name is None and path is None, "Insufficient space with exit should be empty"
+    assert (
+        name is None and device_path is None
+    ), "Insufficient space with exit should be empty"
     assert (
         "Checking drive space...Insufficient space" in output.out
     ), "insufficient space message printed"
@@ -1011,10 +1013,12 @@ def test_remove_missing_database_entries(monkeypatch):
 
     # Success if everything removed
     @counter_wrapper
+    # pylint: disable=unused-argument
     def rm_folder(rm_path):
         return True
 
     @counter_wrapper
+    # pylint: disable=unused-argument
     def rm_file(rm_path):
         return True
 
@@ -1113,6 +1117,7 @@ def test_update_folder(monkeypatch, capsys):
 
     # Check removal/adding of folder causes failures
     @counter_wrapper
+    # pylint: disable=unused-argument
     def rm_folder(folder_path):
         return False
 
@@ -1490,6 +1495,7 @@ def test_restore_file(monkeypatch, capsys):
         original_file
     ), "Restored file should be deleted after permission set failure"
 
+    # pylint: disable=unused-argument
     def throw_error(file_path):
         """
         Throws an error
@@ -1541,6 +1547,7 @@ def test_restore_folder(monkeypatch, capsys):
     entries = DirectoryEntries([], [folder1, folder2])
     monkeypatch.setattr(db, "get_entries_for_folder", lambda folder: entries)
 
+    # pylint: disable=unused-argument
     def throw_error(file_path, exist_ok):
         """
         Throws a permission error

@@ -12,10 +12,10 @@ class Folder:
         """
         .
         """
-        self.__folder_path = None
-        self.__folder_permissions = None
-        self.__folder_owner = None
-        self.__folder_group = None
+        self.__folder_path = None  # pragma: no mutate
+        self.__folder_permissions = None  # pragma: no mutate
+        self.__folder_owner = None  # pragma: no mutate
+        self.__folder_group = None  # pragma: no mutate
 
     @property
     def folder_path(self) -> str:
@@ -24,7 +24,7 @@ class Folder:
         """
         return self.__folder_path
 
-    @folder_path.setter
+    @folder_path.setter  # pragma: no mutate
     def folder_path(self, folder_path: str):
         """
         .
@@ -38,7 +38,7 @@ class Folder:
         """
         return self.__folder_permissions
 
-    @folder_permissions.setter
+    @folder_permissions.setter  # pragma: no mutate
     def folder_permissions(self, folder_permissions: str):
         """
         .
@@ -52,7 +52,7 @@ class Folder:
         """
         return self.__folder_owner
 
-    @folder_owner.setter
+    @folder_owner.setter  # pragma: no mutate
     def folder_owner(self, folder_owner: str):
         """
         .
@@ -66,7 +66,7 @@ class Folder:
         """
         return self.__folder_group
 
-    @folder_group.setter
+    @folder_group.setter  # pragma: no mutate
     def folder_group(self, folder_group: str):
         """
         .

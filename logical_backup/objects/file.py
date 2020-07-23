@@ -14,14 +14,14 @@ class File:
         """
         .
         """
-        self.__file_name = None
-        self.__file_path = None
-        self.__permissions = None
-        self.__owner = None
-        self.__group = None
-        self.__checksum = None
-        self.__device_name = None
-        self.__device = None
+        self.__file_name = None  # pragma: no mutate
+        self.__file_path = None  # pragma: no mutate
+        self.__permissions = None  # pragma: no mutate
+        self.__owner = None  # pragma: no mutate
+        self.__group = None  # pragma: no mutate
+        self.__checksum = None  # pragma: no mutate
+        self.__device_name = None  # pragma: no mutate
+        self.__device = None  # pragma: no mutate
 
     @property
     def file_name(self) -> str:
@@ -30,7 +30,7 @@ class File:
         """
         return self.__file_name
 
-    @file_name.setter
+    @file_name.setter  # pragma: no mutate
     def file_name(self, file_name: str):
         """
         .
@@ -44,7 +44,7 @@ class File:
         """
         return self.__file_path
 
-    @file_path.setter
+    @file_path.setter  # pragma: no mutate
     def file_path(self, file_path: str):
         """
         .
@@ -58,7 +58,7 @@ class File:
         """
         return self.__permissions
 
-    @permissions.setter
+    @permissions.setter  # pragma: no mutate
     def permissions(self, permissions: str):
         """
         .
@@ -72,7 +72,7 @@ class File:
         """
         return self.__owner
 
-    @owner.setter
+    @owner.setter  # pragma: no mutate
     def owner(self, owner: str):
         """
         .
@@ -86,7 +86,7 @@ class File:
         """
         return self.__group
 
-    @group.setter
+    @group.setter  # pragma: no mutate
     def group(self, group: str):
         """
         .
@@ -100,7 +100,7 @@ class File:
         """
         return self.__checksum
 
-    @checksum.setter
+    @checksum.setter  # pragma: no mutate
     def checksum(self, checksum: str):
         """
         .
@@ -114,7 +114,7 @@ class File:
         """
         return self.__device_name
 
-    @device_name.setter
+    @device_name.setter  # pragma: no mutate
     def device_name(self, device_name: str):
         """
         Sets file's device name
@@ -128,7 +128,7 @@ class File:
         """
         return self.__device
 
-    @device.setter
+    @device.setter  # pragma: no mutate
     def device(self, device: Device) -> None:
         """
         .

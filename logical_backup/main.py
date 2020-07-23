@@ -48,7 +48,7 @@ def __parse_arguments(command_line_arguments: list) -> tuple:
     )
     parser.add_argument(
         "action",
-        help="The action to take",
+        help=str(Info.ACTION),
         choices=[
             str(Commands.ADD),
             str(Commands.MOVE),

@@ -34,20 +34,11 @@ def test_formatted_print(capsys):
         .with_background_color(Background.BLUE)
         .with_styles([Format.BOLD])
         .with_styles([Format.UNDERLINE])
-        .with_line_ending("\r\n")
+        .with_line_ending("\r")
     )
     psp.print_message()
-
     out = capsys.readouterr()
-    # pylint: disable=bad-continuation
-    for part in [
-        "a message" + Format.END.value + "\r\n",
-        Color.MAGENTA.value,
-        Background.BLUE.value,
-        Format.BOLD.value,
-        Format.UNDERLINE.value,
-    ]:
-        assert part in out.out, "Expected component is printed"
+    assert out.out == psp.get_styled_message(), "Expected message prints"
 
 
 def test_basic_start_complete(capsys):
@@ -97,6 +88,13 @@ def test_start_complete_no_ellipsis(capsys):
     out = capsys.readouterr()
     assert "ellipsis - Failed" in out.out, "No ellipsis in fail message"
     assert "..." not in out.out, "No ellipsis printed"
+
+    psp = PrettyStatusPrinter("ellipsis").with_ellipsis()
+    psp.print_start()
+    psp.print_complete(False)
+
+    out = capsys.readouterr()
+    assert "ellipsis...Failed" in out.out, "Ellipsis in fail message"
 
 
 def test_formatted_start_complete(capsys):
