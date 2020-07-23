@@ -109,6 +109,27 @@ def test_list_devices(monkeypatch, capsys):
                 "identifier_name": "Device Serial",
                 "device_identifier": "ABCDEF1234",
             },
+        ],
+    )
+    command = __dispatch_command(arguments)
+    output = capsys.readouterr()
+    assert command == "list-devices", "Command called should be list devices"
+    assert (
+        "device_name | device_path | identifier_name | device_identifier " in output.out
+    ), "Headers are missing"
+    assert (
+        "| test_device | /mnt/dev1   | Device Serial   | ABCDEF1234" in output.out
+    ), "Test device 1 missing"
+
+    mock_devices(
+        monkeypatch,
+        [
+            {
+                "device_name": "test_device",
+                "device_path": "/mnt/dev1",
+                "identifier_name": "Device Serial",
+                "device_identifier": "ABCDEF1234",
+            },
             {
                 "device_name": "seagate_drive",
                 "device_path": "/mnt/dev2",
@@ -910,6 +931,8 @@ def test_update_file(monkeypatch, capsys):
     monkeypatch.setattr(library, "remove_file", lambda file_path: False)
     monkeypatch.setattr(library, "add_file", lambda file_path: False)
     assert library.update_file("/test"), "Updating file with matching checksum succeeds"
+    out = capsys.readouterr()
+    assert out.out == "", "No output if checksum matches"
 
     # Checksum mismatch cases work as expected - removal success/fail, add success/fail
     monkeypatch.setattr(utility, "checksum_file", lambda file_path: "mismatch")
@@ -923,7 +946,7 @@ def test_update_file(monkeypatch, capsys):
     assert not library.update_file("/test"), "Fails to add updated file"
     out = capsys.readouterr()
     assert (
-        "Failed to add file during update" in out.out
+        str(Errors.FAILED_ADD_FILE_UPDATE) in out.out
     ), "Failure to add updated file prints message"
 
     monkeypatch.setattr(library, "remove_file", lambda file_path: False)
@@ -1104,12 +1127,26 @@ def test_update_folder(monkeypatch, capsys):
     folder.folder_group = "other"
     assert not library.update_folder(folder_path), "Folder removal failure should error"
     assert rm_folder.counter == 2, "Remove folder should be called twice"
-
     out = capsys.readouterr()
     assert (
         Errors.FAILED_FOLDER_REMOVE(folder_path) in out.out
     ), "Folder removal failure should print message"
 
+    @counter_wrapper
+    def get_folders(folder_path):
+        return [folder if "bar" in folder_path else folder2]
+
+    folder.folder_group = "group"
+    monkeypatch.setattr(db, "get_folders", get_folders)
+    assert library.update_folder(folder_path), "Folders all equivalent succeeds"
+    assert get_folders.counter == 2, "Get folder should be called twice"
+    out = capsys.readouterr()
+    assert (
+        Errors.FAILED_FOLDER_REMOVE(folder_path) not in out.out
+    ), "Breaks before database failure"
+
+    folder.folder_group = "other"
+    monkeypatch.setattr(db, "get_folders", lambda folder_path: [folder])
     monkeypatch.setattr(db, "remove_folder", lambda folder_path: True)
     monkeypatch.setattr(db, "add_folder", lambda folder_path: False)
     assert not library.update_folder(
@@ -1390,7 +1427,9 @@ def test_restore_file(monkeypatch, capsys):
     ), "File already exists message prints"
     remove(original_file)
 
-    monkeypatch.setattr(library, "verify_file", lambda file_path, for_restore: False)
+    monkeypatch.setattr(
+        library, "verify_file", lambda file_path, for_restore: not for_restore
+    )
     assert not library.restore_file(
         original_file
     ), "Restore fails if back up of file has invalid checksum"
@@ -1545,7 +1584,7 @@ def test_restore_folder(monkeypatch, capsys):
     assert not library.restore_folder(folder1), "Should fail due to permission mismatch"
     out = capsys.readouterr()
     assert (
-        "Failed to set folder security options for" in out.out
+        Errors.FAILED_FOLDER_SECURITY(folder1) in out.out
     ), "Permission mismatch message prints"
     assert path.isdir(folder1), "Folder one still created after permission mismatch"
     assert path.isdir(folder2), "Folder two still created after permission mismatch"

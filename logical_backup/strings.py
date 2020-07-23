@@ -51,13 +51,17 @@ class Errors(PrintableEnum):
         "Failed to add folder '{0}' "  # pragma: no mutate
         "back to the database!".format(folder)  # pragma: no mutate
     )
+    FAILED_FOLDER_SECURITY = lambda folder_path: (
+        "Failed to set folder "
+        "security options for {0}".format(folder_path)  # pragma: no mutate
+    )
 
     DEVICE_MUST_BE_ADDED = (
         "A device must be added before "  # pragma: no mutate
         "any other actions can occur!"  # pragma: no mutate
     )
     NO_DEVICES_FOUND = "None!"  # pragma: no mutate
-    SOME_DEVICES_FOUND = "Found some devices:"
+    SOME_DEVICES_FOUND = "Found some devices:"  # pragma: no mutate
     UNRECOGNIZED_DEVICE_IDENTIFIER = (
         "Failed. Unrecognized device identifier!"  # pragma: no mutate
     )

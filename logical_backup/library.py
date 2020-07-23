@@ -712,7 +712,7 @@ def __get_unique_folders() -> list:
                 )
                 if folder_index == 0 and next_char_slash:
                     other_folder_found = True  # pragma: no mutate
-                    break
+                    break  # pragma: no mutate
             # Okay if this doesn't exist
             except ValueError:
                 continue
@@ -738,7 +738,7 @@ def __get_files_outside_directories() -> list:
             next_char_slash = file_path[len(folder)] == "/" or folder == "/"
             if file_path.startswith(folder) and next_char_slash:
                 folder_matched = True  # pragma: no mutate
-                break
+                break  # pragma: no mutate
 
         if not folder_matched:
             external_files.append(file_path)
@@ -809,9 +809,7 @@ def restore_folder(folder_path: str) -> bool:
                 "owner": folder.folder_owner,
                 "group": folder.folder_group,
             }:
-                print_error(
-                    "Failed to set folder security options for {0}!".format(subfolder)
-                )
+                print_error(Errors.FAILED_FOLDER_SECURITY(subfolder))
                 security_set = False  # pragma: no mutate
 
     return files_created and security_set
@@ -998,7 +996,6 @@ def list_devices():
     """
     devices = db.get_devices()
     if devices:
-
         table = Texttable()
         headers = devices[0].keys()
         table.add_row(headers)
