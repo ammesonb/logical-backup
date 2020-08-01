@@ -5,7 +5,6 @@ from collections import namedtuple
 
 import psutil
 
-from logical_backup.utility import __get_device_path
 from logical_backup.utilities import device, process
 
 DiskPartition = namedtuple("sdiskpart", "device mountpoint fstype opts")
@@ -18,10 +17,10 @@ def test_get_device_path(monkeypatch):
     """
     root_partition = DiskPartition("/dev/sda", "/", "ext4", "rw")
     monkeypatch.setattr(psutil, "disk_partitions", lambda all=False: [root_partition])
-    result = __get_device_path("/test")
+    result = device.__get_device_path("/test")
     assert not result, "Nothing returned if no mounted partitions"
 
-    result = __get_device_path("/")
+    result = device.__get_device_path("/")
     assert result == "/dev/sda", "Only mounted partition should return device"
 
     other_partition_one = DiskPartition("/dev/sdb", "/test1", "ext3", "ro")
@@ -32,7 +31,7 @@ def test_get_device_path(monkeypatch):
         lambda all=False: [root_partition, other_partition_one, other_partition_two],
     )
 
-    result = __get_device_path("/test1")
+    result = device.__get_device_path("/test1")
     assert result == "/dev/sdb", "Multiple mounted partitions"
 
 
