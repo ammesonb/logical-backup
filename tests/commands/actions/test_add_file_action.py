@@ -10,7 +10,8 @@ from logical_backup import db
 from logical_backup.commands.actions import AddFileAction
 from logical_backup.objects import File, Device
 from logical_backup.strings import Errors, Info
-from logical_backup import utility
+from logical_backup.utilities import files
+from logical_backup.utilities.testing import counter_wrapper
 
 
 def get_file_obj(create_file: bool = False, data: str = None, size: int = 1024):
@@ -46,7 +47,7 @@ def test_failed_first_checksum(monkeypatch):
     """
     .
     """
-    monkeypatch.setattr(utility, "checksum_file", lambda path: "")
+    monkeypatch.setattr(files, "checksum_file", lambda path: "")
     file_obj = get_file_obj()
     action = AddFileAction(file_obj)
     action.run()
@@ -60,16 +61,16 @@ def test_mismatched_checksum(monkeypatch):
     """
     .
     """
-    checksum_func = utility.checksum_file
+    checksum_func = files.checksum_file
 
-    @utility.counter_wrapper
+    @counter_wrapper
     def checksum_file(file_path: str) -> str:
         """
         Overrides checksum file for second call
         """
         return checksum_func(file_path) if checksum_file.counter == 1 else ""
 
-    monkeypatch.setattr(utility, "checksum_file", checksum_file)
+    monkeypatch.setattr(files, "checksum_file", checksum_file)
     file_obj = get_file_obj(True)
     action = AddFileAction(file_obj)
     action.run()

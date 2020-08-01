@@ -16,7 +16,8 @@ from logical_backup.objects.file import File
 from logical_backup.objects.folder import Folder
 
 
-from logical_backup.utility import is_test, DirectoryEntries
+from logical_backup.utilities.testing import is_test
+from logical_backup.utilities.files import DirectoryEntries
 
 DB_FILE = join(dirname(__file__), "../files.db")  # pragma: no mutate
 DEV_FILE = join(dirname(__file__), "../files.db.test")  # pragma: no mutate

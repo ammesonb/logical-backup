@@ -7,7 +7,8 @@ from pytest import raises
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
-from logical_backup.utility import run_command, auto_set_testing
+from logical_backup.utilities.testing import auto_set_testing
+from logical_backup.utilities import process
 from logical_backup import main  # for input mocking
 from logical_backup import library  # for input mocking
 from logical_backup.main import __check_devices
@@ -33,7 +34,7 @@ def test_help():
     """
     Test help is printed and exits normally
     """
-    result = run_command(["python3", "logical_backup_script.py", "-h"])
+    result = process.run_command(["python3", "logical_backup_script.py", "-h"])
     assert result["exit_code"] == 0, "Result should pass for help flag"
     assert "usage: logical_backup_script.py" in result["stdout"].decode(
         "utf-8"
@@ -45,7 +46,7 @@ def test_missing_action():
     """
     Test missing the action
     """
-    result = run_command(["python3", "logical_backup_script.py"])
+    result = process.run_command(["python3", "logical_backup_script.py"])
     assert result["exit_code"] == 2, "Result should fail if missing the acton"
 
 
@@ -53,7 +54,9 @@ def test_unrecognized_action():
     """
     Test an action which isn't in the command set
     """
-    result = run_command(["python3", "logical_backup_script.py", "unrecognized"])
+    result = process.run_command(
+        ["python3", "logical_backup_script.py", "unrecognized"]
+    )
     assert result["exit_code"] == 2, "Result should fail if the action is unrecognized"
 
 

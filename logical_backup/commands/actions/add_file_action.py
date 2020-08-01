@@ -6,7 +6,7 @@ from os import path as os_path
 import shutil
 
 from logical_backup import db
-from logical_backup import utility
+from logical_backup.utilities import files
 from logical_backup.commands.actions.base_action import BaseAction
 from logical_backup.objects import File
 from logical_backup.strings import Errors, Info
@@ -29,7 +29,7 @@ class AddFileAction(BaseAction):
         Run the action
         """
         file_path = self.file_obj.file_path
-        checksum = utility.checksum_file(file_path)
+        checksum = files.checksum_file(file_path)
         if not checksum:
             self._fail(Errors.FAILED_GET_CHECKSUM_FOR(file_path))
             return
@@ -42,7 +42,7 @@ class AddFileAction(BaseAction):
         shutil.copyfile(file_path, backup_path)
 
         self._add_message(Info.COPYING_FILE(file_path))
-        checksum2 = utility.checksum_file(backup_path)
+        checksum2 = files.checksum_file(backup_path)
 
         if checksum != checksum2:
             self._fail(Errors.CHECKSUM_MISMATCH_AFTER_COPY_FOR(file_path))

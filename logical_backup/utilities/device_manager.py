@@ -6,7 +6,7 @@ import socket
 
 from logical_backup.objects import Device
 from logical_backup import db
-from logical_backup import utility
+from logical_backup.utilities import device
 from logical_backup.strings import Configurations, DeviceArguments
 
 
@@ -58,7 +58,7 @@ class DeviceManager:
 
         devices = db.get_devices()
         for device in devices:
-            device.available_space = utility.get_device_space(device.device_path)
+            device.available_space = device.get_device_space(device.device_path)
             device.allocated_space = 0
             self.__devices[device.device_path] = device
 

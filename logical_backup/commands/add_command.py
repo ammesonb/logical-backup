@@ -4,7 +4,7 @@ The "add" class of commands
 from logical_backup.commands.base_command import BaseCommand
 from logical_backup.commands.actions import AddFileAction
 from logical_backup import db
-from logical_backup import utility
+from logical_backup.utilities import files
 from logical_backup.pretty_print import readable_bytes
 from logical_backup.objects import File
 from logical_backup.utilities.device_manager import send_message, format_message
@@ -115,16 +115,16 @@ class AddCommand(BaseCommand):
             return None
 
         try:
-            security_details = utility.get_file_security(file_path)
+            security_details = files.get_file_security(file_path)
         except PermissionError:
             self._add_error(Errors.CANNOT_READ_FILE_AT(file_path))
             return None
 
         file_obj = File()
-        file_obj.set_properties(utility.create_backup_name(file_path), file_path, "")
+        file_obj.set_properties(files.create_backup_name(file_path), file_path, "")
         file_obj.set_security(**security_details)
 
-        file_size = utility.get_file_size(file_path)
+        file_size = files.get_file_size(file_path)
         self._add_message(
             Info.FILE_SIZE_OUTPUT_AT(file_path, readable_bytes(file_size))
         )
@@ -132,14 +132,14 @@ class AddCommand(BaseCommand):
         selected_device_path = None
         if self.__to_specific_device:
             device_path = self._validator.get_device()
-            file_size = utility.get_file_size(file_path)
+            file_size = files.get_file_size(file_path)
 
             selected_device_path = self.__check_device(device_path, file_size)
             if not selected_device_path:
                 return None
 
         else:
-            file_size = utility.get_file_size(file_path)
+            file_size = files.get_file_size(file_path)
             self._add_message(Info.AUTO_SELECT_DEVICE)
             send_message(
                 [DeviceArguments.COMMAND_GET_DEVICE, file_size],

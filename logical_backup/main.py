@@ -15,7 +15,7 @@ import sys
 
 from logical_backup import db
 from logical_backup import library
-from logical_backup import utility
+from logical_backup.utilities import files
 from logical_backup.pretty_print import PrettyStatusPrinter, Color, print_error
 from logical_backup.strings import Info, Commands, Targets, Errors, Arguments
 
@@ -89,13 +89,11 @@ def __parse_arguments(command_line_arguments: list) -> tuple:
     )
     args = parser.parse_args(command_line_arguments)
     arguments = vars(args)
-    arguments[str(Arguments.FILE)] = utility.get_abs_path(
-        arguments[str(Arguments.FILE)]
-    )
-    arguments[str(Arguments.FOLDER)] = utility.get_abs_path(
+    arguments[str(Arguments.FILE)] = files.get_abs_path(arguments[str(Arguments.FILE)])
+    arguments[str(Arguments.FOLDER)] = files.get_abs_path(
         arguments[str(Arguments.FOLDER)]
     )
-    arguments[str(Arguments.DEVICE)] = utility.get_abs_path(
+    arguments[str(Arguments.DEVICE)] = files.get_abs_path(
         arguments[str(Arguments.DEVICE)]
     )
     return arguments
