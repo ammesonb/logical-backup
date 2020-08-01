@@ -2,7 +2,16 @@
 Contains printed messages, errors, etc
 """
 
-from logical_backup.utilities.printable_enum import PrintableEnum
+from logical_backup.utilities import PrintableEnum
+
+
+class Configurations(PrintableEnum):
+    MAX_CONNECTIONS = 20  # pragma: no mutate
+    CONNECTION_TIMEOUT = 0.5  # pragma: no mutate
+    MESSAGE_TIMEOUT = 0.5  # pragma: no mutate
+    MAX_MESSAGE_SIZE = 1024  # pragma: no mutate
+
+    MESSAGE_DELIMITER = ","  # pragma: no mutate
 
 
 class Errors(PrintableEnum):
@@ -21,15 +30,29 @@ class Errors(PrintableEnum):
         "Action must override run function"  # pragma: no mutate
     )
 
+    NONEXISTENT_FILE = "File path does not exist!"  # pragma: no mutate
     FILE_ALREADY_BACKED_UP = "File is already backed up!"  # pragma: no mutate
+    FILE_ALREADY_BACKED_UP_AT = lambda path: (
+        "File is already backed up at {0}!".format(path)  # pragma: no mutate
+    )
     FILE_NOT_BACKED_UP = "File path not backed up!"  # pragma: no mutate
     NEW_FILE_ALREADY_BACKED_UP = (
         "File already backed up at new location!"  # pragma: no mutate
     )
     CANNOT_FIND_BACKUP = "Cannot find back up of file!"  # pragma: no mutate
     FILE_DEVICE_INVALID = "Unable to find device for file"  # pragma: no mutate
+    CANNOT_READ_FILE_AT = lambda path: (
+        "Unable to read source file: {0}".format(path)  # pragma: no mutate
+    )
+    FAILED_ADD_FILE_DB = lambda path: (
+        "Failed to record file in database: {0}".format(path)  # pragma: no mutate
+    )
 
+    NONEXISTENT_FOLDER = "Folder path does not exist!"  # pragma: no mutate
     FOLDER_ALREADY_ADDED = "Folder already added!"  # pragma: no mutate
+    FOLDER_ALREADY_ADDED_AT = lambda path: (
+        "Folder {0} already added!".format(path)  # pragma: no mutate
+    )
     FOLDER_BACKED_UP_AT = lambda path: (  # pragma: no mutate
         "Folder already backed up at path '{0}'!".format(path)  # pragma: no mutate
     )
@@ -56,10 +79,17 @@ class Errors(PrintableEnum):
         "security options for {0}".format(folder_path)  # pragma: no mutate
     )
 
+    DEVICE_PATH_NOT_MOUNTED = lambda path: (
+        "No device is mounted at {0}".format(path)  # pragma: no mutate
+    )
+    DEVICE_NOT_WRITEABLE_AT = lambda path: (
+        "Cannot write to device at {0}".format(path)  # pragma: no mutate
+    )
     DEVICE_MUST_BE_ADDED = (
         "A device must be added before "  # pragma: no mutate
         "any other actions can occur!"  # pragma: no mutate
     )
+    DEVICE_ALREADY_ADDED_AT = lambda path: ()
     NO_DEVICES_FOUND = "None!"  # pragma: no mutate
     SOME_DEVICES_FOUND = "Found some devices:"  # pragma: no mutate
     UNRECOGNIZED_DEVICE_IDENTIFIER = (
@@ -96,8 +126,14 @@ class Errors(PrintableEnum):
     )
 
     FAILED_GET_CHECKSUM = "Failed to get checksum"  # pragma: no mutate
+    FAILED_GET_CHECKSUM_FOR = lambda path: (
+        "Failed to get checksum: " + path  # pragma: no mutate
+    )
     CHECKSUM_MISMATCH = "File checksum does not match"  # pragma: no mutate
     CHECKSUM_MISMATCH_AFTER_COPY = "Checksum mismatch after copy!"  # pragma: no mutate
+    CHECKSUM_MISMATCH_AFTER_COPY_FOR = lambda path: (
+        "Checksum mismatch after copy: " + path  # pragma: no mutate
+    )
     NONE_FOUND = "None found!"  # pragma: no mutate
 
     FAILED_FILE_DEVICE_DB_UPDATE = (
@@ -119,6 +155,14 @@ class Errors(PrintableEnum):
     FAILED_ADD_FILE_UPDATE = "Failed to add file during update!"  # pragma: no mutate
 
     FAILED_REMOVE_FILE = "Failed to remove file from the database!"  # pragma: no mutate
+
+    NO_NETWORK_RESPONSE = (
+        "Failed to get a response for device availability"  # pragma: no mutate
+    )
+
+    INVALID_COMMAND = lambda command: (
+        "Command is not valid: '{0}'".format(command)  # pragma: no mutate
+    )
 
 
 class InputPrompts(PrintableEnum):
@@ -159,12 +203,18 @@ class Info(PrintableEnum):
     NO_DEVICES_FOUND = "None found, but command can continue"
     CONTINUING_WITHOUT_DEVICE = "Continuing without all devices"  # pragma: no mutate
 
+    CHECKING_DEVICE = "Checking availability on device"  # pragma: no mutate
     AUTO_SELECT_DEVICE = "Auto-selecting device"  # pragma: no mutate
     GET_FILE_SIZE = "Getting file size"  # pragma: no mutate
     FILE_SIZE_OUTPUT = lambda size: "Read. File size is " + size  # pragma: no mutate
+    FILE_SIZE_OUTPUT_AT = lambda path, size: (
+        "Read file {0}. File size is {1}".format(path, size)  # pragma: no mutate
+    )
 
     SAVING_DEVICE = "Saving device"  # pragma: no mutate
+    COPYING_FILE = lambda path: "Copying file {0}" + path  # pragma: no mutate
     SAVING_FILE_TO_DB = "Saving file record to DB"  # pragma: no mutate
+    FILE_SAVED = lambda path: "File backed up: " + path  # pragma: no mutate
 
     COPYING_FILE_DEVICE = "Copying file to new device"  # pragma: no mutate
 
@@ -246,3 +296,42 @@ class Targets(PrintableEnum):
     DEVICE = "--device"  # pragma: no mutate
     FROM_DEVICE = "--from-device"  # pragma: no mutate
     MOVE_PATH = "--move-path"  # pragma: no mutate
+
+
+class Arguments(PrintableEnum):
+    """
+    Argument options
+    """
+
+    ALL = "all"  # pragma: no mutate
+    FILE = "file"  # pragma: no mutate
+    FOLDER = "folder"  # pragma: no mutate
+    DEVICE = "device"  # pragma: no mutate
+    FROM_DEVICE = "from_device"  # pragma: no mutate
+    MOVE_PATH = "move_path"  # pragma: no mutate
+
+
+class DeviceArguments(PrintableEnum):
+    """
+    Commands and responses in the device manager
+    """
+
+    COMMAND_DELIMITER = ","  # pragma: no mutate
+    COMMAND_GET_DEVICE = "get-device"  # pragma: no mutate
+    COMMAND_CHECK_DEVICE = "check-device"  # pragma: no mutate
+
+    RESPONSE_OK = "ok"  # pragma: no mutate
+    RESPONSE_SUBSTITUTE = "substitute"  # pragma: no mutate
+    RESPONSE_PARTIAL = "partial"  # pragma: no mutate
+    RESPONSE_UNRESOLVABLE = "unresolvable"  # pragma: no mutate
+    RESPONSE_INVALID = "invalid"  # pragma: no mutate
+
+    ERROR_INSUFFICIENT_PARAMETERS = lambda command: (
+        "Insufficient parameters for command {0}".format(command)  # pragma: no mutate
+    )
+    ERROR_UNKNOWN_DEVICE = lambda device_path: (
+        "Unknown device path provided: {0}".format(device_path)  # pragma: no mutate
+    )
+    ERROR_SIZE_IS_NOT_NUMBER = lambda size: (
+        "Provided size is not an integer: {0}".format(size)  # pragma: no mutate
+    )

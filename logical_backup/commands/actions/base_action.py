@@ -13,7 +13,7 @@ class BaseAction:
       - verify the checksum of a backed-up file
     """
 
-    # pylint: disable=unused-argument
+    # pylint: disable=unused-argument,bad-continuation
     # Derivative classes may need any number of arguments,
     # so let them take what they need
     def __init__(self, *args, **kwargs) -> None:
@@ -23,8 +23,9 @@ class BaseAction:
         """
         self.__success = None
         self.__errors = []
+        self.__messages = []
 
-    def run(self):
+    def run(self) -> None:
         """
         Runs the content of the specific action
         """
@@ -42,4 +43,36 @@ class BaseAction:
         """
         Any errors encountered
         """
-        return self.errors
+        return self.__errors
+
+    @property
+    def messages(self) -> list:
+        """
+        Any messages logged
+        """
+        return self.__messages
+
+    def _add_message(self, message: str) -> None:
+        """
+        Add a message
+        """
+        self.__messages.append(message)
+
+    def _add_error(self, error: str) -> None:
+        """
+        Add an error
+        """
+        self.__errors.append(error)
+
+    def _fail(self, error: str) -> None:
+        """
+        Mark this action as failed, with a given error
+        """
+        self._add_error(error)
+        self.__success = False
+
+    def _succeed(self) -> None:
+        """
+        Mark this action as succeeded
+        """
+        self.__success = True

@@ -17,7 +17,7 @@ from logical_backup import db
 from logical_backup import library
 from logical_backup import utility
 from logical_backup.pretty_print import PrettyStatusPrinter, Color, print_error
-from logical_backup.strings import Info, Commands, Targets, Errors
+from logical_backup.strings import Info, Commands, Targets, Errors, Arguments
 
 
 def __prepare():
@@ -71,7 +71,7 @@ def __parse_arguments(command_line_arguments: list) -> tuple:
     )
     parser.add_argument(
         str(Targets.FROM_DEVICE),
-        dest="from_device",
+        dest=str(Arguments.FROM_DEVICE),
         help=str(Info.TARGET_FROM_DEVICE_HELP),
         required=False,
     )
@@ -83,15 +83,21 @@ def __parse_arguments(command_line_arguments: list) -> tuple:
     )
     parser.add_argument(
         str(Targets.MOVE_PATH),
-        dest="move_path",
+        dest=str(Arguments.MOVE_PATH),
         help=str(Info.TARGET_MOVE_PATH_HELP),
         required=False,
     )
     args = parser.parse_args(command_line_arguments)
     arguments = vars(args)
-    arguments["file"] = utility.get_abs_path(arguments["file"])
-    arguments["folder"] = utility.get_abs_path(arguments["folder"])
-    arguments["device"] = utility.get_abs_path(arguments["device"])
+    arguments[str(Arguments.FILE)] = utility.get_abs_path(
+        arguments[str(Arguments.FILE)]
+    )
+    arguments[str(Arguments.FOLDER)] = utility.get_abs_path(
+        arguments[str(Arguments.FOLDER)]
+    )
+    arguments[str(Arguments.DEVICE)] = utility.get_abs_path(
+        arguments[str(Arguments.DEVICE)]
+    )
     return arguments
 
 
@@ -136,13 +142,13 @@ def __validate_arguments(arguments: dict) -> bool:
 
     if arguments["file"]:
         path_exists = isfile(arguments["file"]) or arguments["action"] in [
-            Commands.RESTORE,
-            Commands.VERIFY,
+            str(Commands.RESTORE),
+            str(Commands.VERIFY),
         ]
     elif arguments["folder"]:
         path_exists = isdir(arguments["folder"]) or arguments["action"] in [
-            Commands.RESTORE,
-            Commands.VERIFY,
+            str(Commands.RESTORE),
+            str(Commands.VERIFY),
         ]
 
     if arguments["device"] or arguments["from_device"]:
