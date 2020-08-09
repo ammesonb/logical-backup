@@ -33,7 +33,7 @@ class BaseCommand:
             Command line arguments
         """
         self.arguments = arguments
-        device_manager_socket.settimeout(float(Configurations.CONNECTION_TIMEOUT.value))
+        device_manager_socket.settimeout(Configurations.CONNECTION_TIMEOUT.value)
         self.device_manager_socket = device_manager_socket
         self.device_manager_lock = device_manager_lock
         self._validator = CommandValidator(arguments)

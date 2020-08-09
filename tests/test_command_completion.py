@@ -44,6 +44,7 @@ def test_get_device(monkeypatch):
     monkeypatch.setattr(glob, "glob", lambda path: ["bar", "baz", "foo"])
     monkeypatch.setattr(os_path, "isdir", lambda path: path == "bar")
     monkeypatch.setattr(os_path, "ismount", lambda path: path in ["baz", "foo"])
+    # pylint: disable=bad-continuation
     assert command_completion.get_device("ba") == [
         "bar",
         "baz",
@@ -59,6 +60,7 @@ def test_set_completion(monkeypatch):
     """
 
     @counter_wrapper
+    # pylint: disable=unused-argument
     def parse_func(key_binding):
         """
         .
@@ -66,6 +68,7 @@ def test_set_completion(monkeypatch):
         return
 
     @counter_wrapper
+    # pylint: disable=unused-argument
     def completer_func(func):
         """
         .
@@ -73,6 +76,7 @@ def test_set_completion(monkeypatch):
         return
 
     @counter_wrapper
+    # pylint: disable=unused-argument
     def delims_func(delims):
         """
         .
@@ -127,6 +131,7 @@ def test_command_parameters_correct(monkeypatch):
     """
     .
     """
+    # pylint: disable=bad-continuation
     for command in [
         str(Commands.ADD),
         str(Commands.RESTORE),

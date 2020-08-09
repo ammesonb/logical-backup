@@ -6,6 +6,8 @@ from pytest import raises
 from logical_backup.commands.actions.base_action import BaseAction
 from logical_backup.strings import Errors
 
+# pylint: disable=protected-access
+
 
 def test_run_not_implemented():
     """
@@ -44,7 +46,11 @@ def test_fail():
     .
     """
     action = BaseAction()
+    # Ensure value is actually None
+    # pylint: disable=singleton-comparison
     assert action.success == None, "Success not set"
     action._fail("Fatal")
+    # Ensure value is False, not None
+    # pylint: disable=singleton-comparison
     assert action.success == False, "Success is False"
     assert action.errors == ["Fatal"], "Failure reason added"

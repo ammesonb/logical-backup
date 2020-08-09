@@ -1,13 +1,18 @@
 """
 Test base command
 """
-from pytest import raises
 import socket
+
+from pytest import raises
 
 from logical_backup.commands.base_command import BaseCommand
 from logical_backup.strings import Errors, Configurations
 
+# pylint: disable=protected-access
 
+
+# Intentionally omitted for testing here
+# pylint: disable=abstract-method
 class Command(BaseCommand):
     """
     Test command

@@ -9,6 +9,7 @@ from logical_backup.commands.command_validator import CommandValidator
 from logical_backup.strings import Arguments
 
 
+# pylint: disable=unused-argument
 def __make_arguments(*args, **kwargs):
     """
     Makes arguments based off of kwargs
@@ -53,7 +54,7 @@ def test_file():
     assert validator.has_file(), "File is added"
     assert not validator.file_exists(), "File does not exist"
 
-    descriptor, filename = tempfile.mkstemp()
+    filename = tempfile.mkstemp()[1]
     validator = CommandValidator(__make_arguments(file=filename))
     assert validator.get_file() == filename, "File matches"
     assert validator.has_file(), "File is added"

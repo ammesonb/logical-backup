@@ -6,15 +6,15 @@ import socket
 
 from logical_backup.objects import Device
 from logical_backup import db
-from logical_backup.utilities import device
+from logical_backup.utilities import device, testing
 from logical_backup.strings import Configurations, DeviceArguments
 
 
-def __device_has_space(device: Device, needed_space: int) -> bool:
+def _device_has_space(dev: Device, needed_space: int) -> bool:
     """
     Checks if a device has enough space
     """
-    return device.available_space - device.allocated_space >= needed_space
+    return dev.available_space - dev.allocated_space >= needed_space
 
 
 class DeviceManager:
@@ -42,14 +42,17 @@ class DeviceManager:
 
     # pylint: disable=bad-continuation
     def __init__(
-        self, sock: socket.socket, max_connections: int = Configurations.MAX_CONNECTIONS
+        self,
+        sock: socket.socket,
+        max_connection_count=Configurations.MAX_CONNECTIONS.value,
     ):
         """
         Set up socket for listening
         """
-        sock.settimeout(Configurations.CONNECTION_TIMEOUT)
+        sock.settimeout(Configurations.CONNECTION_TIMEOUT.value)
+        self.__stop = False  # pragma: no mutate
         self.__socket = sock
-        self.__socket.listen(max_connections)
+        self.__socket.listen(max_connection_count)
         self.__connections = []
 
         self.__devices = {}
@@ -57,19 +60,19 @@ class DeviceManager:
         self.__errors = []
 
         devices = db.get_devices()
-        for device in devices:
-            device.available_space = device.get_device_space(device.device_path)
-            device.allocated_space = 0
-            self.__devices[device.device_path] = device
+        for dev in devices:
+            dev.available_space = device.get_device_space(dev.device_path)
+            dev.allocated_space = 0
+            self.__devices[dev.device_path] = dev
 
-    def __accept_connection(self) -> None:
+    def _accept_connection(self) -> None:
         """
         See if there are any pending connections
         """
         while True:
             try:
                 conn = self.__socket.accept()[0]
-                conn.settimeout(Configurations.MESSAGE_TIMEOUT)
+                conn.settimeout(float(Configurations.MESSAGE_TIMEOUT.value))
                 self.__connections.append(conn)
             except socket.timeout:
                 break
@@ -79,35 +82,49 @@ class DeviceManager:
                 self.__errors.append(str(exc))
                 break
 
-    def __receive_messages(self) -> None:
+    def _receive_messages(self) -> None:
         """
         Check for sent messages
         """
-        while True:
-            for connection in self.__connections:
-                try:
-                    message = connection.recv(Configurations.MAX_MESSAGE_SIZE)
-                    self.__process_message(message, connection)
-                except socket.timeout:
-                    continue
-                # Want to catch any possible failure, to add to errors
-                # pylint: disable=broad-except
-                except Exception as exc:
-                    self.__errors.append(str(exc))
-                    continue
+        for connection in self.__connections:
+            try:
+                message = connection.recv(
+                    Configurations.MAX_MESSAGE_SIZE.value
+                ).decode()
 
-    def __process_message(self, message: str, connection) -> None:
+                if message == str(DeviceArguments.COMMAND_STOP):
+                    self.__stop = True
+                    break
+
+                self._process_message(message, connection)
+            except socket.timeout:
+                continue
+            # Want to catch any possible failure, to add to errors
+            # pylint: disable=broad-except
+            except Exception as exc:
+                self.__errors.append(str(exc))
+                continue
+
+    def loop(self) -> None:
+        """
+        Accept connections and receive/process messages
+        """
+        while not self.stopped:
+            self._accept_connection()
+            self._receive_messages()
+
+    def _process_message(self, message: str, connection: socket.socket) -> None:
         """
         Process a received message
         """
-        parts = message.split(",")
-        if parts[0] == DeviceArguments.COMMAND_CHECK_DEVICE:
-            self.__check_device_space(parts, connection)
-        elif parts[0] == DeviceArguments.COMMAND_GET_DEVICE:
-            pass
+        parts = message.split(str(DeviceArguments.COMMAND_DELIMITER))
+        if parts[0] == str(DeviceArguments.COMMAND_CHECK_DEVICE):
+            self._check_device_space(parts, connection)
+        elif parts[0] == str(DeviceArguments.COMMAND_GET_DEVICE):
+            self._pick_device(parts, connection)
 
     # pylint: disable=bad-continuation
-    def __check_message_length(
+    def _check_message_length(
         self, message_parts: list, length: int, connection: socket.socket
     ) -> bool:
         """
@@ -117,62 +134,63 @@ class DeviceManager:
             self.__errors.append(
                 DeviceArguments.ERROR_INSUFFICIENT_PARAMETERS(message_parts[0])
             )
-            connection.send(format_message(DeviceArguments.RESPONSE_INVALID))
+            connection.send(format_message(DeviceArguments.RESPONSE_INVALID).encode())
 
-        return len(message_parts) < length
+        return len(message_parts) >= length
 
     # pylint: disable=bad-continuation
-    def __check_device_space(
+    def _check_device_space(
         self, message_parts: list, connection: socket.socket
     ) -> None:
         """
         Checks that a given device has enough space
         """
-        if not self.__check_message_length(message_parts, 3, connection):
+        if not self._check_message_length(message_parts, 3, connection):
             return
 
         # Check if device path exists, size is valid
         device_path, requested_size = message_parts[1], message_parts[2]
         if device_path not in self.__devices:
             self.__errors.append(DeviceArguments.ERROR_UNKNOWN_DEVICE(device_path))
-            connection.send(format_message(DeviceArguments.RESPONSE_INVALID))
+            connection.send(format_message(DeviceArguments.RESPONSE_INVALID).encode())
             return
 
         if not requested_size.isnumeric():
             self.__errors.append(
                 DeviceArguments.ERROR_SIZE_IS_NOT_NUMBER(requested_size)
             )
-            connection.send(format_message(DeviceArguments.RESPONSE_INVALID))
+            connection.send(format_message(DeviceArguments.RESPONSE_INVALID).encode())
             return
 
         # Will this device fit the request
-        if __device_has_space(self.__devices[device_path], int(requested_size)):
-            # If yes, add the requested space to the portion this one has allocated already
+        if _device_has_space(self.__devices[device_path], int(requested_size)):
+            # If yes, add the requested space to the portion
+            # this one has allocated already
             self.__devices[device_path].allocated_space += requested_size
-            connection.send(format_message(DeviceArguments.RESPONSE_OK))
+            connection.send(format_message(DeviceArguments.RESPONSE_OK).encode())
             return
 
         # Otherwise, check all devices
-        for device in self.__devices:
+        for dev in self.__devices:
             # If one has sufficient space, substitute it for the one provided
             # NOTE: will NOT reserve space yet - another call MUST be made
             # This allows a user to reject the substitute first
-            if device.available_space - device.allocated_space >= requested_size:
+            if dev.available_space - dev.allocated_space >= requested_size:
                 connection.send(
                     format_message(
-                        DeviceArguments.RESPONSE_SUBSTITUTE, [device.device_path]
-                    )
+                        DeviceArguments.RESPONSE_SUBSTITUTE, [dev.device_path]
+                    ).encode()
                 )
                 return
 
         # Otherwise, exit as unresolvable
-        connection.send(DeviceArguments.RESPONSE_UNRESOLVABLE)
+        connection.send(str(DeviceArguments.RESPONSE_UNRESOLVABLE).encode())
 
-    def __pick_device(self, message_parts: list, connection: socket.socket) -> None:
+    def _pick_device(self, message_parts: list, connection: socket.socket) -> None:
         """
         Finds a device with sufficient space
         """
-        if not self.__check_message_length(message_parts, 2, connection):
+        if not self._check_message_length(message_parts, 2, connection):
             return
 
         requested_size = message_parts[1]
@@ -182,12 +200,12 @@ class DeviceManager:
             )
             connection.send(format_message(DeviceArguments.RESPONSE_INVALID))
 
-        for device in self.__devices:
-            if __device_has_space(device, int(message_parts[2])):
+        for dev in self.__devices:
+            if _device_has_space(dev, int(message_parts[2])):
                 connection.send(
                     format_message(
-                        DeviceArguments.RESPONSE_SUBSTITUTE, [device.device_path]
-                    )
+                        DeviceArguments.RESPONSE_SUBSTITUTE, [dev.device_path]
+                    ).encode()
                 )
                 break
 
@@ -205,13 +223,33 @@ class DeviceManager:
         """
         return self.__messages
 
+    def stop(self):
+        """
+        Set stopped
+        """
+        self.__stop = True
+
+    @property
+    def stopped(self) -> bool:
+        """
+        Returns if this was stopped
+        """
+        return self.__stop
+
+    @property
+    def connections(self) -> list:
+        """
+        Returns connections, for testing only
+        """
+        return self.__connections if testing.is_test() else []
+
 
 def format_message(command: DeviceArguments, parameters: list = None) -> str:
     """
     Formats command and parameters into a coherent string
     """
-    return DeviceArguments.COMMAND_DELIMITER.join(
-        [str(command), parameters if parameters else []]
+    return str(DeviceArguments.COMMAND_DELIMITER).join(
+        [str(command)] + (parameters if parameters else [])
     )
 
 
@@ -224,4 +262,4 @@ def send_message(
     Message should be a list of pieces, to join
     """
     with lock:
-        sock.send(format_message(message[0], message[1:]))
+        sock.send(format_message(message[0], message[1:]).encode())

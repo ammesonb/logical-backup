@@ -1,11 +1,17 @@
 """
 Contains printed messages, errors, etc
 """
+from os import path as os_path
+import tempfile
 
 from logical_backup.utilities import PrintableEnum
 
 
 class Configurations(PrintableEnum):
+    """
+    Program configurations
+    """
+
     MAX_CONNECTIONS = 20  # pragma: no mutate
     CONNECTION_TIMEOUT = 0.5  # pragma: no mutate
     MESSAGE_TIMEOUT = 0.5  # pragma: no mutate
@@ -316,9 +322,14 @@ class DeviceArguments(PrintableEnum):
     Commands and responses in the device manager
     """
 
+    SOCKET_PATH = os_path.join(  # pragma: no mutate
+        tempfile.gettempdir(), "logical-backup-device-manager.sock"  # pragma: no mutate
+    )
+
     COMMAND_DELIMITER = ","  # pragma: no mutate
     COMMAND_GET_DEVICE = "get-device"  # pragma: no mutate
     COMMAND_CHECK_DEVICE = "check-device"  # pragma: no mutate
+    COMMAND_STOP = "stop"  # pragma: no mutate
 
     RESPONSE_OK = "ok"  # pragma: no mutate
     RESPONSE_SUBSTITUTE = "substitute"  # pragma: no mutate

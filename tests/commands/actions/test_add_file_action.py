@@ -35,7 +35,7 @@ def get_file_obj(create_file: bool = False, data: str = None, size: int = 1024):
         checksum = ""
 
     file_obj = File()
-    file_obj.set_properties(name + ".bak", name, "")
+    file_obj.set_properties(name + ".bak", name, checksum)
     file_obj.set_security("644", "user", "group")
     file_obj.device = device
     file_obj.device_name = "device"
@@ -54,6 +54,8 @@ def test_failed_first_checksum(monkeypatch):
     assert action.errors == [
         Errors.FAILED_GET_CHECKSUM_FOR(file_obj.file_path)
     ], "Error set as expected"
+    # Ensure False, not None
+    # pylint: disable=singleton-comparison
     assert action.success == False, "Action set to failed"
 
 
@@ -81,6 +83,8 @@ def test_mismatched_checksum(monkeypatch):
     assert action.errors == [
         Errors.CHECKSUM_MISMATCH_AFTER_COPY_FOR(file_obj.file_path)
     ], "Error set as expected"
+    # Ensure False, not None
+    # pylint: disable=singleton-comparison
     assert action.success == False, "Action set to failed"
     assert not os_path.isfile(
         os_path.join(file_obj.device.device_path, file_obj.file_name)
@@ -107,6 +111,8 @@ def test_db_save_failure(monkeypatch):
     assert action.errors == [
         str(Errors.FAILED_ADD_FILE_DB(file_obj.file_path))
     ], "Error set is DB fail"
+    # Ensure False, not None
+    # pylint: disable=singleton-comparison
     assert action.success == False, "Action set to failed"
     assert not os_path.isfile(
         os_path.join(file_obj.device.device_path, file_obj.file_name)
@@ -133,6 +139,8 @@ def test_action_success(monkeypatch):
         Info.FILE_SAVED(file_obj.file_path),
     ], "Messages added"
     assert action.errors == [], "No errors set"
+    # Ensure True, not some other value
+    # pylint: disable=singleton-comparison
     assert action.success == True, "Action succeeded"
     assert os_path.isfile(backup_path), "Back up file should be present"
 
