@@ -17,6 +17,8 @@ def _device_has_space(dev: Device, needed_space: int) -> bool:
     return dev.available_space - dev.allocated_space >= needed_space
 
 
+# TODO: consider making this by transaction
+# TODO: Will also help for cleanup, since could add "start" and "close" concepts
 class DeviceManager:
     """
     Manages devices to maintain available space, etc.
@@ -103,6 +105,9 @@ class DeviceManager:
             # pylint: disable=broad-except
             except Exception as exc:
                 self.__errors.append(str(exc))
+                connection.send(
+                    DeviceArguments.ERROR_UNKNOWN_EXCEPTION(str(exc)).encode()
+                )
                 continue
 
     def loop(self) -> None:
@@ -122,6 +127,8 @@ class DeviceManager:
             self._check_device_space(parts, connection)
         elif parts[0] == str(DeviceArguments.COMMAND_GET_DEVICE):
             self._pick_device(parts, connection)
+        else:
+            connection.send(str(DeviceArguments.ERROR_UNKNOWN_COMMAND).encode())
 
     # pylint: disable=bad-continuation
     def _check_message_length(
@@ -150,11 +157,6 @@ class DeviceManager:
 
         # Check if device path exists, size is valid
         device_path, requested_size = message_parts[1], message_parts[2]
-        if device_path not in self.__devices:
-            self.__errors.append(DeviceArguments.ERROR_UNKNOWN_DEVICE(device_path))
-            connection.send(format_message(DeviceArguments.RESPONSE_INVALID).encode())
-            return
-
         if not requested_size.isnumeric():
             self.__errors.append(
                 DeviceArguments.ERROR_SIZE_IS_NOT_NUMBER(requested_size)
@@ -162,8 +164,22 @@ class DeviceManager:
             connection.send(format_message(DeviceArguments.RESPONSE_INVALID).encode())
             return
 
+        requested_size = int(requested_size)
+        if int(requested_size) == 0:
+            self.__errors.append(str(DeviceArguments.ERROR_SIZE_IS_ZERO))
+            connection.send(format_message(DeviceArguments.RESPONSE_INVALID).encode())
+            return
+
+        if device_path not in self.__devices:
+            self.__errors.append(DeviceArguments.ERROR_UNKNOWN_DEVICE(device_path))
+            connection.send(format_message(DeviceArguments.RESPONSE_INVALID).encode())
+            return
+
         # Will this device fit the request
-        if _device_has_space(self.__devices[device_path], int(requested_size)):
+        if (
+            _device_has_space(self.__devices[device_path], int(requested_size))
+            and requested_size > 0
+        ):
             # If yes, add the requested space to the portion
             # this one has allocated already
             self.__devices[device_path].allocated_space += requested_size
@@ -171,11 +187,11 @@ class DeviceManager:
             return
 
         # Otherwise, check all devices
-        for dev in self.__devices:
+        for dev in self.__devices.values():
             # If one has sufficient space, substitute it for the one provided
             # NOTE: will NOT reserve space yet - another call MUST be made
             # This allows a user to reject the substitute first
-            if dev.available_space - dev.allocated_space >= requested_size:
+            if 0 < requested_size <= dev.available_space - dev.allocated_space:
                 connection.send(
                     format_message(
                         DeviceArguments.RESPONSE_SUBSTITUTE, [dev.device_path]

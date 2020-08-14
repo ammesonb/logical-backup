@@ -13,8 +13,8 @@ class Configurations(PrintableEnum):
     """
 
     MAX_CONNECTIONS = 20  # pragma: no mutate
-    CONNECTION_TIMEOUT = 0.5  # pragma: no mutate
-    MESSAGE_TIMEOUT = 0.5  # pragma: no mutate
+    CONNECTION_TIMEOUT = 0.1  # pragma: no mutate
+    MESSAGE_TIMEOUT = 0.1  # pragma: no mutate
     MAX_MESSAGE_SIZE = 1024  # pragma: no mutate
 
     MESSAGE_DELIMITER = ","  # pragma: no mutate
@@ -346,3 +346,10 @@ class DeviceArguments(PrintableEnum):
     ERROR_SIZE_IS_NOT_NUMBER = lambda size: (
         "Provided size is not an integer: {0}".format(size)  # pragma: no mutate
     )
+    ERROR_SIZE_IS_ZERO = "Requested size is zero"  # pragma: no mutate
+    ERROR_UNKNOWN_EXCEPTION = lambda error: (
+        "An unknown exception occurred: {0}!".format(error)  # pragma: no mutate
+    )
+    ERROR_UNKNOWN_COMMAND = lambda command: (
+        "Unrecognized command: {0}".format(command)
+    )  # pragma: no mutate

@@ -23,7 +23,9 @@ from logical_backup.utilities.device_manager import (
 
 # pylint: disable=unused-import
 from logical_backup.utilities.testing import counter_wrapper, auto_set_testing
-from logical_backup.strings import DeviceArguments
+from logical_backup.strings import DeviceArguments, Configurations
+
+# pylint: disable=protected-access
 
 
 @fixture(autouse=True)
@@ -175,23 +177,24 @@ def test_stop_message_immediately_stops(monkeypatch):
 
     manager = DeviceManager(sock)
     monkeypatch.setattr(manager, "_process_message", mock_process_message)
-    accept_thread = threading.Thread(target=manager._accept_connection)
-    accept_thread.start()
 
-    # Wait for thread to start before connecting
-    sleep(0.2)
-
+    # Try to connect before starting, to avoid thread timing out early
     client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     client_sock.connect(str(DeviceArguments.SOCKET_PATH))
 
-    # Wait for connection to be accepted before message is sent
+    accept_thread = threading.Thread(target=manager._accept_connection)
+    accept_thread.start()
+
+    # Wait for thread to connect
     sleep(0.2)
 
     assert manager.errors == [], "No errors in accepting connection"
     assert not manager.stopped, "Device manager not stopped"
     client_sock.sendall(str(DeviceArguments.COMMAND_STOP).encode())
+    sleep(0.2)
 
     manager._receive_messages()
+    sleep(0.2)
 
     assert mock_process_message.counter == 0, "Process message not called"
     assert manager.stopped, "Device manager stopped"
@@ -214,13 +217,15 @@ def test_receive_message_stops_with_no_message(monkeypatch):
 
     manager = DeviceManager(sock)
     monkeypatch.setattr(manager, "_process_message", mock_process_message)
+
+    client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client_sock.connect(str(DeviceArguments.SOCKET_PATH))
+
     accept_thread = threading.Thread(target=manager._accept_connection)
     accept_thread.start()
 
     sleep(0.1)
 
-    client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    client_sock.connect(str(DeviceArguments.SOCKET_PATH))
     assert manager.errors == [], "No errors in accepting connection"
 
     sleep(0.1)
@@ -248,13 +253,13 @@ def test_receive_messages(monkeypatch):
 
     manager = DeviceManager(sock)
     monkeypatch.setattr(manager, "_process_message", mock_process_message)
-    accept_thread = threading.Thread(target=manager._accept_connection)
-    accept_thread.start()
 
-    sleep(0.1)
-
+    # Try connecting before accepting connections
     client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     client_sock.connect(str(DeviceArguments.SOCKET_PATH))
+
+    accept_thread = threading.Thread(target=manager._accept_connection)
+    accept_thread.start()
 
     sleep(0.1)
 
@@ -377,14 +382,11 @@ def test_check_message_length(monkeypatch):
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.bind(str(DeviceArguments.SOCKET_PATH))
     manager = DeviceManager(sock)
-    accept_thread = threading.Thread(target=manager._accept_connection)
-    accept_thread.start()
-
-    # Give server time to bind, to avoid lock race condition
-    sleep(0.2)
 
     client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     client_sock.connect(str(DeviceArguments.SOCKET_PATH))
+    accept_thread = threading.Thread(target=manager._accept_connection)
+    accept_thread.start()
 
     # Give server time to accept
     sleep(0.1)
@@ -406,3 +408,195 @@ def test_check_message_length(monkeypatch):
     assert received == str(
         DeviceArguments.RESPONSE_INVALID
     ), "Insufficient param count message sent"
+
+
+def test_check_device_failures(monkeypatch):
+    """
+    .
+    """
+    devices = []
+    monkeypatch.setattr(db, "get_devices", lambda name=None: devices)
+
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.bind(str(DeviceArguments.SOCKET_PATH))
+    manager = DeviceManager(sock)
+    manager_thread = threading.Thread(target=manager.loop)
+    manager_thread.start()
+    sleep(0.2)
+
+    client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client_sock.connect(str(DeviceArguments.SOCKET_PATH))
+    lock = multiprocessing.Lock()
+
+    try:
+        send_message(
+            [str(DeviceArguments.COMMAND_CHECK_DEVICE), "invalid"], client_sock, lock
+        )
+        response = client_sock.recv(100).decode()
+        assert response == str(
+            DeviceArguments.RESPONSE_INVALID
+        ), "Invalid response returned for two arguments"
+        assert (
+            DeviceArguments.ERROR_INSUFFICIENT_PARAMETERS(
+                str(DeviceArguments.COMMAND_CHECK_DEVICE)
+            )
+            in manager.errors
+        ), "Insufficient parameters in errors"
+
+        send_message(
+            [str(DeviceArguments.COMMAND_CHECK_DEVICE), "invalid", "abc"],
+            client_sock,
+            lock,
+        )
+        response = client_sock.recv(100).decode()
+        assert response == str(
+            DeviceArguments.RESPONSE_INVALID
+        ), "Invalid response returned for non-numeric size"
+        assert (
+            DeviceArguments.ERROR_SIZE_IS_NOT_NUMBER("abc") in manager.errors
+        ), "Size not number in manager's errors"
+
+        send_message(
+            [str(DeviceArguments.COMMAND_CHECK_DEVICE), "invalid", "5"],
+            client_sock,
+            lock,
+        )
+        response = client_sock.recv(100).decode()
+        assert response == str(
+            DeviceArguments.RESPONSE_INVALID
+        ), "Invalid response returned for non-existing device"
+        assert (
+            DeviceArguments.ERROR_UNKNOWN_DEVICE("invalid") in manager.errors
+        ), "Missing device in manager errors"
+
+        send_message(
+            [str(DeviceArguments.COMMAND_CHECK_DEVICE), "invalid", "0"],
+            client_sock,
+            lock,
+        )
+        response = client_sock.recv(100).decode()
+        assert response == str(
+            DeviceArguments.RESPONSE_INVALID
+        ), "Invalid response returned for zero quantity"
+        assert (
+            str(DeviceArguments.ERROR_SIZE_IS_ZERO) in manager.errors
+        ), "Zero quantity in errors"
+    except AssertionError as failure:
+        raise failure
+    finally:
+        manager.stop()
+
+
+def test_no_usable_device(monkeypatch):
+    """
+    .
+    """
+    dev1 = Device()
+    dev1.set("dev1", "/dev1", "Device Serial", "12345", 1)
+
+    monkeypatch.setattr(db, "get_devices", lambda name=None: [dev1])
+    monkeypatch.setattr(device, "get_device_space", lambda device_path: 10)
+
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.bind(str(DeviceArguments.SOCKET_PATH))
+    manager = DeviceManager(sock)
+
+    client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client_sock.connect(str(DeviceArguments.SOCKET_PATH))
+
+    manager_thread = threading.Thread(target=manager.loop)
+    manager_thread.start()
+
+    # Give server chance to accept connection, and timeout after
+    sleep(1)
+
+    lock = multiprocessing.Lock()
+
+    try:
+        send_message(
+            [str(DeviceArguments.COMMAND_CHECK_DEVICE), "/dev1", "100"],
+            client_sock,
+            lock,
+        )
+        response = client_sock.recv(100).decode()
+        assert manager.errors == [], "No errors present"
+        assert response == str(
+            DeviceArguments.RESPONSE_UNRESOLVABLE
+        ), "No device can satisfy request"
+    except AssertionError as failure:
+        raise failure
+    finally:
+        manager.stop()
+
+
+def test_check_device_success(monkeypatch):
+    """
+    .
+    """
+    dev1 = Device()
+    dev1.set("dev1", "/dev1", "Device Serial", "12345", 1)
+    dev2 = Device()
+    dev2.set("dev2", "/dev2", "Device Serial", "23456", 1)
+    dev3 = Device()
+    dev3.set("dev3", "/dev3", "Device Serial", "34567", 1)
+
+    monkeypatch.setattr(db, "get_devices", lambda name=None: [dev1, dev2, dev3])
+    monkeypatch.setattr(
+        device,
+        "get_device_space",
+        lambda device_path: 10
+        if device_path == "/dev1"
+        else 100
+        if device_path == "/dev2"
+        else 150,
+    )
+
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.bind(str(DeviceArguments.SOCKET_PATH))
+    manager = DeviceManager(sock)
+
+    client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client_sock.connect(str(DeviceArguments.SOCKET_PATH))
+    manager_thread = threading.Thread(target=manager.loop)
+    manager_thread.start()
+
+    lock = multiprocessing.Lock()
+
+    try:
+        send_message(
+            [str(DeviceArguments.COMMAND_CHECK_DEVICE), "/dev1", "10"],
+            client_sock,
+            lock,
+        )
+        sleep(0.2)
+        response = client_sock.recv(100).decode()
+        assert manager.errors == [], "No errors"
+        assert response == str(DeviceArguments.RESPONSE_OK), "Response is valid"
+
+        send_message(
+            [str(DeviceArguments.COMMAND_CHECK_DEVICE), "/dev1", "10"],
+            client_sock,
+            lock,
+        )
+        sleep(0.2)
+        response = client_sock.recv(100).decode()
+        assert manager.errors == [], "No errors"
+        assert response == format_message(
+            DeviceArguments.RESPONSE_SUBSTITUTE, ["/dev2"]
+        ), "Response is subsitution"
+
+        send_message(
+            [str(DeviceArguments.COMMAND_CHECK_DEVICE), "/dev1", "101"],
+            client_sock,
+            lock,
+        )
+        sleep(0.2)
+        response = client_sock.recv(100).decode()
+        assert manager.errors == [], "No errors"
+        assert response == format_message(
+            DeviceArguments.RESPONSE_SUBSTITUTE, ["/dev3"]
+        ), "Response is subsitution"
+    except AssertionError as failure:
+        raise failure
+    finally:
+        manager.stop()
