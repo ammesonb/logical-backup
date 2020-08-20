@@ -6,6 +6,8 @@ import tempfile
 
 from logical_backup.utilities import PrintableEnum
 
+# pylint: disable=unnecessary-lambda
+
 
 class Configurations(PrintableEnum):
     """

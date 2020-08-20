@@ -757,30 +757,33 @@ def test_auto_close(monkeypatch):
 
     monkeypatch.setattr(manager, "close", mock_close)
 
-    client_sock, txid = get_connection()
+    try:
+        client_sock, txid = get_connection()
 
-    accept_thread = threading.Thread(target=manager.loop)
-    accept_thread.start()
+        accept_thread = threading.Thread(target=manager.loop)
+        accept_thread.start()
 
-    sleep(0.1)
+        sleep(0.1)
 
-    assert manager.errors(txid) == [], "No errors in connecting"
+        assert manager.errors(txid) == [], "No errors in connecting"
 
-    assert mock_close.counter == 0, "Connection not yet closed"
-    assert manager.messages(txid) == [], "No messages"
+        assert mock_close.counter == 0, "Connection not yet closed"
+        assert manager.messages(txid) == [], "No messages"
 
-    fixed_time = time.time() + 10
-    monkeypatch.setattr(time, "time", lambda: fixed_time)
+        fixed_time = time.time() + 10
+        monkeypatch.setattr(time, "time", lambda: fixed_time)
 
-    sleep(0.3)
+        sleep(0.3)
 
-    assert mock_close.counter == 1, "Connection closed"
-    assert manager.messages(txid) == [], "No messages"
-    assert __get_initialize_messages(manager) == [
-        DeviceArguments.MESSAGE_CLOSING_CONNECTION(txid)
-    ], "Close connection message recorded"
-
-    manager.stop()
+        assert mock_close.counter == 1, "Connection closed"
+        assert manager.messages(txid) == [], "No messages"
+        assert __get_initialize_messages(manager) == [
+            DeviceArguments.MESSAGE_CLOSING_CONNECTION(txid)
+        ], "Close connection message recorded"
+    except AssertionError as failure:
+        raise failure
+    finally:
+        manager.stop()
 
 
 def test_initialize_connection(monkeypatch):
@@ -798,34 +801,39 @@ def test_initialize_connection(monkeypatch):
 
     sleep(0.1)
 
-    client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    client_sock.connect(str(DeviceArguments.SOCKET_PATH))
+    try:
+        client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client_sock.connect(str(DeviceArguments.SOCKET_PATH))
 
-    client_sock.send(b"wrong")
-    assert client_sock.recv(100).decode() == str(
-        DeviceArguments.RESPONSE_INVALID
-    ), "Invalid hello"
-    assert __get_initialize_errors(manager) == [
-        DeviceArguments.ERROR_BAD_HELLO("wrong")
-    ], "Wrong initialization message added"
+        client_sock.send(b"wrong")
+        assert client_sock.recv(100).decode() == str(
+            DeviceArguments.RESPONSE_INVALID
+        ), "Invalid hello"
+        assert __get_initialize_errors(manager) == [
+            DeviceArguments.ERROR_BAD_HELLO("wrong")
+        ], "Wrong initialization message added"
 
-    client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    client_sock.connect(str(DeviceArguments.SOCKET_PATH))
+        client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client_sock.connect(str(DeviceArguments.SOCKET_PATH))
 
-    client_sock.send(str(DeviceArguments.COMMAND_HELLO).encode())
-    assert client_sock.recv(100).decode() == str(
-        DeviceArguments.RESPONSE_INVALID
-    ), "Hello missing second part"
-    assert DeviceArguments.ERROR_BAD_HELLO(
-        str(DeviceArguments.COMMAND_HELLO)
-    ) in __get_initialize_errors(manager), "Wrong initialization message added"
+        client_sock.send(str(DeviceArguments.COMMAND_HELLO).encode())
+        assert client_sock.recv(100).decode() == str(
+            DeviceArguments.RESPONSE_INVALID
+        ), "Hello missing second part"
+        assert DeviceArguments.ERROR_BAD_HELLO(
+            str(DeviceArguments.COMMAND_HELLO)
+        ) in __get_initialize_errors(manager), "Wrong initialization message added"
 
-    client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    client_sock.connect(str(DeviceArguments.SOCKET_PATH))
+        client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client_sock.connect(str(DeviceArguments.SOCKET_PATH))
 
-    client_sock.send(format_message(DeviceArguments.COMMAND_HELLO, ["test"]).encode())
-    sleep(0.1)
-    assert manager.errors("test") == [], "Errors are empty"
-    assert manager.messages("test") == [], "Messages are empty"
-
-    manager.stop()
+        client_sock.send(
+            format_message(DeviceArguments.COMMAND_HELLO, ["test"]).encode()
+        )
+        sleep(0.1)
+        assert manager.errors("test") == [], "Errors are empty"
+        assert manager.messages("test") == [], "Messages are empty"
+    except AssertionError as failure:
+        raise failure
+    finally:
+        manager.stop()
