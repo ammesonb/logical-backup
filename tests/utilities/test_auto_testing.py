@@ -1,6 +1,7 @@
 """
 Tests automating setting of testing
 """
+# pylint: disable=unused-import
 from logical_backup.utilities.testing import auto_set_testing, is_test
 
 

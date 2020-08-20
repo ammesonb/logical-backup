@@ -151,7 +151,7 @@ def test_list_files():
     )
 
     test_directory = tempfile.mkdtemp()
-    descriptor, filename = tempfile.mkstemp(dir=test_directory)
+    filename = tempfile.mkstemp(dir=test_directory)[1]
     file1 = temp_file_path(filename)
 
     nested_directory_1 = temp_file_path(tempfile.mkdtemp(dir=test_directory))
@@ -163,7 +163,7 @@ def test_list_files():
         entries.folders, [nested_directory_1, nested_directory_2]
     ), "Directory and empty directories should be included"
 
-    descriptor, filename = tempfile.mkstemp(dir=nested_directory_2)
+    filename = tempfile.mkstemp(dir=nested_directory_2)[1]
     file2 = temp_file_path(filename)
 
     entries = files.list_entries_in_directory(test_directory)
@@ -176,7 +176,7 @@ def test_list_files():
     ), "Nested files in directory"
 
     nested_directory_3 = temp_file_path(tempfile.mkdtemp(dir=nested_directory_1))
-    descriptor, filename = tempfile.mkstemp(dir=nested_directory_1)
+    filename = tempfile.mkstemp(dir=nested_directory_1)[1]
     file3 = temp_file_path(filename)
 
     entries = files.list_entries_in_directory(test_directory)
@@ -197,7 +197,7 @@ def test_sum_files():
     """
 
     test_directory = tempfile.mkdtemp()
-    descriptor, filename = tempfile.mkstemp(dir=test_directory)
+    filename = tempfile.mkstemp(dir=test_directory)[1]
     file_handle = open(filename, "wb")
     file_handle.write(os.urandom(100))
     file_handle.close()
@@ -207,7 +207,7 @@ def test_sum_files():
 
     assert files.sum_file_size(file_list) == 100, "Single file size summed"
 
-    descriptor, filename = tempfile.mkstemp(dir=test_directory)
+    filename = tempfile.mkstemp(dir=test_directory)[1]
     file_handle = open(filename, "wb")
     file_handle.write(os.urandom(50))
     file_handle.close()

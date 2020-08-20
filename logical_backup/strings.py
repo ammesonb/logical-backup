@@ -15,6 +15,8 @@ class Configurations(PrintableEnum):
     MAX_CONNECTIONS = 20  # pragma: no mutate
     CONNECTION_TIMEOUT = 0.1  # pragma: no mutate
     MESSAGE_TIMEOUT = 0.1  # pragma: no mutate
+    # close a connection this many seconds of inactivigy
+    CLOSE_CONNECTION_AFTER = 5  # pragma: no mutate
     MAX_MESSAGE_SIZE = 1024  # pragma: no mutate
 
     MESSAGE_DELIMITER = ","  # pragma: no mutate
@@ -327,6 +329,7 @@ class DeviceArguments(PrintableEnum):
     )
 
     COMMAND_DELIMITER = ","  # pragma: no mutate
+    COMMAND_HELLO = "hello"  # pragma: no mutate
     COMMAND_GET_DEVICE = "get-device"  # pragma: no mutate
     COMMAND_CHECK_DEVICE = "check-device"  # pragma: no mutate
     COMMAND_STOP = "stop"  # pragma: no mutate
@@ -353,3 +356,13 @@ class DeviceArguments(PrintableEnum):
     ERROR_UNKNOWN_COMMAND = lambda command: (
         "Unrecognized command: {0}".format(command)
     )  # pragma: no mutate
+    ERROR_BAD_HELLO = lambda command: (
+        "Invalid hello command: {0}".format(command)  # pragma: no mutate
+    )
+
+    KEY_ACCEPT = "accept"  # pragma: no mutate
+    KEY_INITIALIZE = "initialize"  # pragma: no mutate
+
+    MESSAGE_CLOSING_CONNECTION = lambda txid: (
+        "Closing connection: {0}".format(txid)  # pragma: no mutate
+    )

@@ -7,6 +7,8 @@ import psutil
 
 from logical_backup.utilities import device, process
 
+# pylint: disable=protected-access
+
 DiskPartition = namedtuple("sdiskpart", "device mountpoint fstype opts")
 DiskUsage = namedtuple("diskusage", "total used free percent")
 
