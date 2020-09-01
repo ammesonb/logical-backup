@@ -14,7 +14,7 @@ from pytest import fixture, raises
 
 from logical_backup import db
 from logical_backup.objects import Device
-from logical_backup.utilities import device
+from logical_backup.utilities import device, device_manager
 from logical_backup.utilities.device_manager import (
     DeviceManager,
     _device_has_space,
@@ -833,6 +833,92 @@ def test_initialize_connection(monkeypatch):
         sleep(0.1)
         assert manager.errors("test") == [], "Errors are empty"
         assert manager.messages("test") == [], "Messages are empty"
+    except AssertionError as failure:
+        raise failure
+    finally:
+        manager.stop()
+
+
+def test_pick_device(monkeypatch):
+    """
+    .
+    """
+    dev1 = Device()
+    dev1.set("dev1", "/dev1", "Device Serial", "12345", 1)
+    dev2 = Device()
+    dev2.set("dev2", "/dev2", "Device Serial", "23456", 1)
+    dev3 = Device()
+    dev3.set("dev3", "/dev3", "Device Serial", "34567", 1)
+
+    monkeypatch.setattr(db, "get_devices", lambda device=None: [dev1, dev2, dev3])
+    monkeypatch.setattr(
+        device,
+        "get_device_space",
+        lambda device_path=None: 100 if device_path == "/dev1" else 1000,
+    )
+
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.bind(str(DeviceArguments.SOCKET_PATH))
+    manager = DeviceManager(sock)
+
+    lock = multiprocessing.Lock()
+    client_sock, txid = get_connection()
+    manager_thread = threading.Thread(target=manager.loop)
+    manager_thread.start()
+
+    sleep(0.1)
+
+    assert __get_accept_errors(manager) == [], "Connection accepted"
+
+    try:
+        send_message(
+            [str(DeviceArguments.COMMAND_GET_DEVICE)], client_sock, lock,
+        )
+        sleep(0.2)
+        response = client_sock.recv(100).decode()
+        assert response == str(
+            DeviceArguments.RESPONSE_INVALID
+        ), "Response invalid for no arguments"
+        assert manager.errors(txid) == [
+            DeviceArguments.ERROR_INSUFFICIENT_PARAMETERS(
+                str(DeviceArguments.COMMAND_GET_DEVICE)
+            )
+        ], "Invalid parameters error added"
+
+        send_message(
+            [str(DeviceArguments.COMMAND_GET_DEVICE), "1001"], client_sock, lock,
+        )
+        sleep(0.2)
+        response = client_sock.recv(100).decode()
+        assert response == str(
+            DeviceArguments.RESPONSE_UNRESOLVABLE
+        ), "Response unresolvable if no device available"
+        assert (
+            len(manager.errors(txid)) == 1
+        ), "No errors added for unresolvable request"
+
+        orig_device_has_space = _device_has_space
+
+        @counter_wrapper
+        def device_has_space_counter(device: Device, space_requested: int):
+            return orig_device_has_space(device, space_requested)
+
+        monkeypatch.setattr(
+            device_manager, "_device_has_space", device_has_space_counter
+        )
+
+        send_message(
+            [str(DeviceArguments.COMMAND_GET_DEVICE), "1000"], client_sock, lock,
+        )
+        sleep(0.2)
+        response = client_sock.recv(100).decode()
+        assert response == format_message(
+            DeviceArguments.RESPONSE_SUBSTITUTE, ["/dev2"]
+        ), "Response provides device with space"
+        assert len(manager.errors(txid)) == 1, "No errors added for resolved request"
+        assert (
+            device_has_space_counter.counter == 2
+        ), "Only checked two devices for space"
     except AssertionError as failure:
         raise failure
     finally:

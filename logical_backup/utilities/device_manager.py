@@ -272,8 +272,8 @@ class DeviceManager:
             connection.send(format_message(DeviceArguments.RESPONSE_INVALID))
 
         found_device = False
-        for dev in self.__devices:
-            if _device_has_space(dev, int(message_parts[2])):
+        for dev in self.__devices.values():
+            if _device_has_space(dev, int(requested_size)):
                 found_device = True
                 connection.send(
                     format_message(
