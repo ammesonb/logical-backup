@@ -269,7 +269,8 @@ class DeviceManager:
             self._add_error(
                 txid, DeviceArguments.ERROR_SIZE_IS_NOT_NUMBER(requested_size)
             )
-            connection.send(format_message(DeviceArguments.RESPONSE_INVALID))
+            connection.send(format_message(DeviceArguments.RESPONSE_INVALID).encode())
+            return
 
         found_device = False
         for dev in self.__devices.values():

@@ -886,6 +886,21 @@ def test_pick_device(monkeypatch):
         ], "Invalid parameters error added"
 
         send_message(
+            [str(DeviceArguments.COMMAND_GET_DEVICE), "not-size"], client_sock, lock,
+        )
+        sleep(0.2)
+        response = client_sock.recv(100).decode()
+        assert response == str(
+            DeviceArguments.RESPONSE_INVALID
+        ), "Response invalid for non-numeric size"
+        assert manager.errors(txid) == [
+            DeviceArguments.ERROR_INSUFFICIENT_PARAMETERS(
+                str(DeviceArguments.COMMAND_GET_DEVICE)
+            ),
+            DeviceArguments.ERROR_SIZE_IS_NOT_NUMBER("not-size"),
+        ], "Error added for non-numeric size"
+
+        send_message(
             [str(DeviceArguments.COMMAND_GET_DEVICE), "1001"], client_sock, lock,
         )
         sleep(0.2)
@@ -894,7 +909,7 @@ def test_pick_device(monkeypatch):
             DeviceArguments.RESPONSE_UNRESOLVABLE
         ), "Response unresolvable if no device available"
         assert (
-            len(manager.errors(txid)) == 1
+            len(manager.errors(txid)) == 2
         ), "No errors added for unresolvable request"
 
         orig_device_has_space = _device_has_space
@@ -915,7 +930,7 @@ def test_pick_device(monkeypatch):
         assert response == format_message(
             DeviceArguments.RESPONSE_SUBSTITUTE, ["/dev2"]
         ), "Response provides device with space"
-        assert len(manager.errors(txid)) == 1, "No errors added for resolved request"
+        assert len(manager.errors(txid)) == 2, "No errors added for resolved request"
         assert (
             device_has_space_counter.counter == 2
         ), "Only checked two devices for space"
