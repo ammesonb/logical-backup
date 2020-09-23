@@ -8,7 +8,8 @@ from multiprocessing import synchronize
 import socket
 
 from logical_backup.commands.command_validator import CommandValidator
-from logical_backup.strings import Errors, Configurations
+from logical_backup.utilities.device_manager import DeviceManager
+from logical_backup.strings import Errors
 
 
 class BaseCommand:
@@ -21,6 +22,7 @@ class BaseCommand:
     def __init__(
         self,
         arguments: dict,
+        device_manager: DeviceManager,
         device_manager_socket: socket.socket,
         device_manager_lock: synchronize.Lock,
     ) -> None:
@@ -33,9 +35,9 @@ class BaseCommand:
             Command line arguments
         """
         self.arguments = arguments
-        device_manager_socket.settimeout(Configurations.CONNECTION_TIMEOUT.value)
-        self.device_manager_socket = device_manager_socket
-        self.device_manager_lock = device_manager_lock
+        self._device_manager = device_manager
+        self._device_manager_socket = device_manager_socket
+        self._device_manager_lock = device_manager_lock
         self._validator = CommandValidator(arguments)
         self.__messages = []
         self.__errors = []
