@@ -3,7 +3,6 @@ Contains command base class
 """
 from __future__ import annotations
 
-import multiprocessing
 from multiprocessing import synchronize
 import socket
 
@@ -11,7 +10,14 @@ from logical_backup.commands.command_validator import CommandValidator
 from logical_backup.utilities.device_manager import DeviceManager
 from logical_backup.strings import Errors
 
+# pylint: disable=too-few-public-methods
+class Config:
+    """
+    Command configuration
+    """
 
+
+# pylint: disable=too-many-instance-attributes
 class BaseCommand:
     """
     Represents the basics of a command
@@ -43,7 +49,7 @@ class BaseCommand:
         self.__errors = []
         self._actions = []
 
-    def _validate(self):
+    def _validate(self) -> Config:
         """
         Validate that this action has a correct configuration
         """
@@ -61,7 +67,7 @@ class BaseCommand:
         """
         self.__errors.append(error)
 
-    def _create_actions(self) -> None:
+    def _create_actions(self, config: Config) -> list:
         """
         Creates the component actions needing to be completed for this command
         """
@@ -79,10 +85,10 @@ class BaseCommand:
         """
         Return the actions needed to run to complete this command
         """
-        self._validate()
+        config = self._validate()
         if self.errors:
             return []
-        self._create_actions()
+        self._create_actions(config)
         return self._actions
 
     @property

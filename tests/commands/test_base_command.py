@@ -5,7 +5,7 @@ import socket
 
 from pytest import raises
 
-from logical_backup.commands.base_command import BaseCommand
+from logical_backup.commands.base_command import BaseCommand, Config
 from logical_backup.strings import Errors
 
 # pylint: disable=protected-access
@@ -30,7 +30,7 @@ class ImplementedCommand(Command):
     Command that won't error
     """
 
-    def _create_actions(self):
+    def _create_actions(self, config: Config):
         """
         Overrides create actions
         """
@@ -58,7 +58,7 @@ def test_create_action_not_implemented():
     sock = socket.socket()
     command = Command([], None, sock, None)
     with raises(NotImplementedError) as error:
-        command._create_actions()
+        command._create_actions(Config())
         assert (
             str(error) == Errors.COMMAND_CREATE_ACTIONS_NOT_IMPLEMENTED
         ), "Exception message is correct"

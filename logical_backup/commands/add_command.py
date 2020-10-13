@@ -5,7 +5,7 @@ from multiprocessing import synchronize
 import socket
 from typing import Optional
 
-from logical_backup.commands.base_command import BaseCommand
+from logical_backup.commands.base_command import BaseCommand, Config
 from logical_backup.commands.actions import AddFileAction
 from logical_backup import db
 from logical_backup.utilities import files
@@ -15,16 +15,22 @@ from logical_backup.utilities import device_manager
 from logical_backup.strings import Errors, Info, DeviceArguments, Configurations
 
 
-# TODO: check device manager for errors after sending emssages
+# pylint: disable=too-few-public-methods
+class AddConfig(Config):
+    """
+    Add command config
+    """
+
+    adding_file = None
+    adding_folder = None
+    adding_device = None
+    to_specific_device = None
+
+
 class AddCommand(BaseCommand):
     """
     Command for adding files, folders, and devices
     """
-
-    _adding_file = None
-    _adding_folder = None
-    _adding_device = None
-    _to_specific_device = None
 
     # pylint: disable=bad-continuation
     def __init__(
@@ -37,13 +43,14 @@ class AddCommand(BaseCommand):
         connection, self.txid = device_manager.get_connection()
         super().__init__(arguments, manager, connection, device_manager_lock)
 
-    def _validate_file(self) -> None:
+    def _validate_file(self) -> AddConfig:
         """
         Validate file parameters
         """
-        self._adding_file = False
+        config = AddConfig()
+        config.adding_file = False
         if self._validator.has_file():
-            self._adding_file = True
+            config.adding_file = True
 
             if not self._validator.file_exists():
                 self._add_error(Errors.NONEXISTENT_FILE)
@@ -52,78 +59,85 @@ class AddCommand(BaseCommand):
                     Errors.FILE_ALREADY_BACKED_UP_AT(self._validator.get_file())
                 )
 
-    def _validate_folder(self) -> None:
+        return config
+
+    def _validate_folder(self, config: AddConfig) -> AddConfig:
         """
         Validate folder parameters
         """
-        self._adding_folder = False
+        config.adding_folder = False
         if self._validator.has_folder():
-            self._adding_folder = True
+            config.adding_folder = True
 
             if not self._validator.folder_exists():
                 self._add_error(Errors.NONEXISTENT_FOLDER)
-            else:
-                if db.get_folders(self._validator.get_folder()):
-                    self._add_error(
-                        Errors.FOLDER_ALREADY_ADDED_AT(self._validator.get_folder())
-                    )
+            elif db.get_folders(self._validator.get_folder()):
+                self._add_error(
+                    Errors.FOLDER_ALREADY_ADDED_AT(self._validator.get_folder())
+                )
 
-    def _validate_device(self) -> None:
+        return config
+
+    def _validate_device(self, config: AddConfig) -> AddConfig:
         """
         Validate device to add, or device to add file _to_ - MUST BE CALLED LAST
         """
-        self._adding_device = False
+        config.adding_device = False
         # Default to success case, since may not be applicable
-        self._to_specific_device = True
+        config.to_specific_device = True
 
         if self._validator.has_device():
             # Add device if not adding either of the other things
-            if not self._adding_file and not self._adding_folder:
+            if not config.adding_file and not config.adding_folder:
                 if self._validator.device_exists():
-                    self._adding_device = True
+                    config.adding_device = True
                     # Adding device makes this check irrelevant
-                    self._to_specific_device = False
+                    config.to_specific_device = False
 
             # Regardless, device path must exist
             if not self._validator.device_exists():
                 # Should set this here since device may not exist for files/folders
-                self._to_specific_device = False
+                config.to_specific_device = False
                 self._add_error(Errors.DEVICE_PATH_NOT_MOUNTED)
             elif not self._validator.device_writeable():
-                self._to_specific_device = False
+                config.to_specific_device = False
                 self._add_error(
                     Errors.DEVICE_NOT_WRITEABLE_AT(self._validator.get_device())
                 )
 
         # No device specified
         else:
-            self._to_specific_device = False
+            config.to_specific_device = False
 
-    def _validate(self) -> None:
+        return config
+
+    def _validate(self) -> AddConfig:
         """
         Validates the arguments provided
         """
-        self._validate_file()
-        self._validate_folder()
-        self._validate_device()
+        config = self._validate_file()
+        config = self._validate_folder(config)
+        return self._validate_device(config)
 
-    def _create_actions(self):
+    def _create_actions(self, config: AddConfig) -> list:
         """
         Figures out what needs to happen
         """
-        if self._adding_file:
-            file_obj = self._make_file_object(self._validator.get_file())
-            return None if not file_obj else AddFileAction(file_obj)
+        actions = []
+        if config.adding_file:
+            file_obj = self._make_file_object(self._validator.get_file(), config)
+            actions.append(file_obj)
+            return [] if not file_obj else [AddFileAction(file_obj)]
 
-        if self._adding_folder:
+        if config.adding_folder:
             pass
 
-        if self._adding_device:
+        if config.adding_device:
             pass
 
         return None
 
-    def _make_file_object(self, file_path: str) -> File:
+    def _make_file_object(self, file_path: str, config: AddConfig) -> File:
         """
         Creates a file object based on a path
         """
@@ -147,7 +161,7 @@ class AddCommand(BaseCommand):
         )
 
         selected_device_path = None
-        if self._to_specific_device:
+        if config.to_specific_device:
             device_path = self._validator.get_device()
             file_size = files.get_file_size(file_path)
 
@@ -172,6 +186,7 @@ class AddCommand(BaseCommand):
                         )
                     )
                 )
+                # pylint: disable=expression-not-assigned
                 [
                     self._add_error(error)
                     for error in self._device_manager.errors(self.txid)
@@ -199,13 +214,18 @@ class AddCommand(BaseCommand):
         Checks if a given device has space for a file
         Returns device path if one is accepted, None otherwise
         """
+        self._device_manager_lock.acquire()
+
         self._add_message(Info.CHECKING_DEVICE)
         device_manager.send_message(
             [DeviceArguments.COMMAND_CHECK_DEVICE, device_path, file_size],
             self._device_manager_socket,
             self._device_manager_lock,
+            False,
         )
+
         result = self._device_manager_socket.recv(Configurations.MAX_MESSAGE_SIZE)
+        response = None
         # pylint: disable=bad-continuation
         if result in [
             DeviceArguments.RESPONSE_INVALID,
@@ -218,10 +238,10 @@ class AddCommand(BaseCommand):
                     )
                 )
             )
+            # pylint: disable=expression-not-assigned
             [self._add_error(error) for error in self._device_manager.errors(self.txid)]
-            return None
 
-        if str(DeviceArguments.RESPONSE_SUBSTITUTE) in result:
+        elif str(DeviceArguments.RESPONSE_SUBSTITUTE) in result:
             new_device_path = result.strip().replace(
                 str(DeviceArguments.RESPONSE_SUBSTITUTE)
                 + DeviceArguments.COMMAND_DELIMITER,
@@ -233,8 +253,11 @@ class AddCommand(BaseCommand):
                 )
                 == "n"
             )
-            return (
+            response = (
                 None if not confirm else self._check_device(new_device_path, file_size)
             )
+        elif result == str(DeviceArguments.RESPONSE_OK):
+            response = device_path
 
-        return device_path if result == str(DeviceArguments.RESPONSE_OK) else None
+        self._device_manager_lock.release()
+        return response

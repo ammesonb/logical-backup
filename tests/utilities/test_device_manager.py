@@ -72,7 +72,7 @@ def __get_initialize_messages(manager: DeviceManager) -> list:
     return manager.messages(str(DeviceArguments.KEY_INITIALIZE))
 
 
-def __run_server(lock):
+def __server_expects_two_messages(lock):
     """
     Runs a mock response server
     """
@@ -83,6 +83,9 @@ def __run_server(lock):
         sock.listen(1)
 
     conn = sock.accept()[0]
+    message = conn.recv(10)
+    conn.send(message)
+
     message = conn.recv(10)
     conn.send(message)
     sock.close()
@@ -139,7 +142,7 @@ def test_send_message(monkeypatch):
 
     monkeypatch.setattr(synchronize.SemLock, "__enter__", mock_enter)
 
-    server_thread = threading.Thread(target=__run_server, args=[lock])
+    server_thread = threading.Thread(target=__server_expects_two_messages, args=[lock])
     server_thread.start()
     # Give server time to bind, to avoid lock race condition
     sleep(0.2)
@@ -147,10 +150,17 @@ def test_send_message(monkeypatch):
     with lock:
         client_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         client_sock.connect(str(DeviceArguments.SOCKET_PATH))
+
     send_message(["foo"], client_sock, lock)
     message = client_sock.recv(10)
     assert message.decode() == "foo", "Message received"
     assert mock_enter.counter == 3, "Acquire called by server, client, and send"
+
+    send_message(["foo"], client_sock, lock, False)
+    message = client_sock.recv(10)
+    assert message.decode() == "foo", "Second message received"
+    assert mock_enter.counter == 3, "Lock not needed to be acquired again"
+
     server_thread.join()
 
 

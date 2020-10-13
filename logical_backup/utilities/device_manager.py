@@ -1,6 +1,7 @@
 """
 Manages devices
 """
+import contextlib
 import multiprocessing
 import socket
 import time
@@ -10,6 +11,11 @@ from logical_backup.objects import Device
 from logical_backup import db
 from logical_backup.utilities import device, testing
 from logical_backup.strings import Configurations, DeviceArguments
+
+
+@contextlib.contextmanager
+def fake_lock():
+    yield None
 
 
 def _device_has_space(dev: Device, needed_space: int) -> bool:
@@ -355,13 +361,16 @@ def format_message(command: DeviceArguments, parameters: list = None) -> str:
 
 # pylint: disable=bad-continuation
 def send_message(
-    message: list, sock: socket.socket, lock: multiprocessing.synchronize.Lock
+    message: list,
+    sock: socket.socket,
+    lock: multiprocessing.synchronize.Lock,
+    should_lock: bool = True,
 ):
     """
     Sends a message through the socket
     Message should be a list of pieces, to join
     """
-    with lock:
+    with lock if should_lock else fake_lock():
         sock.send(format_message(message[0], message[1:]).encode())
 
 
