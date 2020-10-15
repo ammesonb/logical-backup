@@ -126,8 +126,8 @@ class AddCommand(BaseCommand):
         actions = []
         if config.adding_file:
             file_obj = self._make_file_object(self._validator.get_file(), config)
-            actions.append(file_obj)
-            return [] if not file_obj else [AddFileAction(file_obj)]
+            if file_obj:
+                actions.append(file_obj)
 
         if config.adding_folder:
             pass
@@ -135,7 +135,7 @@ class AddCommand(BaseCommand):
         if config.adding_device:
             pass
 
-        return None
+        return actions
 
     def _make_file_object(self, file_path: str, config: AddConfig) -> File:
         """
@@ -150,10 +150,6 @@ class AddCommand(BaseCommand):
         except PermissionError:
             self._add_error(Errors.CANNOT_READ_FILE_AT(file_path))
             return None
-
-        file_obj = File()
-        file_obj.set_properties(files.create_backup_name(file_path), file_path, "")
-        file_obj.set_security(**security_details)
 
         file_size = files.get_file_size(file_path)
         self._add_message(
@@ -197,6 +193,10 @@ class AddCommand(BaseCommand):
                 DeviceArguments.RESPONSE_SUBSTITUTE + DeviceArguments.COMMAND_DELIMITER,
                 "",
             )
+
+        file_obj = File()
+        file_obj.set_properties(files.create_backup_name(file_path), file_path, "")
+        file_obj.set_security(**security_details)
 
         devices = db.get_devices()
         # Should always have a result, if we get to this point

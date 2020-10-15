@@ -282,6 +282,7 @@ class DeviceManager:
         for dev in self.__devices.values():
             if _device_has_space(dev, int(requested_size)):
                 found_device = True
+                dev.allocated_space += int(requested_size)
                 connection.send(
                     format_message(
                         DeviceArguments.RESPONSE_SUBSTITUTE, [dev.device_path]

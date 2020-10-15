@@ -881,6 +881,7 @@ def test_pick_device(monkeypatch):
     assert __get_accept_errors(manager) == [], "Connection accepted"
 
     try:
+        # Input errors
         send_message(
             [str(DeviceArguments.COMMAND_GET_DEVICE)], client_sock, lock,
         )
@@ -922,6 +923,7 @@ def test_pick_device(monkeypatch):
             len(manager.errors(txid)) == 2
         ), "No errors added for unresolvable request"
 
+        # No device has space
         orig_device_has_space = _device_has_space
 
         @counter_wrapper
@@ -932,6 +934,7 @@ def test_pick_device(monkeypatch):
             device_manager, "_device_has_space", device_has_space_counter
         )
 
+        # Check resolvable request
         send_message(
             [str(DeviceArguments.COMMAND_GET_DEVICE), "1000"], client_sock, lock,
         )
@@ -944,6 +947,20 @@ def test_pick_device(monkeypatch):
         assert (
             device_has_space_counter.counter == 2
         ), "Only checked two devices for space"
+
+        # Device space allocated, so passes to third device
+        send_message(
+            [str(DeviceArguments.COMMAND_GET_DEVICE), "1000"], client_sock, lock,
+        )
+        sleep(0.2)
+        response = client_sock.recv(100).decode()
+        assert response == format_message(
+            DeviceArguments.RESPONSE_SUBSTITUTE, ["/dev3"]
+        ), "Response provides device with space"
+        assert len(manager.errors(txid)) == 2, "No errors added for resolved request"
+        assert (
+            device_has_space_counter.counter == 5
+        ), "Checked all three devices for allocation"
     except AssertionError as failure:
         raise failure
     finally:

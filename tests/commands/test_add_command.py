@@ -266,3 +266,24 @@ def test_validate(monkeypatch):
     assert validate_file.counter == 1, "File validation called once"
     assert validate_folder.counter == 1, "Folder validation called once"
     assert validate_device.counter == 1, "Device validation called once"
+
+
+def test_create_actions(monkeypatch):
+    """
+    .
+    """
+    file_config = AddConfig()
+    file_config.adding_file = True
+
+    monkeypatch.setattr(
+        AddCommand, "_make_file_object", lambda self, path, config: None
+    )
+    monkeypatch.setattr(CommandValidator, "get_file", lambda self: "test")
+
+    command = AddCommand(None, None, None, None)
+    assert not command._create_actions(file_config), "No actions if no file made"
+
+    monkeypatch.setattr(
+        AddCommand, "_make_file_object", lambda self, path, config: "abc"
+    )
+    assert command._create_actions(file_config) == ["abc"], "Action returned"
