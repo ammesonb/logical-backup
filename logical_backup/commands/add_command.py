@@ -137,7 +137,7 @@ class AddCommand(BaseCommand):
 
         return actions
 
-    def _make_file_object(self, file_path: str, config: AddConfig) -> File:
+    def _make_file_object(self, file_path: str, config: AddConfig) -> Optional[File]:
         """
         Creates a file object based on a path
         """

@@ -7,7 +7,7 @@ from logical_backup.commands import AddCommand
 from logical_backup.commands.add_command import AddConfig
 from logical_backup.commands.command_validator import CommandValidator
 from logical_backup import db
-from logical_backup.utilities import device_manager
+from logical_backup.utilities import device_manager, files
 
 from logical_backup.strings import Errors
 from logical_backup.utilities.testing import counter_wrapper
@@ -281,9 +281,50 @@ def test_create_actions(monkeypatch):
     monkeypatch.setattr(CommandValidator, "get_file", lambda self: "test")
 
     command = AddCommand(None, None, None, None)
-    assert not command._create_actions(file_config), "No actions if no file made"
+    assert len(command._create_actions(file_config)) == 0, "No actions if no file made"
 
     monkeypatch.setattr(
         AddCommand, "_make_file_object", lambda self, path, config: "abc"
     )
     assert command._create_actions(file_config) == ["abc"], "Action returned"
+
+
+def test_make_file_object_quick_fails(monkeypatch):
+    """
+    .
+    """
+    file_config = AddConfig()
+    file_config.adding_file = True
+
+    monkeypatch.setattr(db, "file_exists", lambda path: True)
+
+    command = AddCommand(None, None, None, None)
+    assert (
+        command._make_file_object("/test", file_config) is None
+    ), "Fails if file already in db"
+    assert command.errors == [Errors.FILE_ALREADY_BACKED_UP_AT("/test")], "Error added"
+
+    monkeypatch.setattr(db, "file_exists", lambda path: False)
+
+    def get_file_security(path):
+        raise PermissionError("No access")
+
+    monkeypatch.setattr(files, "get_file_security", get_file_security)
+
+    command = AddCommand(None, None, None, None)
+    assert (
+        command._make_file_object("/test", file_config) is None
+    ), "Fails if file already in db"
+    assert command.errors == [Errors.CANNOT_READ_FILE_AT("/test")], "Error added"
+
+
+def test_make_file_object_specific_device(monkeypatch):
+    """
+    .
+    """
+
+
+def test_make_file_object_any_device(monkeypatch):
+    """
+    .
+    """
