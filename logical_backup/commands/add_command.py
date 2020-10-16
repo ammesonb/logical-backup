@@ -26,6 +26,19 @@ class AddConfig(Config):
     adding_device = None
     to_specific_device = None
 
+    # pylint: disable=bad-continuation
+    def __init__(
+        self,
+        adding_file: bool = None,
+        adding_folder: bool = None,
+        adding_device: bool = None,
+        to_specific_device: bool = None,
+    ):
+        self.adding_file = adding_file
+        self.adding_folder = adding_folder
+        self.adding_device = adding_device
+        self.to_specific_device = to_specific_device
+
 
 class AddCommand(BaseCommand):
     """
@@ -39,8 +52,12 @@ class AddCommand(BaseCommand):
         manager: device_manager.DeviceManager,
         device_manager_socket: socket.socket,
         device_manager_lock: synchronize.Lock,
+        txid: str = None,
     ):
-        connection, self.txid = device_manager.get_connection()
+        if device_manager_socket and txid:
+            connection, self.txid = device_manager_socket, txid
+        else:
+            connection, self.txid = device_manager.get_connection()
         super().__init__(arguments, manager, connection, device_manager_lock)
 
     def _validate_file(self) -> AddConfig:
@@ -159,26 +176,26 @@ class AddCommand(BaseCommand):
         selected_device_path = None
         if config.to_specific_device:
             device_path = self._validator.get_device()
-            file_size = files.get_file_size(file_path)
 
             selected_device_path = self._check_device(device_path, file_size)
             if not selected_device_path:
                 return None
 
         else:
-            file_size = files.get_file_size(file_path)
-            self._add_message(Info.AUTO_SELECT_DEVICE)
+            self._add_message(str(Info.AUTO_SELECT_DEVICE))
             device_manager.send_message(
                 [DeviceArguments.COMMAND_GET_DEVICE, file_size],
                 self._device_manager_socket,
                 self._device_manager_lock,
             )
-            result = self._device_manager_socket.recv(Configurations.MAX_MESSAGE_SIZE)
-            if result != str(DeviceArguments.RESPONSE_SUBSTITUTE):
+            result = self._device_manager_socket.recv(
+                Configurations.MAX_MESSAGE_SIZE
+            ).decode()
+            if str(DeviceArguments.RESPONSE_SUBSTITUTE) not in result:
                 self._add_error(
                     Errors.INVALID_COMMAND(
                         device_manager.format_message(
-                            DeviceArguments.COMMAND_GET_DEVICE, [file_size]
+                            DeviceArguments.COMMAND_GET_DEVICE, [str(file_size)]
                         )
                     )
                 )

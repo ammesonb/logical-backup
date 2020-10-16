@@ -7,9 +7,11 @@ from logical_backup.commands import AddCommand
 from logical_backup.commands.add_command import AddConfig
 from logical_backup.commands.command_validator import CommandValidator
 from logical_backup import db
+from logical_backup.objects import Device
 from logical_backup.utilities import device_manager, files
 
-from logical_backup.strings import Errors
+from logical_backup.pretty_print import readable_bytes
+from logical_backup.strings import DeviceArguments, Errors, Info
 from logical_backup.utilities.testing import counter_wrapper
 
 # pylint: disable=protected-access
@@ -184,10 +186,7 @@ def test_validate_specific_device(monkeypatch):
     """
 
     def make_file_config() -> AddConfig:
-        file_config = AddConfig()
-        file_config.adding_file = True
-
-        return file_config
+        return AddConfig(adding_file=True)
 
     monkeypatch.setattr(CommandValidator, "has_device", lambda self: True)
     monkeypatch.setattr(CommandValidator, "device_exists", lambda self: False)
@@ -220,11 +219,8 @@ def test_validate_specific_device(monkeypatch):
     assert config.to_specific_device, "Is a specific device, but invalid"
     assert not command.errors, "Adding file to device is valid"
 
-    folder_config = AddConfig()
-    folder_config.adding_folder = True
-
     command = AddCommand(None, None, None, None)
-    config = command._validate_device(folder_config)
+    config = command._validate_device(AddConfig(adding_folder=True))
     assert not config.adding_device, "Not adding a new device"
     assert config.to_specific_device, "Is a specific device, but invalid"
     assert not command.errors, "Adding folder to device is valid"
@@ -272,8 +268,7 @@ def test_create_actions(monkeypatch):
     """
     .
     """
-    file_config = AddConfig()
-    file_config.adding_file = True
+    file_config = AddConfig(adding_file=True)
 
     monkeypatch.setattr(
         AddCommand, "_make_file_object", lambda self, path, config: None
@@ -293,8 +288,7 @@ def test_make_file_object_quick_fails(monkeypatch):
     """
     .
     """
-    file_config = AddConfig()
-    file_config.adding_file = True
+    file_config = AddConfig(adding_file=True)
 
     monkeypatch.setattr(db, "file_exists", lambda path: True)
 
@@ -322,9 +316,106 @@ def test_make_file_object_specific_device(monkeypatch):
     """
     .
     """
+    monkeypatch.setattr(
+        files,
+        "get_file_security",
+        lambda path: {"permissions": "755", "owner": "test", "group": "grp"},
+    )
+    monkeypatch.setattr(files, "get_file_size", lambda path: 123)
+    monkeypatch.setattr(CommandValidator, "get_device", lambda self: "/device")
+    config = AddConfig(adding_file=True, to_specific_device=True)
+
+    monkeypatch.setattr(AddCommand, "_check_device", lambda self, path, size: None)
+
+    command = AddCommand(None, None, None, None)
+    assert command._make_file_object("/test", config) is None, "No result returned"
+    assert not len(command.errors), "No errors added, since check device would log them"
+    assert command.messages == [
+        Info.FILE_SIZE_OUTPUT_AT("/test", readable_bytes(123))
+    ], "File size message added"
+
+    monkeypatch.setattr(AddCommand, "_check_device", lambda self, path, size: path)
+
+    device1 = Device()
+    device1.set("dev1", "/device", "Device Serial", "12345", 1)
+    device2 = Device()
+    device2.set("dev2", "/dev2", "Device Serial", "23456", 1)
+
+    # Ensure device 2 is skipped, since no match
+    monkeypatch.setattr(db, "get_devices", lambda dev=None: [device2, device1])
+
+    command = AddCommand(None, None, None, None)
+    file_obj = command._make_file_object("/test", config)
+    assert file_obj.device == device1, "Device 1 should be selected"
+    assert file_obj.device_name == "dev1", "Device 1 chosen"
+    assert not len(command.errors), "No errors added, since check device would log them"
+    assert command.messages == [
+        Info.FILE_SIZE_OUTPUT_AT("/test", readable_bytes(123))
+    ], "File size message added"
 
 
 def test_make_file_object_any_device(monkeypatch):
     """
     .
     """
+    monkeypatch.setattr(
+        files,
+        "get_file_security",
+        lambda path: {"permissions": "755", "owner": "test", "group": "grp"},
+    )
+    monkeypatch.setattr(files, "get_file_size", lambda path: 123)
+    monkeypatch.setattr(CommandValidator, "get_device", lambda self: "/device")
+    config = AddConfig(adding_file=True, to_specific_device=False)
+    monkeypatch.setattr(device_manager, "send_message", lambda *args, **kwargs: None)
+
+    # Failure case
+    class FailSocket:
+        def recv(self, size: int):
+            return str(DeviceArguments.RESPONSE_INVALID).encode()
+
+    class FailDeviceManager:
+        def errors(self, txid):
+            return ["Bad command", "Invalid file size"]
+
+    command = AddCommand(None, FailDeviceManager(), FailSocket(), None, "test-txid")
+    assert command._make_file_object("/test", config) is None, "Error returned"
+    assert (
+        str(Info.AUTO_SELECT_DEVICE) in command.messages
+    ), "Device being auto-selected"
+    assert command.errors == [
+        Errors.INVALID_COMMAND(
+            device_manager.format_message(DeviceArguments.COMMAND_GET_DEVICE, ["123"])
+        ),
+        "Bad command",
+        "Invalid file size",
+    ], "Error message added"
+
+    # Success case
+    class SuccessSocket:
+        def recv(self, size: int):
+            return device_manager.format_message(
+                DeviceArguments.RESPONSE_SUBSTITUTE, ["/device"]
+            ).encode()
+
+    class SuccessDeviceManager:
+        def errors(self, txid):
+            return []
+
+    device1 = Device()
+    device1.set("dev1", "/device", "Device Serial", "12345", 1)
+    device2 = Device()
+    device2.set("dev2", "/dev2", "Device Serial", "23456", 1)
+
+    # Ensure device 2 is skipped, since no match
+    monkeypatch.setattr(db, "get_devices", lambda dev=None: [device2, device1])
+
+    command = AddCommand(
+        None, SuccessDeviceManager(), SuccessSocket(), None, "test-txid"
+    )
+    file_obj = command._make_file_object("/test", config)
+    assert not len(command.errors), "No errors added"
+    assert file_obj.device == device1, "Device 1 selected"
+    assert file_obj.device_name == "dev1", "Device name correct"
+    assert (
+        str(Info.AUTO_SELECT_DEVICE) in command.messages
+    ), "Device being auto-selected"
