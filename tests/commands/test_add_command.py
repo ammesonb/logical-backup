@@ -14,7 +14,7 @@ from logical_backup.pretty_print import readable_bytes
 from logical_backup.strings import DeviceArguments, Errors, Info
 from logical_backup.utilities.testing import counter_wrapper
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,no-self-use,too-few-public-methods,unused-argument
 
 
 @fixture(autouse=True)
@@ -316,6 +316,7 @@ def test_make_file_object_specific_device(monkeypatch):
     """
     .
     """
+    monkeypatch.setattr(db, "file_exists", lambda path=None: False)
     monkeypatch.setattr(
         files,
         "get_file_security",
@@ -329,7 +330,7 @@ def test_make_file_object_specific_device(monkeypatch):
 
     command = AddCommand(None, None, None, None)
     assert command._make_file_object("/test", config) is None, "No result returned"
-    assert not len(command.errors), "No errors added, since check device would log them"
+    assert not command.errors, "No errors added, since check device would log them"
     assert command.messages == [
         Info.FILE_SIZE_OUTPUT_AT("/test", readable_bytes(123))
     ], "File size message added"
@@ -348,7 +349,7 @@ def test_make_file_object_specific_device(monkeypatch):
     file_obj = command._make_file_object("/test", config)
     assert file_obj.device == device1, "Device 1 should be selected"
     assert file_obj.device_name == "dev1", "Device 1 chosen"
-    assert not len(command.errors), "No errors added, since check device would log them"
+    assert not command.errors, "No errors added, since check device would log them"
     assert command.messages == [
         Info.FILE_SIZE_OUTPUT_AT("/test", readable_bytes(123))
     ], "File size message added"
@@ -358,6 +359,7 @@ def test_make_file_object_any_device(monkeypatch):
     """
     .
     """
+    monkeypatch.setattr(db, "file_exists", lambda path=None: False)
     monkeypatch.setattr(
         files,
         "get_file_security",
@@ -370,11 +372,25 @@ def test_make_file_object_any_device(monkeypatch):
 
     # Failure case
     class FailSocket:
+        """
+        Socket with fail recv message
+        """
+
         def recv(self, size: int):
+            """
+            Receive message
+            """
             return str(DeviceArguments.RESPONSE_INVALID).encode()
 
     class FailDeviceManager:
-        def errors(self, txid):
+        """
+        Device manager with errors
+        """
+
+        def errors(self, txid) -> list:
+            """
+            Errors array
+            """
             return ["Bad command", "Invalid file size"]
 
     command = AddCommand(None, FailDeviceManager(), FailSocket(), None, "test-txid")
@@ -392,13 +408,27 @@ def test_make_file_object_any_device(monkeypatch):
 
     # Success case
     class SuccessSocket:
+        """
+        Successful receive socket
+        """
+
         def recv(self, size: int):
+            """
+            Receive message
+            """
             return device_manager.format_message(
                 DeviceArguments.RESPONSE_SUBSTITUTE, ["/device"]
             ).encode()
 
     class SuccessDeviceManager:
-        def errors(self, txid):
+        """
+        Device manager no errors
+        """
+
+        def errors(self, txid) -> list:
+            """
+            Errors list
+            """
             return []
 
     device1 = Device()
@@ -413,7 +443,7 @@ def test_make_file_object_any_device(monkeypatch):
         None, SuccessDeviceManager(), SuccessSocket(), None, "test-txid"
     )
     file_obj = command._make_file_object("/test", config)
-    assert not len(command.errors), "No errors added"
+    assert not command.errors, "No errors added"
     assert file_obj.device == device1, "Device 1 selected"
     assert file_obj.device_name == "dev1", "Device name correct"
     assert (
