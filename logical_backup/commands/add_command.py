@@ -226,12 +226,15 @@ class AddCommand(BaseCommand):
 
         return file_obj
 
-    def _check_device(self, device_path: str, file_size: int) -> Optional[str]:
+    def _check_device(
+        self, device_path: str, file_size: int, lock_acquired: bool = False
+    ) -> Optional[str]:
         """
         Checks if a given device has space for a file
         Returns device path if one is accepted, None otherwise
         """
-        self._device_manager_lock.acquire()
+        if not lock_acquired:
+            self._device_manager_lock.acquire()
 
         self._add_message(Info.CHECKING_DEVICE)
         device_manager.send_message(
@@ -271,10 +274,14 @@ class AddCommand(BaseCommand):
                 == "n"
             )
             response = (
-                None if not confirm else self._check_device(new_device_path, file_size)
+                None
+                if not confirm
+                else self._check_device(new_device_path, file_size, True)
             )
         elif result == str(DeviceArguments.RESPONSE_OK):
             response = device_path
 
-        self._device_manager_lock.release()
+        if not lock_acquired:
+            self._device_manager_lock.release()
+
         return response

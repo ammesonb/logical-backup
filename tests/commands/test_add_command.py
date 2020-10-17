@@ -17,6 +17,63 @@ from logical_backup.utilities.testing import counter_wrapper
 # pylint: disable=protected-access,no-self-use,too-few-public-methods,unused-argument
 
 
+class FakeLock:
+    """
+    Fake synchronization lock
+    """
+
+    @counter_wrapper
+    def acquire(self):
+        """
+        Acquire lock
+        """
+        pass
+
+    @counter_wrapper
+    def release(self):
+        """
+        Release lock
+        """
+        pass
+
+
+class FakeSocket:
+    """
+    Socket to mock network interactions
+    """
+
+    def __init__(self, returned_message: str):
+        self.__message = returned_message
+
+    def recv(self, size: int):
+        """
+        Receive message
+        """
+        return self.__message
+
+
+class FakeDeviceManager:
+    """
+    Device manager
+    """
+
+    def __init__(self, messages: list = [], errors: list = []):
+        self.__messages = messages
+        self.__errors = errors
+
+    def messages(self, txid: str = None) -> list:
+        """
+        .
+        """
+        return self.__messages
+
+    def errors(self, txid: str = None) -> list:
+        """
+        .
+        """
+        return self.__errors
+
+
 @fixture(autouse=True)
 def patch_connection(monkeypatch):
     """
@@ -370,30 +427,9 @@ def test_make_file_object_any_device(monkeypatch):
     config = AddConfig(adding_file=True, to_specific_device=False)
     monkeypatch.setattr(device_manager, "send_message", lambda *args, **kwargs: None)
 
-    # Failure case
-    class FailSocket:
-        """
-        Socket with fail recv message
-        """
-
-        def recv(self, size: int):
-            """
-            Receive message
-            """
-            return str(DeviceArguments.RESPONSE_INVALID).encode()
-
-    class FailDeviceManager:
-        """
-        Device manager with errors
-        """
-
-        def errors(self, txid) -> list:
-            """
-            Errors array
-            """
-            return ["Bad command", "Invalid file size"]
-
-    command = AddCommand(None, FailDeviceManager(), FailSocket(), None, "test-txid")
+    fail_socket = FakeSocket(str(DeviceArguments.RESPONSE_INVALID).encode())
+    fail_manager = FakeDeviceManager(errors=["Bad command", "Invalid file size"])
+    command = AddCommand(None, fail_manager, fail_socket, None, "test-txid")
     assert command._make_file_object("/test", config) is None, "Error returned"
     assert (
         str(Info.AUTO_SELECT_DEVICE) in command.messages
@@ -406,31 +442,12 @@ def test_make_file_object_any_device(monkeypatch):
         "Invalid file size",
     ], "Error message added"
 
-    # Success case
-    class SuccessSocket:
-        """
-        Successful receive socket
-        """
-
-        def recv(self, size: int):
-            """
-            Receive message
-            """
-            return device_manager.format_message(
-                DeviceArguments.RESPONSE_SUBSTITUTE, ["/device"]
-            ).encode()
-
-    class SuccessDeviceManager:
-        """
-        Device manager no errors
-        """
-
-        def errors(self, txid) -> list:
-            """
-            Errors list
-            """
-            return []
-
+    success_socket = FakeSocket(
+        device_manager.format_message(
+            DeviceArguments.RESPONSE_SUBSTITUTE, ["/device"]
+        ).encode()
+    )
+    success_manager = FakeDeviceManager()
     device1 = Device()
     device1.set("dev1", "/device", "Device Serial", "12345", 1)
     device2 = Device()
@@ -439,9 +456,7 @@ def test_make_file_object_any_device(monkeypatch):
     # Ensure device 2 is skipped, since no match
     monkeypatch.setattr(db, "get_devices", lambda dev=None: [device2, device1])
 
-    command = AddCommand(
-        None, SuccessDeviceManager(), SuccessSocket(), None, "test-txid"
-    )
+    command = AddCommand(None, success_manager, success_socket, None, "test-txid")
     file_obj = command._make_file_object("/test", config)
     assert not command.errors, "No errors added"
     assert file_obj.device == device1, "Device 1 selected"
@@ -449,3 +464,22 @@ def test_make_file_object_any_device(monkeypatch):
     assert (
         str(Info.AUTO_SELECT_DEVICE) in command.messages
     ), "Device being auto-selected"
+
+
+def test_check_device_invalid(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(device_manager, "send_message", lambda *args, **kwargs: None)
+
+
+def test_check_device_ok(monkeypatch):
+    """
+    .
+    """
+
+
+def test_check_device_substitution(monkeypatch):
+    """
+    .
+    """
