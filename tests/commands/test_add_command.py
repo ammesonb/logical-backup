@@ -3,6 +3,7 @@ Tests the add file command
 """
 from pytest import fixture
 
+from logical_backup import commands
 from logical_backup.commands import AddCommand
 from logical_backup.commands.add_command import AddConfig
 from logical_backup.commands.command_validator import CommandValidator
@@ -14,6 +15,8 @@ from logical_backup.pretty_print import readable_bytes
 from logical_backup.strings import DeviceArguments, Errors, Info
 from logical_backup.utilities.testing import counter_wrapper
 
+from tests.test_utility import patch_input
+
 # pylint: disable=protected-access,no-self-use,too-few-public-methods,unused-argument
 
 
@@ -22,19 +25,39 @@ class FakeLock:
     Fake synchronization lock
     """
 
-    @counter_wrapper
+    def __init__(self):
+        """
+        .
+        """
+        self.__acquired = 0
+        self.__released = 0
+
     def acquire(self):
         """
         Acquire lock
         """
-        pass
+        self.__acquired += 1
 
     @counter_wrapper
     def release(self):
         """
         Release lock
         """
-        pass
+        self.__released += 1
+
+    @property
+    def acquired(self):
+        """
+        Number times acquired
+        """
+        return self.__acquired
+
+    @property
+    def released(self):
+        """
+        Number times released
+        """
+        return self.__released
 
 
 class FakeSocket:
@@ -57,9 +80,9 @@ class FakeDeviceManager:
     Device manager
     """
 
-    def __init__(self, messages: list = [], errors: list = []):
-        self.__messages = messages
-        self.__errors = errors
+    def __init__(self, messages: list = None, errors: list = None):
+        self.__messages = [] if messages is None else messages
+        self.__errors = [] if errors is None else errors
 
     def messages(self, txid: str = None) -> list:
         """
@@ -472,14 +495,118 @@ def test_check_device_invalid(monkeypatch):
     """
     monkeypatch.setattr(device_manager, "send_message", lambda *args, **kwargs: None)
 
+    lock = FakeLock()
+    manager = FakeDeviceManager([], ["Invalid"])
+    sock = FakeSocket(str(DeviceArguments.RESPONSE_INVALID).encode())
+
+    command = AddCommand(None, manager, sock, lock, "test-txid")
+    assert (
+        command._check_device("/device", 123) is None
+    ), "Not returned for invalid request"
+    assert command.messages == [str(Info.CHECKING_DEVICE)], "Message added"
+    assert command.errors == [
+        Errors.INVALID_COMMAND(
+            device_manager.format_message(
+                DeviceArguments.COMMAND_CHECK_DEVICE, ["/device", "123"]
+            )
+        ),
+        "Invalid",
+    ], "Errors added"
+
+    assert lock.acquired == 1, "Lock acquired"
+    assert lock.released == 1, "Lock released"
+
 
 def test_check_device_ok(monkeypatch):
     """
     .
     """
+    monkeypatch.setattr(device_manager, "send_message", lambda *args, **kwargs: None)
+
+    lock = FakeLock()
+    manager = FakeDeviceManager([], [])
+    sock = FakeSocket(str(DeviceArguments.RESPONSE_OK).encode())
+
+    command = AddCommand(None, manager, sock, lock, "test-txid")
+    assert (
+        command._check_device("/device", 123) == "/device"
+    ), "Path returned for satisfiable request"
+    assert command.messages == [str(Info.CHECKING_DEVICE)], "Message added"
+    assert not command.errors, "No errors"
+
+    assert lock.acquired == 1, "Lock acquired"
+    assert lock.released == 1, "Lock released"
+
+
+def test_device_no_substitution(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(device_manager, "send_message", lambda *args, **kwargs: None)
+    patch_input(monkeypatch, commands, lambda text: "N")
+
+    lock = FakeLock()
+    manager = FakeDeviceManager([], [])
+    sock = FakeSocket(
+        device_manager.format_message(
+            DeviceArguments.RESPONSE_SUBSTITUTE, ["/device2"]
+        ).encode()
+    )
+
+    command = AddCommand(None, manager, sock, lock, "test-txid")
+    assert (
+        command._check_device("/device", 123) is None
+    ), "No device returned if substitution not accepted"
+    assert not command.errors, "No errors added"
+    assert command.messages == [
+        str(Info.CHECKING_DEVICE),
+        Info.DEVICE_SUBSTITUTED("/device", "/device2"),
+        str(Info.SUBSTITUTION_REJECTED),
+    ], "Messages added"
 
 
 def test_check_device_substitution(monkeypatch):
     """
     .
     """
+    monkeypatch.setattr(device_manager, "send_message", lambda *args, **kwargs: None)
+    patch_input(monkeypatch, commands, lambda text: "y")
+
+    class ChangeResultSocket:
+        """
+        A socket which creturns a different result each call
+        """
+
+        def __init__(self, responses: list):
+            """
+            .
+            """
+            # Increments on each call, so start below 0
+            self.__counter = -1
+            self.__responses = responses
+
+        def recv(self, max_size: int) -> str:
+            """
+            Receive a message
+            """
+            self.__counter += 1
+            return self.__responses[self.__counter]
+
+    lock = FakeLock()
+    manager = FakeDeviceManager([], [])
+    sock = ChangeResultSocket(
+        [
+            device_manager.format_message(
+                DeviceArguments.RESPONSE_SUBSTITUTE, ["/device2"]
+            ).encode(),
+            str(DeviceArguments.RESPONSE_OK).encode(),
+        ]
+    )
+    command = AddCommand(None, manager, sock, lock, "test-txid")
+    assert command._check_device("/device", 123) == "/device2", "Second device returned"
+    assert not command.errors, "No errors encountered"
+    assert command.messages == [
+        str(Info.CHECKING_DEVICE),
+        Info.DEVICE_SUBSTITUTED("/device", "/device2"),
+        str(Info.CHECKING_DEVICE),
+    ], "Messages added"

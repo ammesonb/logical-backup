@@ -6,7 +6,6 @@ import socket
 from typing import Optional
 
 from logical_backup.commands.base_command import BaseCommand, Config
-from logical_backup.commands.actions import AddFileAction
 from logical_backup import db
 from logical_backup.utilities import files
 from logical_backup.pretty_print import readable_bytes
@@ -45,7 +44,7 @@ class AddCommand(BaseCommand):
     Command for adding files, folders, and devices
     """
 
-    # pylint: disable=bad-continuation
+    # pylint: disable=bad-continuation,too-many-arguments
     def __init__(
         self,
         arguments: dict,
@@ -236,25 +235,28 @@ class AddCommand(BaseCommand):
         if not lock_acquired:
             self._device_manager_lock.acquire()
 
-        self._add_message(Info.CHECKING_DEVICE)
+        self._add_message(str(Info.CHECKING_DEVICE))
         device_manager.send_message(
-            [DeviceArguments.COMMAND_CHECK_DEVICE, device_path, file_size],
+            [DeviceArguments.COMMAND_CHECK_DEVICE, device_path, str(file_size)],
             self._device_manager_socket,
             self._device_manager_lock,
             False,
         )
 
-        result = self._device_manager_socket.recv(Configurations.MAX_MESSAGE_SIZE)
+        result = self._device_manager_socket.recv(
+            Configurations.MAX_MESSAGE_SIZE
+        ).decode()
         response = None
         # pylint: disable=bad-continuation
         if result in [
-            DeviceArguments.RESPONSE_INVALID,
-            DeviceArguments.RESPONSE_UNRESOLVABLE,
+            str(DeviceArguments.RESPONSE_INVALID),
+            str(DeviceArguments.RESPONSE_UNRESOLVABLE),
         ]:
             self._add_error(
                 Errors.INVALID_COMMAND(
                     device_manager.format_message(
-                        DeviceArguments.COMMAND_CHECK_DEVICE, [device_path, file_size]
+                        DeviceArguments.COMMAND_CHECK_DEVICE,
+                        [device_path, str(file_size)],
                     )
                 )
             )
@@ -267,17 +269,19 @@ class AddCommand(BaseCommand):
                 + DeviceArguments.COMMAND_DELIMITER,
                 "",
             )
-            confirm = (
+            self._add_message(Info.DEVICE_SUBSTITUTED(device_path, new_device_path))
+            # Allow confirm to default to "yes"
+            confirm = not (
                 input(
                     "Allow device substitution to {0}? (Y/n) ".format(new_device_path)
-                )
+                ).lower()
                 == "n"
             )
-            response = (
-                None
-                if not confirm
-                else self._check_device(new_device_path, file_size, True)
-            )
+            if not confirm:
+                response = None
+                self._add_message(str(Info.SUBSTITUTION_REJECTED))
+            else:
+                response = self._check_device(new_device_path, file_size, True)
         elif result == str(DeviceArguments.RESPONSE_OK):
             response = device_path
 

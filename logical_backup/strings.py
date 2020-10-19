@@ -215,6 +215,12 @@ class Info(PrintableEnum):
 
     CHECKING_DEVICE = "Checking availability on device"  # pragma: no mutate
     AUTO_SELECT_DEVICE = "Auto-selecting device"  # pragma: no mutate
+    DEVICE_SUBSTITUTED = lambda original, replacement: (  # pragma: no mutate
+        "Device {0} was substituted for {1}".format(  # pragma: no mutate
+            original, replacement  # pragma: no mutate
+        )  # pragma: no mutate
+    )  # pragma: no mutate
+    SUBSTITUTION_REJECTED = "User rejected device substitution"  # pragma: no mutate
     GET_FILE_SIZE = "Getting file size"  # pragma: no mutate
     FILE_SIZE_OUTPUT = lambda size: "Read. File size is " + size  # pragma: no mutate
     FILE_SIZE_OUTPUT_AT = lambda path, size: (
