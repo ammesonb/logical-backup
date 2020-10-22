@@ -50,7 +50,7 @@ def test_failed_first_checksum(monkeypatch):
     monkeypatch.setattr(files, "checksum_file", lambda path: "")
     file_obj = get_file_obj()
     action = AddFileAction(file_obj)
-    action.run()
+    action.process()
     assert action.errors == [
         Errors.FAILED_GET_CHECKSUM_FOR(file_obj.file_path)
     ], "Error set as expected"
@@ -75,7 +75,7 @@ def test_mismatched_checksum(monkeypatch):
     monkeypatch.setattr(files, "checksum_file", checksum_file)
     file_obj = get_file_obj(True)
     action = AddFileAction(file_obj)
-    action.run()
+    action.process()
 
     os.remove(file_obj.file_path)
 
@@ -100,7 +100,7 @@ def test_db_save_failure(monkeypatch):
     monkeypatch.setattr(db, "add_file", lambda file_obj: False)
     file_obj = get_file_obj(True)
     action = AddFileAction(file_obj)
-    action.run()
+    action.process()
 
     os.remove(file_obj.file_path)
 
@@ -128,7 +128,7 @@ def test_action_success(monkeypatch):
     monkeypatch.setattr(db, "add_file", lambda file_obj: db.DatabaseError.SUCCESS)
     file_obj = get_file_obj(True)
     action = AddFileAction(file_obj)
-    action.run()
+    action.process()
 
     os.remove(file_obj.file_path)
 

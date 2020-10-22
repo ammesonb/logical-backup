@@ -284,6 +284,7 @@ class Info(PrintableEnum):
     )
     TARGET_ALL_HELP = "Perform operation on all files"  # pragma: no mutate
     TARGET_MOVE_PATH_HELP = "Target for move operaetion"  # pragma: no mutate
+    ARGUMENT_THREADS_HELP = "Number of threads to run commands in"  # pragma: no mutate
 
 
 class Commands(PrintableEnum):
@@ -299,6 +300,7 @@ class Commands(PrintableEnum):
     RESTORE = "restore"  # pragma: no mutate
     LIST_DEVICES = "list-devices"  # pragma: no mutate
     SEARCH = "search"  # pragma: no mutate
+    INTERACTIVE = "interactive"  # pragma: no mutate
 
 
 class Targets(PrintableEnum):
@@ -312,6 +314,7 @@ class Targets(PrintableEnum):
     DEVICE = "--device"  # pragma: no mutate
     FROM_DEVICE = "--from-device"  # pragma: no mutate
     MOVE_PATH = "--move-path"  # pragma: no mutate
+    THREADS = "--threads"  # pragma: no mutate
 
 
 class Arguments(PrintableEnum):
@@ -325,6 +328,7 @@ class Arguments(PrintableEnum):
     DEVICE = "device"  # pragma: no mutate
     FROM_DEVICE = "from_device"  # pragma: no mutate
     MOVE_PATH = "move_path"  # pragma: no mutate
+    THREADS = "threads"  # pragma: no mutate
 
 
 class DeviceArguments(PrintableEnum):

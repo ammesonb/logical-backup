@@ -24,7 +24,7 @@ class AddFileAction(BaseAction):
         super().__init__(self)
         self.file_obj = file_obj
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """
         Run the action
         """

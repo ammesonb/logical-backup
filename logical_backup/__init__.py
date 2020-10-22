@@ -1,4 +1,4 @@
 """
 Wrapper for files
 """
-__all__ = ["main", "db", "library", "utility"]
+__all__ = ["main", "cli", "db", "library", "utility"]

@@ -7,10 +7,9 @@ from pytest import raises
 
 # This is an auto-run fixture, so importing is sufficient
 # pylint: disable=unused-import
-from logical_backup.utilities.testing import auto_set_testing
+from logical_backup.utilities.testing import auto_set_testing, counter_wrapper
 from logical_backup.utilities import process
-from logical_backup import main  # for input mocking
-from logical_backup import library  # for input mocking
+from logical_backup import main, cli, library
 from logical_backup.main import __check_devices
 from logical_backup.objects.device import Device
 from logical_backup.pretty_print import PrettyStatusPrinter, Color
@@ -290,3 +289,11 @@ def test_command_run(monkeypatch):
 
     arguments = ["list-devices"]
     assert main.process(arguments) == "list-devices", "List devices"
+
+    @counter_wrapper
+    def cli_run():
+        pass
+
+    monkeypatch.setattr(cli, "run", cli_run)
+    assert main.process(["interactive"]) == "interactive", "Interactive"
+    assert cli_run.counter == 1, "Run loop called"

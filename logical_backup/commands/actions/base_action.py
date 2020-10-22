@@ -1,6 +1,8 @@
 """
 Contains action base class
 """
+import time
+from typing import Optional
 
 from logical_backup.strings import Errors
 
@@ -24,15 +26,24 @@ class BaseAction:
         self.__success = None
         self.__errors = []
         self.__messages = []
+        self.__completion_ns = -1
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """
         Runs the content of the specific action
         """
         raise NotImplementedError(Errors.ACTION_RUN_NOT_IMPLEMENTED)
 
+    def process(self) -> None:
+        """
+        Times the running of this action
+        """
+        start = time.time_ns()
+        self._run()
+        self.__completion_ns = time.time_ns() - start
+
     @property
-    def success(self) -> bool:
+    def success(self) -> Optional[bool]:
         """
         Whether this action succeeded
         """
@@ -76,3 +87,11 @@ class BaseAction:
         Mark this action as succeeded
         """
         self.__success = True
+
+    @property
+    def completion_nanoseconds(self) -> int:
+        """
+        Length of runtime of action
+        Will return -1 if not completed yet
+        """
+        return self.__completion_ns

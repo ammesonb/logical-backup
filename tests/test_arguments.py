@@ -38,6 +38,7 @@ def make_arguments(action: str) -> dict:
         "all": False,
         "move_path": None,
         "from_device": None,
+        "threads": None,
     }
 
 
@@ -306,3 +307,29 @@ def test_move(monkeypatch):
     assert __validate_arguments(arguments), "Mounted 'from' device path should pass"
 
     remove_mock()
+
+
+def test_interactive(monkeypatch):
+    """
+    .
+    """
+    arguments = make_arguments("add")
+    arguments["file"] = MOCK_FILE
+    f = make_mock_file()
+    assert __validate_arguments(arguments), "Existing file specified should pass"
+
+    arguments["threads"] = "4"
+    assert not __validate_arguments(
+        arguments
+    ), "Threads cannot be used outside interactive mode"
+
+    arguments["threads"] = "abc"
+    arguments["action"] = "interactive"
+
+    assert not __validate_arguments(arguments), "Threads must be numeric"
+
+    arguments["threads"] = "4"
+    assert __validate_arguments(arguments), "Interactive with threads works"
+
+    arguments["threads"] = None
+    assert __validate_arguments(arguments), "Interactive without threads works"

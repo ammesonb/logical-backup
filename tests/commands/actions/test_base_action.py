@@ -15,7 +15,7 @@ def test_run_not_implemented():
     """
     action = BaseAction()
     with raises(NotImplementedError) as error:
-        action.run()
+        action.process()
         assert str(error) == str(
             Errors.ACTION_RUN_NOT_IMPLEMENTED
         ), "Correct error message"
@@ -54,3 +54,14 @@ def test_fail():
     # pylint: disable=singleton-comparison
     assert action.success == False, "Success is False"
     assert action.errors == ["Fatal"], "Failure reason added"
+
+
+def test_timing(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(BaseAction, "_run", lambda *args, **kwargs: None)
+    action = BaseAction()
+    assert action.completion_nanoseconds == -1, "Completion time not set"
+    action.process()
+    assert action.completion_nanoseconds > 0, "Completion time set"

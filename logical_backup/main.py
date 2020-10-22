@@ -13,8 +13,7 @@ import os.path as path
 from os.path import isfile, isdir
 import sys
 
-from logical_backup import db
-from logical_backup import library
+from logical_backup import cli, db, library
 from logical_backup.utilities import files
 from logical_backup.pretty_print import PrettyStatusPrinter, Color, print_error
 from logical_backup.strings import Info, Commands, Targets, Errors, Arguments
@@ -58,6 +57,7 @@ def __parse_arguments(command_line_arguments: list) -> tuple:
             str(Commands.RESTORE),
             str(Commands.LIST_DEVICES),
             str(Commands.SEARCH),
+            str(Commands.INTERACTIVE),
         ],
     )
     parser.add_argument(
@@ -87,6 +87,13 @@ def __parse_arguments(command_line_arguments: list) -> tuple:
         help=str(Info.TARGET_MOVE_PATH_HELP),
         required=False,
     )
+    parser.add_argument(
+        str(Targets.THREADS),
+        dest=str(Arguments.THREADS),
+        help=str(Info.ARGUMENT_THREADS_HELP),
+        required=False,
+    )
+
     args = parser.parse_args(command_line_arguments)
     arguments = vars(args)
     arguments[str(Arguments.FILE)] = files.get_abs_path(arguments[str(Arguments.FILE)])
@@ -152,6 +159,9 @@ def __validate_arguments(arguments: dict) -> bool:
     if arguments["device"] or arguments["from_device"]:
         devices = db.get_devices()
 
+    # Unless new device being added,
+    # must be a mounted point in the system
+    # and registered in the database
     if arguments["device"]:
         path_exists = path_exists and path.ismount(arguments["device"])
         if arguments["action"] != Commands.ADD:
@@ -161,6 +171,8 @@ def __validate_arguments(arguments: dict) -> bool:
                 if device.device_path == arguments["device"]
             ]
 
+    # From device has to be a mounted point in the system
+    # and registered in the database
     if arguments["from_device"]:
         path_exists = path_exists and path.ismount(arguments["from_device"])
         path_exists = path_exists and [
@@ -168,6 +180,16 @@ def __validate_arguments(arguments: dict) -> bool:
             for device in devices
             if device.device_path == arguments["from_device"]
         ]
+
+    # Threads can only be used in interactive mode
+    command_valid = command_valid and not (
+        arguments["action"] != str(Commands.INTERACTIVE) and arguments["threads"]
+    )
+
+    # If threads specified, must be numeric
+    command_valid = command_valid and (
+        not arguments["threads"] or arguments["threads"].isnumeric()
+    )
 
     return command_valid and path_exists
 
@@ -271,6 +293,9 @@ def __dispatch_command(arguments: dict) -> str:
     elif arguments["action"] == "list-devices":
         command = "list-devices"
         library.list_devices()
+    elif arguments["action"] == "interactive":
+        command = "interactive"
+        cli.run()
 
     return command
 
