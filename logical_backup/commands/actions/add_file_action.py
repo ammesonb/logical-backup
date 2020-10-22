@@ -58,3 +58,10 @@ class AddFileAction(BaseAction):
         else:
             self._fail(Errors.FAILED_ADD_FILE_DB(file_path))
             os.remove(backup_path)
+
+    @property
+    def name(self) -> str:
+        """
+        Name of action
+        """
+        return Info.ADD_FILE_NAME(self.file_obj.file_path)

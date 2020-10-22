@@ -146,3 +146,14 @@ def test_action_success(monkeypatch):
 
     os.remove(backup_path)
     os.removedirs(file_obj.device.device_path)
+
+
+def test_name(monkeypatch):
+    """
+    .
+    """
+    file_obj = get_file_obj(True)
+    action = AddFileAction(file_obj)
+    assert action.name == Info.ADD_FILE_NAME(
+        file_obj.file_path
+    ), "File name set correctly"

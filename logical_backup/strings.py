@@ -39,6 +39,9 @@ class Errors(PrintableEnum):
     ACTION_RUN_NOT_IMPLEMENTED = (
         "Action must override run function"  # pragma: no mutate
     )
+    ACTION_NAME_NOT_IMPLEMENTED = (
+        "Action must override name function"  # pragma: no mutate
+    )
 
     NONEXISTENT_FILE = "File path does not exist!"  # pragma: no mutate
     FILE_ALREADY_BACKED_UP = "File is already backed up!"  # pragma: no mutate
@@ -285,6 +288,10 @@ class Info(PrintableEnum):
     TARGET_ALL_HELP = "Perform operation on all files"  # pragma: no mutate
     TARGET_MOVE_PATH_HELP = "Target for move operaetion"  # pragma: no mutate
     ARGUMENT_THREADS_HELP = "Number of threads to run commands in"  # pragma: no mutate
+
+    ADD_FILE_NAME = lambda file_path: (  # pragma: no mutate
+        "Adding file: " + os_path.basename(file_path)  # pragma: no mutate
+    )
 
 
 class Commands(PrintableEnum):

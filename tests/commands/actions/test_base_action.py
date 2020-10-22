@@ -9,7 +9,7 @@ from logical_backup.strings import Errors
 # pylint: disable=protected-access
 
 
-def test_run_not_implemented():
+def test_methods_not_implemented():
     """
     .
     """
@@ -18,7 +18,13 @@ def test_run_not_implemented():
         action.process()
         assert str(error) == str(
             Errors.ACTION_RUN_NOT_IMPLEMENTED
-        ), "Correct error message"
+        ), "Correct error message for run"
+
+    with raises(NotImplementedError) as error:
+        name = action.name
+        assert str(error) == str(
+            Errors.ACTION_NAME_NOT_IMPLEMENTED
+        ), "Correct error message for set name"
 
 
 def test_messages():

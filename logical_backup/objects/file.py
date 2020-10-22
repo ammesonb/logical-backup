@@ -26,7 +26,7 @@ class File:
     @property
     def file_name(self) -> str:
         """
-        .
+        Backed-up file name, on the device storage
         """
         return self.__file_name
 
@@ -47,14 +47,14 @@ class File:
     @file_path.setter  # pragma: no mutate
     def file_path(self, file_path: str):
         """
-        .
+        Path to file on the source file system
         """
         self.__file_path = file_path
 
     @property
     def permissions(self) -> str:
         """
-        .
+        Octal permissions of file, as a string, e.g. 755
         """
         return self.__permissions
 
@@ -68,7 +68,7 @@ class File:
     @property
     def owner(self) -> str:
         """
-        .
+        System owner of the file, username not uid
         """
         return self.__owner
 
@@ -82,7 +82,7 @@ class File:
     @property
     def group(self) -> str:
         """
-        .
+        Sytem group of the file, name not gid
         """
         return self.__group
 
@@ -96,7 +96,7 @@ class File:
     @property
     def checksum(self) -> str:
         """
-        .
+        Integrity checksum for the file, to ensure no corruption
         """
         return self.__checksum
 
@@ -124,7 +124,7 @@ class File:
     @property
     def device(self) -> Device:
         """
-        .
+        The device object this file is stored on
         """
         return self.__device
 

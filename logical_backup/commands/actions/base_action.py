@@ -32,7 +32,7 @@ class BaseAction:
         """
         Runs the content of the specific action
         """
-        raise NotImplementedError(Errors.ACTION_RUN_NOT_IMPLEMENTED)
+        raise NotImplementedError(str(Errors.ACTION_RUN_NOT_IMPLEMENTED))
 
     def process(self) -> None:
         """
@@ -95,3 +95,10 @@ class BaseAction:
         Will return -1 if not completed yet
         """
         return self.__completion_ns
+
+    @property
+    def name(self) -> str:
+        """
+        .
+        """
+        raise NotImplementedError(str(Errors.ACTION_NAME_NOT_IMPLEMENTED))
