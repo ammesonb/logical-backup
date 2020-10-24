@@ -15,6 +15,7 @@ import sys
 
 from logical_backup import cli, db, library
 from logical_backup.utilities import files
+from logical_backup.utilities.arguments import get_argument_parser
 from logical_backup.pretty_print import PrettyStatusPrinter, Color, print_error
 from logical_backup.strings import Info, Commands, Targets, Errors, Arguments
 
@@ -41,59 +42,7 @@ def __parse_arguments(command_line_arguments: list) -> tuple:
     dict
         arguments
     """
-    parser = argparse.ArgumentParser(
-        description=(str(Info.PROGRAM_DESCRIPTION)),
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    parser.add_argument(
-        "action",
-        help=str(Info.ACTION),
-        choices=[
-            str(Commands.ADD),
-            str(Commands.MOVE),
-            str(Commands.REMOVE),
-            str(Commands.UPDATE),
-            str(Commands.VERIFY),
-            str(Commands.RESTORE),
-            str(Commands.LIST_DEVICES),
-            str(Commands.SEARCH),
-            str(Commands.INTERACTIVE),
-        ],
-    )
-    parser.add_argument(
-        str(Targets.FILE), help=str(Info.TARGET_FILE_HELP), required=False
-    )
-    parser.add_argument(
-        str(Targets.FOLDER), help=str(Info.TARGET_FOLDER_HELP), required=False
-    )
-    parser.add_argument(
-        str(Targets.DEVICE), help=str(Info.TARGET_DEVICE_HELP), required=False
-    )
-    parser.add_argument(
-        str(Targets.FROM_DEVICE),
-        dest=str(Arguments.FROM_DEVICE),
-        help=str(Info.TARGET_FROM_DEVICE_HELP),
-        required=False,
-    )
-    parser.add_argument(
-        str(Targets.ALL),
-        help=str(Info.TARGET_ALL_HELP),
-        action="store_true",
-        required=False,
-    )
-    parser.add_argument(
-        str(Targets.MOVE_PATH),
-        dest=str(Arguments.MOVE_PATH),
-        help=str(Info.TARGET_MOVE_PATH_HELP),
-        required=False,
-    )
-    parser.add_argument(
-        str(Targets.THREADS),
-        dest=str(Arguments.THREADS),
-        help=str(Info.ARGUMENT_THREADS_HELP),
-        required=False,
-    )
-
+    parser = get_argument_parser()
     args = parser.parse_args(command_line_arguments)
     arguments = vars(args)
     arguments[str(Arguments.FILE)] = files.get_abs_path(arguments[str(Arguments.FILE)])

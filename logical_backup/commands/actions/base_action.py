@@ -23,6 +23,7 @@ class BaseAction:
         Must always be called, but will accept any number of arguments
         This just sets up a few expected properties
         """
+        self.__started = False
         self.__success = None
         self.__errors = []
         self.__messages = []
@@ -38,6 +39,7 @@ class BaseAction:
         """
         Times the running of this action
         """
+        self.__started = True
         start = time.time_ns()
         self._run()
         self.__completion_ns = time.time_ns() - start
@@ -99,6 +101,13 @@ class BaseAction:
     @property
     def name(self) -> str:
         """
-        .
+        Name of action
         """
         raise NotImplementedError(str(Errors.ACTION_NAME_NOT_IMPLEMENTED))
+
+    @property
+    def started(self) -> bool:
+        """
+        If this action has started processing
+        """
+        return self.__started

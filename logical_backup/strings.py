@@ -256,6 +256,8 @@ class Info(PrintableEnum):
         "files for integrity "  # pragma: no mutate
         "(this will NOT check the local filesystem copy, "  # pragma: no mutate
         "as that is assumed to be correct)\n"  # pragma: no mutate
+        "      interactive: run in interactive mode, "  # pragma: no mutate
+        "allowing threads for faster throughput\n"  # pragma: no mutate
         "list-devices: list all the registered backup devices\n"  # pragma: no mutate
         "Example uses:\n"  # pragma: no mutate
         "  # Will add a new device\n"  # pragma: no mutate
@@ -308,6 +310,22 @@ class Commands(PrintableEnum):
     LIST_DEVICES = "list-devices"  # pragma: no mutate
     SEARCH = "search"  # pragma: no mutate
     INTERACTIVE = "interactive"  # pragma: no mutate
+
+    # CLI-only commands
+    # Reorder queue
+    REORDER = "reorder"  # pragma: no mutate
+    # Get messages/errors
+    MESSAGES = "messages"  # pragma: no mutate
+    # Remove from queue
+    DELETE = "delete"  # pragma: no mutate
+    # Check current and pending jobs, success/fail stats
+    STATUS = "status"
+    # Change number of running threads
+    SET_THREADS = "set_thread_count"
+    # Show commands
+    HELP = "help"
+    # Exit shell
+    EXIT = "exit"
 
 
 class Targets(PrintableEnum):

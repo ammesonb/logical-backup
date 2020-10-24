@@ -62,12 +62,14 @@ def test_fail():
     assert action.errors == ["Fatal"], "Failure reason added"
 
 
-def test_timing(monkeypatch):
+def test_timing_and_started(monkeypatch):
     """
     .
     """
     monkeypatch.setattr(BaseAction, "_run", lambda *args, **kwargs: None)
     action = BaseAction()
+    assert not action.started, "Action not started"
     assert action.completion_nanoseconds == -1, "Completion time not set"
     action.process()
     assert action.completion_nanoseconds > 0, "Completion time set"
+    assert action.started, "Action started"

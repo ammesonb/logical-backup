@@ -14,6 +14,13 @@ commands = [
     str(Commands.UPDATE),
     str(Commands.VERIFY),
     str(Commands.REMOVE),
+    str(Commands.STATUS),
+    str(Commands.SET_THREADS),
+    str(Commands.REORDER),
+    str(Commands.DELETE),
+    str(Commands.HELP),
+    str(Commands.MESSAGES),
+    str(Commands.EXIT),
 ]
 
 command_parameters = {
