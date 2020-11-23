@@ -42,12 +42,13 @@ def get_argument_parser(interactive: bool = False) -> argparse.ArgumentParser:
                 str(Commands.STATUS),
                 str(Commands.SET_THREADS),
                 str(Commands.REORDER),
-                str(Commands.DELETE),
+                str(Commands.CLEAR),
                 str(Commands.HELP),
                 str(Commands.MESSAGES),
                 str(Commands.EXIT),
             ]
         )
+        parser.add_argument("values", nargs="*", default=[])
     else:
         actions.append(str(Commands.INTERACTIVE))
 

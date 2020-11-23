@@ -1,6 +1,9 @@
 """
 Tests base action
 """
+from datetime import datetime
+import time
+
 from pytest import raises
 
 from logical_backup.commands.actions.base_action import BaseAction
@@ -21,6 +24,7 @@ def test_methods_not_implemented():
         ), "Correct error message for run"
 
     with raises(NotImplementedError) as error:
+        # pylint: disable=unused-variable
         name = action.name
         assert str(error) == str(
             Errors.ACTION_NAME_NOT_IMPLEMENTED
@@ -73,3 +77,33 @@ def test_timing_and_started(monkeypatch):
     action.process()
     assert action.completion_nanoseconds > 0, "Completion time set"
     assert action.started, "Action started"
+
+
+def test_logs(monkeypatch):
+    """
+    .
+    """
+    monkeypatch.setattr(BaseAction, "_run", lambda *args, **kwargs: None)
+    action = BaseAction()
+    assert action.logs == [], "No logs added"
+    first_epoch_timestamp = 1603919496
+    second_epoch_timestamp = 1603919596
+    third_epoch_timestamp = 1603919696
+
+    monkeypatch.setattr(time, "time", lambda: first_epoch_timestamp)
+    first_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    action._add_message("ipsum")
+
+    monkeypatch.setattr(time, "time", lambda: second_epoch_timestamp)
+    second_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    action._add_error("lorem")
+
+    monkeypatch.setattr(time, "time", lambda: third_epoch_timestamp)
+    third_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    action._add_message("dolor")
+
+    assert action.logs == [
+        first_timestamp + " ipsum",
+        second_timestamp + " lorem",
+        third_timestamp + " dolor",
+    ], "Messages and timestamp match"

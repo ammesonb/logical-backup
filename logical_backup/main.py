@@ -8,16 +8,16 @@ and will allow generic restoration of data, as long as the hard drives
 are maintained
 """
 
-import argparse
 import os.path as path
 from os.path import isfile, isdir
 import sys
 
-from logical_backup import cli, db, library
+from logical_backup import db, library
+from logical_backup.interactive import cli
 from logical_backup.utilities import files
 from logical_backup.utilities.arguments import get_argument_parser
 from logical_backup.pretty_print import PrettyStatusPrinter, Color, print_error
-from logical_backup.strings import Info, Commands, Targets, Errors, Arguments
+from logical_backup.strings import Info, Commands, Errors, Arguments
 
 
 def __prepare():

@@ -9,7 +9,8 @@ from pytest import raises
 # pylint: disable=unused-import
 from logical_backup.utilities.testing import auto_set_testing, counter_wrapper
 from logical_backup.utilities import process
-from logical_backup import main, cli, library
+from logical_backup import main, library
+from logical_backup.interactive import cli
 from logical_backup.main import __check_devices
 from logical_backup.objects.device import Device
 from logical_backup.pretty_print import PrettyStatusPrinter, Color

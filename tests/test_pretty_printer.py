@@ -9,6 +9,8 @@ from logical_backup.pretty_print import (
     Color,
     Background,
     Format,
+    readable_bytes,
+    readable_duration,
 )
 
 
@@ -192,3 +194,40 @@ def test_custom_result(capsys):
     assert "testing thing...Random number" in out.out, "Custom result message prints"
     assert CHECK_UNICODE in out.out, "Success check prints"
     assert Color.WHITE.value in out.out, "Custom result color is printed"
+
+
+def test_byte_printing():
+    """
+    Check printing library output
+    """
+    assert readable_bytes(100) == "100.0B", "Bytes output"
+    assert readable_bytes(2 * 1024) == "2.0KiB", "KiloBytes output"
+    assert readable_bytes(3 * 1024 * 1024) == "3.0MiB", "MegaBytes output"
+    assert readable_bytes(4.056 * 1024 * 1024) == "4.1MiB", "MegaBytes output"
+    assert readable_bytes(4.056 * 1024 * 1024) == "4.1MiB", "MegaBytes output"
+    assert readable_bytes(1 * 1024 ** 8) == "1.0YiB", "Super huge output"
+    assert readable_bytes(1 * 1024 ** 9) == "1024.0YiB", "Super super huge output"
+
+
+def test_readable_time():
+    """
+    .
+    """
+    assert readable_duration(0) == "0 seconds", "No seconds"
+    assert readable_duration(1) == "1 second", "One second"
+    assert readable_duration(60) == "1 minute, 0 seconds", "One minute"
+    assert readable_duration(61) == "1 minute, 1 second", "One minute, one second"
+    assert readable_duration(3600) == "1 hour, 0 minutes, 0 seconds", "One hour"
+    assert (
+        readable_duration(3601) == "1 hour, 0 minutes, 1 second"
+    ), "One hour, one second"
+    assert readable_duration(86400) == "1 day, 0 hours, 0 minutes, 0 seconds", "One day"
+    assert (
+        readable_duration(86401) == "1 day, 0 hours, 0 minutes, 1 second"
+    ), "One day, one second"
+    assert (
+        readable_duration(90061) == "1 day, 1 hour, 1 minute, 1 second"
+    ), "One of everything"
+    assert (
+        readable_duration(180122) == "2 days, 2 hours, 2 minutes, 2 seconds"
+    ), "Two of everything"

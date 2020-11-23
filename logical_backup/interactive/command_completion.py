@@ -17,7 +17,7 @@ commands = [
     str(Commands.STATUS),
     str(Commands.SET_THREADS),
     str(Commands.REORDER),
-    str(Commands.DELETE),
+    str(Commands.CLEAR),
     str(Commands.HELP),
     str(Commands.MESSAGES),
     str(Commands.EXIT),
@@ -38,14 +38,14 @@ command_parameters = {
 }
 
 
-def get_files(text: str) -> list:
+def _get_files(text: str) -> list:
     """
     Match a file input
     """
     return [path for path in glob.glob(text + "*") if path.startswith(text)]
 
 
-def get_folders(text: str) -> list:
+def _get_folders(text: str) -> list:
     """
     Match a folder input
     """
@@ -56,7 +56,7 @@ def get_folders(text: str) -> list:
     ]
 
 
-def get_device(text: str) -> list:
+def _get_device(text: str) -> list:
     """
     Match a device input
     """
@@ -90,11 +90,11 @@ def match_input(text: str, state: int) -> list:
         path = text.split(" ")[-1]
 
         if detail == "--file":
-            options = get_files(path)
+            options = _get_files(path)
         elif detail in ["--folder", "--move-path"]:
-            options = get_folders(path)
+            options = _get_folders(path)
         elif detail == "--device":
-            options = get_device(path)
+            options = _get_device(path)
 
     return None if state >= len(options) else options[state]
 

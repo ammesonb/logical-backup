@@ -10,6 +10,7 @@ from logical_backup.commands.command_validator import CommandValidator
 from logical_backup import db
 from logical_backup.objects import Device
 from logical_backup.utilities import device_manager, files
+from logical_backup.utilities.fake_lock import FakeLock
 
 from logical_backup.pretty_print import readable_bytes
 from logical_backup.strings import DeviceArguments, Errors, Info
@@ -18,46 +19,6 @@ from logical_backup.utilities.testing import counter_wrapper
 from tests.test_utility import patch_input
 
 # pylint: disable=protected-access,no-self-use,too-few-public-methods,unused-argument
-
-
-class FakeLock:
-    """
-    Fake synchronization lock
-    """
-
-    def __init__(self):
-        """
-        .
-        """
-        self.__acquired = 0
-        self.__released = 0
-
-    def acquire(self):
-        """
-        Acquire lock
-        """
-        self.__acquired += 1
-
-    @counter_wrapper
-    def release(self):
-        """
-        Release lock
-        """
-        self.__released += 1
-
-    @property
-    def acquired(self):
-        """
-        Number times acquired
-        """
-        return self.__acquired
-
-    @property
-    def released(self):
-        """
-        Number times released
-        """
-        return self.__released
 
 
 class FakeSocket:

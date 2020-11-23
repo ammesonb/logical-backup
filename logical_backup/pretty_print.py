@@ -7,6 +7,9 @@ from enum import Enum
 
 CHECK_UNICODE = "\u2714"  # pragma: no mutate
 CROSS_UNICODE = "\u274c"  # pragma: no mutate
+INFO_UNICODE = u"\U0001F6C8"  # pragma: no mutate
+WARN_UNICODE = u"\U000026a0"  # pragma: no mutate
+BULLET = u"\U000025cb"  # pragma: no mutate
 
 
 class Color(Enum):
@@ -255,3 +258,25 @@ def readable_bytes(size: int, suffix: str = "B") -> str:
             return "%3.1f%s%s" % (size, unit, suffix)
         size /= 1024.0
     return "%.1f%s%s" % (size, "Yi", suffix)
+
+
+def readable_duration(seconds: int) -> str:
+    """
+    Converts elapsed seconds to a readable time string
+    """
+    days = int(seconds / 86400)
+    seconds -= days * 86400
+    hours = int(seconds / 3600)
+    seconds -= hours * 3600
+    minutes = int(seconds / 60)
+    seconds -= minutes * 60
+
+    time_string = ""
+    if days:
+        time_string += "{0} day{1}, ".format(days, "s" if days != 1 else "")
+    if hours or days:
+        time_string += "{0} hour{1}, ".format(hours, "s" if hours != 1 else "")
+    if minutes or hours or days:
+        time_string += "{0} minute{1}, ".format(minutes, "s" if minutes != 1 else "")
+
+    return time_string + "{0} second{1}".format(seconds, "s" if seconds != 1 else "")

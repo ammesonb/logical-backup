@@ -177,6 +177,28 @@ class Errors(PrintableEnum):
         "Command is not valid: '{0}'".format(command)  # pragma: no mutate
     )
 
+    FAILED_TO_CREATE_ACTIONS = "Command failed to create actions"  # pragma: no mutate
+
+    THREAD_COUNT_NUMERIC = (
+        "Thread count must be present and numeric"  # pragma: no mutate
+    )
+    INSUFFICIENT_REORDER_POSITIONS = (
+        "A source and destination position must be provided"  # pragma: no mutate
+    )
+    INVALID_SOURCE_POSITION = (
+        "Source position must a number or range"  # pragma: no mutate
+    )
+    INVALID_DESTINATION_POSITION = (
+        "Destination must a number or 'top'/'bottom'"  # pragma: no mutate
+    )
+    UNABLE_TO_ACQUIRE = (
+        "Queue in use. Verify queue state and re-run command"  # pragma: no mutate
+    )
+    INSUFFICIENT_STATUS_OPTIONS = (
+        "To identify a message, [c]omplete or [q]ueued "  # pragma: no mutate
+        "plus an index must be specified"  # pragma: no mutate
+    )
+
 
 class InputPrompts(PrintableEnum):
     """
@@ -256,7 +278,7 @@ class Info(PrintableEnum):
         "files for integrity "  # pragma: no mutate
         "(this will NOT check the local filesystem copy, "  # pragma: no mutate
         "as that is assumed to be correct)\n"  # pragma: no mutate
-        "      interactive: run in interactive mode, "  # pragma: no mutate
+        " interactive: run in interactive mode, "  # pragma: no mutate
         "allowing threads for faster throughput\n"  # pragma: no mutate
         "list-devices: list all the registered backup devices\n"  # pragma: no mutate
         "Example uses:\n"  # pragma: no mutate
@@ -281,6 +303,34 @@ class Info(PrintableEnum):
         "  move --file /backups --device dev2\n"  # pragma: no mutate
     )
 
+    CLI_HELP = (
+        "This mode allows parallel operations and interactivity.\n"  # pragma: no mutate
+        "Reference program help for normal operations, "  # pragma: no mutate
+        "such as adding or removing files\n\n"  # pragma: no mutate
+        "Additional actions include:\n"  # pragma: no mutate
+        "           reorder:\n"
+        "    Reprioritize items in the queue. Ranges and comma-separated values are "
+        "allowed for the source, e.g. 1-3,5,6-8,10. Destination is a single number or "
+        "the designation 'top' or 'bottom'.\n"
+        "             clear:\n"
+        "    Remove one or more items from the list. If no arguments provided, will "
+        "clear all the completed actions. Otherwise, this will remove the specified "
+        "pending actions. If an item is mid-processing, it cannot be cleared.\n"
+        "            status:\n"
+        "    View the status of the processing. If [c]omplete or [queue] are provided "
+        "along with an item's index, will report on that item only."
+        "          messages:\n"
+        "    Similar to status, this will report messages and errors from an action. "
+        "[c]omplete or [q]ueue should be specified with an index to indicate the "
+        "desired action to display messages for.\n"
+        "  set_thread_count: Change parallelism to given number\n"  # pragma: no mutate
+        "              help: Display this text\n"  # pragma: no mutate
+        "              exit:\n"
+        "    Exit the shell - will remove all unprocessed "
+        "queue items and allow exiting after the "  # pragma: no mutate
+        "current actions finish\n"  # pragma: no mutate
+    )
+
     TARGET_FILE_HELP = "The file to take action on"  # pragma: no mutate
     TARGET_FOLDER_HELP = "The folder to take action on"  # pragma: no mutate
     TARGET_DEVICE_HELP = "Mount path for a device"  # pragma: no mutate
@@ -293,6 +343,10 @@ class Info(PrintableEnum):
 
     ADD_FILE_NAME = lambda file_path: (  # pragma: no mutate
         "Adding file: " + os_path.basename(file_path)  # pragma: no mutate
+    )
+
+    COMMAND_CREATED_ACTIONS = lambda action_count: int(  # pragma: no mutate
+        "Command created {0} actions".format(action_count)  # pragma: no mutate
     )
 
 
@@ -314,10 +368,10 @@ class Commands(PrintableEnum):
     # CLI-only commands
     # Reorder queue
     REORDER = "reorder"  # pragma: no mutate
+    # Remove completed item/s from the queue
+    CLEAR = "clear"  # pragma: no mutate
     # Get messages/errors
     MESSAGES = "messages"  # pragma: no mutate
-    # Remove from queue
-    DELETE = "delete"  # pragma: no mutate
     # Check current and pending jobs, success/fail stats
     STATUS = "status"
     # Change number of running threads

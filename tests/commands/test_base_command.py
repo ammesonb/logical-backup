@@ -1,7 +1,9 @@
 """
 Test base command
 """
+from datetime import datetime
 import socket
+import time
 
 from pytest import raises
 
@@ -109,3 +111,33 @@ def test_actions_with_errors():
     assert command._actions == [], "Does not have actions"
 
     assert command.actions == [], "No actions if errors"
+
+
+def test_logs(monkeypatch):
+    """
+    .
+    """
+    sock = socket.socket()
+    command = ImplementedCommand([], None, sock, None)
+    assert command.logs == [], "No logs added"
+    first_epoch_timestamp = 1603919796
+    second_epoch_timestamp = 1603919896
+    third_epoch_timestamp = 1603919996
+
+    monkeypatch.setattr(time, "time", lambda: first_epoch_timestamp)
+    first_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    command._add_message("foo")
+
+    monkeypatch.setattr(time, "time", lambda: second_epoch_timestamp)
+    second_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    command._add_error("bar")
+
+    monkeypatch.setattr(time, "time", lambda: third_epoch_timestamp)
+    third_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    command._add_message("baz")
+
+    assert command.logs == [
+        first_timestamp + " foo",
+        second_timestamp + " bar",
+        third_timestamp + " baz",
+    ], "Messages and timestamp match"

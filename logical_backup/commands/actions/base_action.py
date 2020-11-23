@@ -5,6 +5,7 @@ import time
 from typing import Optional
 
 from logical_backup.strings import Errors
+from logical_backup.utilities.message import Message
 
 
 class BaseAction:
@@ -56,26 +57,26 @@ class BaseAction:
         """
         Any errors encountered
         """
-        return self.__errors
+        return [error.message for error in self.__errors]
 
     @property
     def messages(self) -> list:
         """
         Any messages logged
         """
-        return self.__messages
+        return [message.message for message in self.__messages]
 
     def _add_message(self, message: str) -> None:
         """
         Add a message
         """
-        self.__messages.append(message)
+        self.__messages.append(Message(message, time.time()))
 
     def _add_error(self, error: str) -> None:
         """
         Add an error
         """
-        self.__errors.append(error)
+        self.__errors.append(Message(error, time.time()))
 
     def _fail(self, error: str) -> None:
         """
@@ -111,3 +112,12 @@ class BaseAction:
         If this action has started processing
         """
         return self.__started
+
+    @property
+    def logs(self) -> list:
+        """
+        Show timestamped logs of events
+        """
+        all_logs = self.__messages + self.__errors
+        all_logs.sort(key=lambda message: message.epoch_timestamp)
+        return [str(log) for log in all_logs]

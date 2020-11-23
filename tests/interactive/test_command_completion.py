@@ -5,9 +5,11 @@ import glob
 from os import path as os_path
 import readline
 
-from logical_backup import command_completion
+from logical_backup.interactive import command_completion
 from logical_backup.utility import counter_wrapper
 from logical_backup.strings import Commands
+
+# pylint: disable=protected-access
 
 
 def test_get_files_filters(monkeypatch):
@@ -15,12 +17,12 @@ def test_get_files_filters(monkeypatch):
     .
     """
     monkeypatch.setattr(glob, "glob", lambda path: ["bar", "baz", "foo"])
-    print(command_completion.get_files("ba"))
-    assert command_completion.get_files("ba") == [
+    print(command_completion._get_files("ba"))
+    assert command_completion._get_files("ba") == [
         "bar",
         "baz",
     ], "get_files filters appropriately"
-    assert command_completion.get_files("no match") == [], "get_files returns no match"
+    assert command_completion._get_files("no match") == [], "get_files returns no match"
 
 
 def test_get_folders_filters(monkeypatch):
@@ -29,11 +31,11 @@ def test_get_folders_filters(monkeypatch):
     """
     monkeypatch.setattr(glob, "glob", lambda path: ["bar", "baz", "foo"])
     monkeypatch.setattr(os_path, "isdir", lambda path: path in ["bar", "foo"])
-    assert command_completion.get_folders("ba") == [
+    assert command_completion._get_folders("ba") == [
         "bar"
     ], "get_folders filters appropriately"
     assert (
-        command_completion.get_folders("no match") == []
+        command_completion._get_folders("no match") == []
     ), "get_folders returns no match"
 
 
@@ -45,12 +47,12 @@ def test_get_device(monkeypatch):
     monkeypatch.setattr(os_path, "isdir", lambda path: path == "bar")
     monkeypatch.setattr(os_path, "ismount", lambda path: path in ["baz", "foo"])
     # pylint: disable=bad-continuation
-    assert command_completion.get_device("ba") == [
+    assert command_completion._get_device("ba") == [
         "bar",
         "baz",
     ], "get_device filters appropriately"
     assert (
-        command_completion.get_device("no match") == []
+        command_completion._get_device("no match") == []
     ), "get_device returns no match"
 
 
@@ -193,9 +195,9 @@ def test_file_system_completion(monkeypatch):
     """
     .
     """
-    monkeypatch.setattr(command_completion, "get_files", lambda path: ["bar", "baz"])
-    monkeypatch.setattr(command_completion, "get_folders", lambda path: [])
-    monkeypatch.setattr(command_completion, "get_device", lambda path: [])
+    monkeypatch.setattr(command_completion, "_get_files", lambda path: ["bar", "baz"])
+    monkeypatch.setattr(command_completion, "_get_folders", lambda path: [])
+    monkeypatch.setattr(command_completion, "_get_device", lambda path: [])
 
     __patch_readline_input(monkeypatch, "add --file ")
     assert (
@@ -209,8 +211,8 @@ def test_file_system_completion(monkeypatch):
     __patch_readline_input(monkeypatch, "add --device ")
     assert not command_completion.match_input("add --device ", 0), "No device returned"
 
-    monkeypatch.setattr(command_completion, "get_files", lambda path: [])
-    monkeypatch.setattr(command_completion, "get_folders", lambda path: ["tmp", "var"])
+    monkeypatch.setattr(command_completion, "_get_files", lambda path: [])
+    monkeypatch.setattr(command_completion, "_get_folders", lambda path: ["tmp", "var"])
 
     __patch_readline_input(monkeypatch, "add --file ")
     assert (
@@ -226,9 +228,9 @@ def test_file_system_completion(monkeypatch):
     __patch_readline_input(monkeypatch, "add --device ")
     assert not command_completion.match_input("add --device ", 0), "No device returned"
 
-    monkeypatch.setattr(command_completion, "get_folders", lambda path: [])
+    monkeypatch.setattr(command_completion, "_get_folders", lambda path: [])
     monkeypatch.setattr(
-        command_completion, "get_device", lambda path: ["/dev1", "/dev2"]
+        command_completion, "_get_device", lambda path: ["/dev1", "/dev2"]
     )
 
     __patch_readline_input(monkeypatch, "add --file ")

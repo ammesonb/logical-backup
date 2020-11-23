@@ -14,7 +14,6 @@ import psutil
 
 from logical_backup.utility import __get_device_path
 import logical_backup.utility as utility
-from logical_backup.pretty_print import readable_bytes
 
 DiskPartition = namedtuple("sdiskpart", "device mountpoint fstype opts")
 DiskUsage = namedtuple("diskusage", "total used free percent")
@@ -245,19 +244,6 @@ def test_create_backup_name(monkeypatch):
     assert (
         name == hash_result_2.hexdigest() + "_test"
     ), "Test file name with path should match"
-
-
-def test_byte_printing():
-    """
-    Check printing library output
-    """
-    assert readable_bytes(100) == "100.0B", "Bytes output"
-    assert readable_bytes(2 * 1024) == "2.0KiB", "KiloBytes output"
-    assert readable_bytes(3 * 1024 * 1024) == "3.0MiB", "MegaBytes output"
-    assert readable_bytes(4.056 * 1024 * 1024) == "4.1MiB", "MegaBytes output"
-    assert readable_bytes(4.056 * 1024 * 1024) == "4.1MiB", "MegaBytes output"
-    assert readable_bytes(1 * 1024 ** 8) == "1.0YiB", "Super huge output"
-    assert readable_bytes(1 * 1024 ** 9) == "1024.0YiB", "Super super huge output"
 
 
 def test_get_file_security(monkeypatch, capsys):

@@ -5,8 +5,10 @@ from __future__ import annotations
 
 from multiprocessing import synchronize
 import socket
+import time
 
 from logical_backup.commands.command_validator import CommandValidator
+from logical_backup.utilities.message import Message
 from logical_backup.utilities.device_manager import DeviceManager
 from logical_backup.strings import Errors
 
@@ -59,13 +61,13 @@ class BaseCommand:
         """
         Add a message
         """
-        self.__messages.append(message)
+        self.__messages.append(Message(message, time.time()))
 
     def _add_error(self, error: str) -> None:
         """
         Add an error
         """
-        self.__errors.append(error)
+        self.__errors.append(Message(error, time.time()))
 
     def _create_actions(self, config: Config) -> list:
         """
@@ -96,11 +98,20 @@ class BaseCommand:
         """
         Get errors that occurred
         """
-        return self.__errors
+        return [error.message for error in self.__errors]
 
     @property
     def messages(self) -> list:
         """
         Recorded messages
         """
-        return self.__messages
+        return [message.message for message in self.__messages]
+
+    @property
+    def logs(self) -> list:
+        """
+        Show timestamped logs of events
+        """
+        all_logs = self.__messages + self.__errors
+        all_logs.sort(key=lambda message: message.epoch_timestamp)
+        return [str(log) for log in all_logs]
