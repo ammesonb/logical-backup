@@ -89,5 +89,5 @@ def test_run(monkeypatch):
     assert fake_sleep.counter > 0, "Sleep called if no task"
 
     context["thread_count"] = 0
-    _sleep(0.1)
+    _sleep(0.5)
     assert not thread.is_alive(), "Thread ends if parallelism lowered"

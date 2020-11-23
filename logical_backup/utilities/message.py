@@ -2,6 +2,7 @@
 A logged message/error
 """
 from datetime import datetime
+from pytz import timezone
 
 
 class Message:
@@ -15,7 +16,9 @@ class Message:
 
     def __str__(self):
         return (
-            datetime.fromtimestamp(self.epoch_timestamp).strftime("%Y-%m-%d %H:%M:%S")
+            timezone("US/Eastern")
+            .localize(datetime.fromtimestamp(self.epoch_timestamp))
+            .strftime("%Y-%m-%d %H:%M:%S")
             + " "
             + self.message
         )

@@ -58,4 +58,4 @@ class ActionExecutor(multiprocessing.Process):
                 self.__completion_queue.append(task)
 
             else:
-                time.sleep(1)
+                time.sleep(0.5)
