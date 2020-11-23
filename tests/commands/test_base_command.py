@@ -5,6 +5,7 @@ from datetime import datetime
 import socket
 import time
 
+from dateutil import tz
 from pytest import raises
 
 from logical_backup.commands.base_command import BaseCommand, Config
@@ -124,16 +125,34 @@ def test_logs(monkeypatch):
     second_epoch_timestamp = 1603919896
     third_epoch_timestamp = 1603919996
 
+    local = tz.tzlocal()
+    eastern = tz.gettz("America/New_York")
+
     monkeypatch.setattr(time, "time", lambda: first_epoch_timestamp)
-    first_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    first_timestamp = (
+        datetime.fromtimestamp(time.time())
+        .replace(tzinfo=local)
+        .astimezone(eastern)
+        .strftime("%Y-%m-%d %H:%M:%S")
+    )
     command._add_message("foo")
 
     monkeypatch.setattr(time, "time", lambda: second_epoch_timestamp)
-    second_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    second_timestamp = (
+        datetime.fromtimestamp(time.time())
+        .replace(tzinfo=local)
+        .astimezone(eastern)
+        .strftime("%Y-%m-%d %H:%M:%S")
+    )
     command._add_error("bar")
 
     monkeypatch.setattr(time, "time", lambda: third_epoch_timestamp)
-    third_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    third_timestamp = (
+        datetime.fromtimestamp(time.time())
+        .replace(tzinfo=local)
+        .astimezone(eastern)
+        .strftime("%Y-%m-%d %H:%M:%S")
+    )
     command._add_message("baz")
 
     assert command.logs == [

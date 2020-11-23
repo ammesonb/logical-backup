@@ -4,6 +4,7 @@ Tests base action
 from datetime import datetime
 import time
 
+from dateutil import tz
 from pytest import raises
 
 from logical_backup.commands.actions.base_action import BaseAction
@@ -90,16 +91,34 @@ def test_logs(monkeypatch):
     second_epoch_timestamp = 1603919596
     third_epoch_timestamp = 1603919696
 
+    local = tz.tzlocal()
+    eastern = tz.gettz("America/New_York")
+
     monkeypatch.setattr(time, "time", lambda: first_epoch_timestamp)
-    first_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    first_timestamp = (
+        datetime.fromtimestamp(time.time())
+        .replace(tzinfo=local)
+        .astimezone(eastern)
+        .strftime("%Y-%m-%d %H:%M:%S")
+    )
     action._add_message("ipsum")
 
     monkeypatch.setattr(time, "time", lambda: second_epoch_timestamp)
-    second_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    second_timestamp = (
+        datetime.fromtimestamp(time.time())
+        .replace(tzinfo=local)
+        .astimezone(eastern)
+        .strftime("%Y-%m-%d %H:%M:%S")
+    )
     action._add_error("lorem")
 
     monkeypatch.setattr(time, "time", lambda: third_epoch_timestamp)
-    third_timestamp = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+    third_timestamp = (
+        datetime.fromtimestamp(time.time())
+        .replace(tzinfo=local)
+        .astimezone(eastern)
+        .strftime("%Y-%m-%d %H:%M:%S")
+    )
     action._add_message("dolor")
 
     assert action.logs == [

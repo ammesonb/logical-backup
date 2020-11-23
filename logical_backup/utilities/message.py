@@ -16,12 +16,10 @@ class Message:
         self.__epoch_timestamp = epoch_timestamp
 
     def __str__(self):
-        utc = tz.gettz("UTC")
-        eastern = tz.gettz("America/New_York")
         return (
             datetime.fromtimestamp(self.epoch_timestamp)
-            .replace(tzinfo=utc)
-            .astimezone(eastern)
+            .replace(tzinfo=tz.tzlocal())
+            .astimezone(tz.gettz("America/New_York"))
             .strftime("%Y-%m-%d %H:%M:%S")
             + " "
             + self.message
