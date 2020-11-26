@@ -121,3 +121,9 @@ class BaseAction:
         all_logs = self.__messages + self.__errors
         all_logs.sort(key=lambda message: message.epoch_timestamp)
         return [str(log) for log in all_logs]
+
+    def __str__(self) -> str:
+        """
+        String representation of this action
+        """
+        return self.name

@@ -235,6 +235,9 @@ def test_clear_completed_actions(monkeypatch, capsys):
 
 
 def test_dequeue_action(monkeypatch, capsys):
+    """
+    .
+    """
     context = {}
 
     lock = FakeLock()
@@ -272,3 +275,95 @@ def test_dequeue_action(monkeypatch, capsys):
     queue.dequeue_actions([2, 1])
     assert queue.action_count == 1, "One action left"
     assert queue.get_queued_action(0) == action5, "Entry is action 5"
+
+
+def test_reorder_queue(monkeypatch, capsys):
+    """
+    .
+    """
+    context = {}
+
+    lock = FakeLock()
+    queue = QueueStateManager(
+        None, multiprocessing.Manager(), None, None, lock, context
+    )
+
+    monkeypatch.setattr(lock, "acquire", lambda self=None, block=True: False)
+
+    class NumberedAction(BaseAction):
+        """
+        A numbered fake action
+        """
+
+        def __init__(self, number: int, *args, **kwargs):
+            super().__init__(self, *args, **kwargs)
+            self.__number = number
+
+        def _run(self) -> None:
+            """
+            Runs
+            """
+            self._add_message("A message")
+            self._succeed()
+
+        @property
+        def name(self) -> str:
+            """
+            Name
+            """
+            return str(self.__number)
+
+    action1 = NumberedAction(1)
+    action1.process()
+    action2 = NumberedAction(2)
+    action2.process()
+    action3 = NumberedAction(3)
+    action3.process()
+    action4 = NumberedAction(4)
+    action4.process()
+    action5 = NumberedAction(5)
+    action5.process()
+
+    context["queue"].extend([action1, action2, action3, action4, action5])
+
+    queue.move_queue_entries([2, 3], 4)
+    output = capsys.readouterr()
+    assert str(Errors.UNABLE_TO_ACQUIRE) in output.out, "Lock acquire failure prints"
+
+    monkeypatch.setattr(lock, "acquire", lambda self=None, block=True: True)
+
+    queue.move_queue_entries([2, 3], 5)
+    assert queue.queued_action_names == [
+        "1",
+        "4",
+        "2",
+        "3",
+        "5",
+    ], "Queue entries moved backwards"
+
+    queue.move_queue_entries([4, 3], 1)
+    assert queue.queued_action_names == [
+        "2",
+        "3",
+        "1",
+        "4",
+        "5",
+    ], "Queue entries moved to front"
+
+    queue.move_queue_entries([2, 1], 6)
+    assert queue.queued_action_names == [
+        "1",
+        "4",
+        "5",
+        "2",
+        "3",
+    ], "Queue entries moved to end"
+
+    queue.move_queue_entries([3], 2)
+    assert queue.queued_action_names == [
+        "1",
+        "5",
+        "4",
+        "2",
+        "3",
+    ], "Queue entry swapped forwards"

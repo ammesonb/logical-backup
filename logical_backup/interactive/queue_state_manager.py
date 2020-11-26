@@ -162,21 +162,18 @@ class QueueStateManager:
         Reorders queued actions
         """
         if self.queue_lock.acquire(False):
-            actions = []
-            for index in from_indices:
-                actions.append(self.__action_queue[index])
+            # To get indices correct, remove the last entry first,
+            # and the same for insertion - must insert the last first, since others
+            # will be added _before_ the chronologically-earlier entries
+            from_indices.sort()
+            from_indices.reverse()
 
-            for idx in range(len(actions)):
-                action = actions[idx]
+            actions = [self.__action_queue[index - 1] for index in from_indices]
 
             # Don't remove until after caching all actions,
             # since that would reorder indices and mean wrong actions get selected
             for action in actions:
                 self.__action_queue.remove(action)
-
-            # To insert in-order, must insert the last first, since others
-            # will be added _before_ the earlier entries
-            actions.reverse()
 
             # When removing entries from a list, re-indexing means
             # the entries below it shift. So, to ensure the destination index
