@@ -206,8 +206,10 @@ class QueueStateManager:
         Clear processed actions, regardless of success/failure
         """
         if self.queue_lock.acquire(False):
-            finished_actions = filter(
-                lambda action: action.success is not None, self.__processed_actions
+            finished_actions = list(
+                filter(
+                    lambda action: action.success is not None, self.__processed_actions
+                )
             )
             for action in finished_actions:
                 self.__processed_actions.remove(action)

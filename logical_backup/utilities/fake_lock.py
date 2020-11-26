@@ -28,11 +28,12 @@ class FakeLock:
         """
         self.release()
 
-    def acquire(self):
+    def acquire(self, block: bool = True):
         """
         Acquire lock
         """
         self.__acquired += 1
+        return True
 
     @counter_wrapper
     def release(self):

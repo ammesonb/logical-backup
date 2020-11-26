@@ -8,6 +8,7 @@ from logical_backup.commands.actions.base_action import BaseAction
 from logical_backup.interactive.action_executor import ActionExecutor
 from logical_backup.interactive.queue_state_manager import QueueStateManager
 from logical_backup.utilities.fake_lock import FakeLock
+from logical_backup.strings import Errors
 from logical_backup.utilities.testing import counter_wrapper
 
 
@@ -191,3 +192,83 @@ def test_get_completed_actions():
             "message_count": 0,
         },
     ], "Completed actions returned"
+
+
+def test_clear_completed_actions(monkeypatch, capsys):
+    """
+    .
+    """
+    context = {}
+
+    lock = FakeLock()
+    queue = QueueStateManager(
+        None, multiprocessing.Manager(), None, None, lock, context
+    )
+
+    monkeypatch.setattr(lock, "acquire", lambda self=None, block=True: False)
+
+    queue.clear_completed_actions()
+    output = capsys.readouterr()
+    assert str(Errors.UNABLE_TO_ACQUIRE) in output.out, "Lock acquire failure prints"
+
+    monkeypatch.setattr(lock, "acquire", lambda self=None, block=True: True)
+
+    action1 = SuccessAction()
+    action1.process()
+    action2 = FailureAction()
+    action2.process()
+
+    context["completion_queue"].extend([action1, action2])
+    context["queue"].append(action1)
+
+    assert queue.completed_action_count == 2, "Actions marked as completed"
+    assert queue.queue_length == 1, "Action in queue"
+    assert queue.action_count == 3, "Total actions correct"
+
+    queue.clear_completed_actions()
+
+    assert queue.completed_action_count == 0, "No actions in completed queue"
+    assert queue.queue_length == 1, "Still one action in queue"
+    assert queue.action_count == 1, "Total action count lowered"
+    assert queue.completed_actions == [], "Completed actions cleared"
+    assert queue.get_queued_action(0) == action1, "Action 1 still in queue"
+
+
+def test_dequeue_action(monkeypatch, capsys):
+    context = {}
+
+    lock = FakeLock()
+    queue = QueueStateManager(
+        None, multiprocessing.Manager(), None, None, lock, context
+    )
+
+    monkeypatch.setattr(lock, "acquire", lambda self=None, block=True: False)
+
+    action1 = SuccessAction()
+    action1.process()
+    action2 = FailureAction()
+    action2.process()
+    action3 = SuccessAction()
+    action3.process()
+    action4 = FailureAction()
+    action4.process()
+    action5 = FailureAction()
+    action5.process()
+
+    context["queue"].extend([action1, action2, action3, action4, action5])
+
+    queue.dequeue_actions([2, 3])
+    output = capsys.readouterr()
+    assert str(Errors.UNABLE_TO_ACQUIRE) in output.out, "Lock acquire failure prints"
+
+    monkeypatch.setattr(lock, "acquire", lambda self=None, block=True: True)
+
+    queue.dequeue_actions([2, 4])
+    assert queue.action_count == 3, "Three actions left"
+    assert queue.get_queued_action(0) == action1, "First entry is action 1"
+    assert queue.get_queued_action(1) == action3, "Second entry is action 3"
+    assert queue.get_queued_action(2) == action5, "Third entry is action 5"
+
+    queue.dequeue_actions([2, 1])
+    assert queue.action_count == 1, "One action left"
+    assert queue.get_queued_action(0) == action5, "Entry is action 5"
