@@ -3,6 +3,7 @@ CLI for interactive mode
 """
 import multiprocessing
 import re
+import shlex
 import socket
 import threading
 import time
@@ -11,8 +12,9 @@ from typing import List
 from logical_backup.commands import AddCommand
 from logical_backup.commands.base_command import BaseCommand
 from logical_backup.commands.actions.base_action import BaseAction
-from logical_backup.interactive.command_completion import set_completion
+from logical_backup.interactive import command_completion
 from logical_backup.interactive.queue_state_manager import QueueStateManager
+from logical_backup.utilities import arguments, device_manager
 from logical_backup.pretty_print import (
     Color,
     Format,
@@ -46,7 +48,7 @@ def run(start_time: int = None):
     global START_TIME
     START_TIME = start_time or time.time_ns()
 
-    set_completion()
+    command_completion.set_completion()
     context = _initialize_multiprocessing()
 
     stop = False
@@ -60,7 +62,7 @@ def run(start_time: int = None):
         input_arguments = _read_input(context)
 
         parsed = vars(
-            input_arguments.get_argument_parser(True).parse_args(input_arguments)
+            arguments.get_argument_parser(True).parse_args(shlex.split(input_arguments))
         )
         print(parsed)
 
@@ -82,7 +84,10 @@ def _initialize_multiprocessing() -> QueueStateManager:
     multiprocessing.set_start_method("spawn")
 
     manager = multiprocessing.Manager()
+    # Pylint incorrectly thinks Lock doesn't exist on the manager
+    # pylint: disable=no-member
     device_lock = manager.Lock()
+    # pylint: disable=no-member
     queue_lock = manager.Lock()
 
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
