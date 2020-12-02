@@ -90,9 +90,7 @@ def _initialize_multiprocessing() -> QueueStateManager:
     # pylint: disable=no-member
     queue_lock = manager.Lock()
 
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.connect(str(DeviceArguments.SOCKET_PATH))
-
+    sock = device_manager.get_server_connection()
     dev_manager = device_manager.DeviceManager(sock)
     manager_thread = threading.Thread(target=dev_manager.loop)
     manager_thread.start()

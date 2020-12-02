@@ -18,6 +18,7 @@ from logical_backup.utilities import device, device_manager
 from logical_backup.utilities.device_manager import (
     DeviceManager,
     _device_has_space,
+    get_server_connection,
     get_connection,
     send_message,
     format_message,
@@ -171,8 +172,9 @@ def test_accept_connection(monkeypatch):
 
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
+    # Put this before get connection to ensure server socket is bound
+    # Just not listening/accepting yet
+    sock = get_server_connection()
 
     with raises(ConnectionRefusedError):
         get_connection()
@@ -210,15 +212,13 @@ def test_stop_message_immediately_stops(monkeypatch):
 
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
 
     @counter_wrapper
     # pylint: disable=unused-argument
     def mock_process_message(message, conn):
         return None
 
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
     monkeypatch.setattr(manager, "_process_message", mock_process_message)
 
     # Try to connect before starting, to avoid thread timing out early
@@ -252,15 +252,13 @@ def test_receive_message_stops_with_no_message(monkeypatch):
 
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
 
     @counter_wrapper
     # pylint: disable=unused-argument
     def mock_process_message(message, connection):
         return None
 
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
     monkeypatch.setattr(manager, "_process_message", mock_process_message)
 
     client_sock, txid = get_connection()
@@ -287,15 +285,13 @@ def test_receive_messages(monkeypatch):
 
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
 
     @counter_wrapper
     # pylint: disable=unused-argument
     def mock_process_message(txid, message, connection):
         return None
 
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
     monkeypatch.setattr(manager, "_process_message", mock_process_message)
 
     # Try connecting before accepting connections
@@ -366,8 +362,6 @@ def test_loop(monkeypatch):
 
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
 
     @counter_wrapper
     def mock_accept_connection():
@@ -377,7 +371,7 @@ def test_loop(monkeypatch):
     def mock_receive_messages():
         manager.stop()
 
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
     monkeypatch.setattr(manager, "_accept_connection", mock_accept_connection)
     monkeypatch.setattr(manager, "_receive_messages", mock_receive_messages)
 
@@ -394,15 +388,13 @@ def test_accept_exceptions(monkeypatch):
 
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
 
     @counter_wrapper
     # pylint: disable=unused-argument
     def mock_socket_accept(timeout):
         raise socket.timeout("No response")
 
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
     monkeypatch.setattr(socket.socket, "accept", mock_socket_accept)
 
     manager._accept_connection()
@@ -429,9 +421,7 @@ def test_process_message(monkeypatch):
     """
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
 
     @counter_wrapper
     # pylint: disable=unused-argument
@@ -486,9 +476,7 @@ def test_check_message_length(monkeypatch):
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
 
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
 
     client_sock, txid = get_connection()
 
@@ -526,9 +514,7 @@ def test_check_device_failures(monkeypatch):
     devices = []
     monkeypatch.setattr(db, "get_devices", lambda name=None: devices)
 
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
 
     lock = multiprocessing.Lock()
     client_sock, txid = get_connection()
@@ -606,9 +592,7 @@ def test_no_usable_device(monkeypatch):
     monkeypatch.setattr(db, "get_devices", lambda name=None: [dev1])
     monkeypatch.setattr(device, "get_device_space", lambda device_path: 10)
 
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
 
     lock = multiprocessing.Lock()
     client_sock, txid = get_connection()
@@ -660,9 +644,7 @@ def test_check_device_success(monkeypatch):
         else 150,
     )
 
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
 
     lock = multiprocessing.Lock()
     client_sock, txid = get_connection()
@@ -719,9 +701,7 @@ def test_close(monkeypatch):
     """
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
 
     client_sock, txid = get_connection()
     manager_thread = threading.Thread(target=manager._accept_connection)
@@ -761,9 +741,7 @@ def test_auto_close(monkeypatch):
 
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
 
     monkeypatch.setattr(manager, "close", mock_close)
 
@@ -802,9 +780,7 @@ def test_initialize_connection(monkeypatch):
     """
     monkeypatch.setattr(db, "get_devices", lambda device=None: [])
     monkeypatch.setattr(device, "get_device_space", lambda device=None: None)
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
 
     accept_thread = threading.Thread(target=manager.loop)
     accept_thread.start()
@@ -867,9 +843,7 @@ def test_pick_device(monkeypatch):
         lambda device_path=None: 100 if device_path == "/dev1" else 1000,
     )
 
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.bind(str(DeviceArguments.SOCKET_PATH))
-    manager = DeviceManager(sock)
+    manager = DeviceManager(get_server_connection())
 
     lock = multiprocessing.Lock()
     client_sock, txid = get_connection()

@@ -1,6 +1,9 @@
 """
 Tests CLI functionality
 """
+import multiprocessing
+
+from logical_backup.utilities import device_manager
 from logical_backup.utilities.testing import counter_wrapper
 from logical_backup.interactive import cli, command_completion
 
@@ -78,3 +81,52 @@ def test_run(monkeypatch):
     cli.run()
     assert Context.enqueue_actions.counter == 1, "Actions added"
     assert read_input_action.counter == 2, "Input read twice"
+
+
+def test_initialize_multiprocessing(monkeypatch):
+    """
+    .
+    """
+
+    def mock_set_start_method(method: str):
+        """
+        .
+        """
+        mock_set_start_method.method = method
+
+    mock_set_start_method.method = None
+
+    @counter_wrapper
+    def get_server_connection():
+        """
+        .
+        """
+
+    class FakeManager:
+        """
+        .
+        """
+
+        created = 0
+        started = False
+
+        def __init__(self, socket):
+            """
+            .
+            """
+            self.created += 1
+
+        def loop(self) -> None:
+            self.started = True
+
+    monkeypatch.setattr(multiprocessing, "set_start_method", mock_set_start_method)
+    monkeypatch.setattr(device_manager, "get_server_connection", get_server_connection)
+    monkeypatch.setattr(device_manager, "DeviceManager", FakeManager)
+
+    queue_manager = cli._initialize_multiprocessing()
+    assert mock_set_start_method.method == "spawn", "Spawn method set"
+    assert get_server_connection.counter == 1, "Server connection retrieved"
+    assert (
+        queue_manager.device_manager.created == 1
+    ), "One instance of device manager created"
+    assert queue_manager.device_manager.started, "Device Manager loop started"

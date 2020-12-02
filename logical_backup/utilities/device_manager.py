@@ -387,3 +387,10 @@ def get_connection() -> tuple:
     client_sock.send(format_message(DeviceArguments.COMMAND_HELLO, [txid]).encode())
 
     return (client_sock, txid)
+
+
+def get_server_connection() -> socket.socket:
+    server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server_sock.bind(str(DeviceArguments.SOCKET_PATH))
+
+    return server_sock
