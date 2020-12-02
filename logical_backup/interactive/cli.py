@@ -27,7 +27,7 @@ from logical_backup.pretty_print import (
     WARN_UNICODE,
     BULLET,
 )
-from logical_backup.strings import Commands, DeviceArguments, Errors, Info
+from logical_backup.strings import Commands, DeviceArguments, Errors, Info, InputPrompts
 
 OPERATIONAL_COMMANDS = [
     str(Commands.REORDER),
@@ -102,14 +102,14 @@ def _read_input(context: QueueStateManager) -> str:
     """
     Reads input for REPL
     """
-    return input(_generate_prompt(context)).strip().split()
+    return input(_generate_prompt(context)).strip()
 
 
 def _generate_prompt(context: QueueStateManager) -> str:
     """
     Input prompt to use for read step of REPL
     """
-    return "[{0}/{1}:{2}]# ".format(
+    return InputPrompts.CLI_STATUS(
         context.completed_action_count, context.action_count, context.thread_count
     )
 

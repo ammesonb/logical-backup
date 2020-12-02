@@ -3,9 +3,11 @@ Tests CLI functionality
 """
 import multiprocessing
 
+from logical_backup.strings import InputPrompts
 from logical_backup.utilities import device_manager
 from logical_backup.utilities.testing import counter_wrapper
-from logical_backup.interactive import cli, command_completion
+from logical_backup.interactive import cli, command_completion, queue_state_manager
+from tests.test_utility import patch_input
 
 
 # Pylint doesn't recognize the decorator adding the "counter" member
@@ -130,3 +132,34 @@ def test_initialize_multiprocessing(monkeypatch):
         queue_manager.device_manager.created == 1
     ), "One instance of device manager created"
     assert queue_manager.device_manager.started, "Device Manager loop started"
+
+
+def test_read_input(monkeypatch):
+    """
+    .
+    """
+
+    def get_input(prompt: str) -> str:
+        return " stuff \n"
+
+    patch_input(monkeypatch, cli, get_input)
+
+    monkeypatch.setattr(cli, "_generate_prompt", lambda context: "")
+
+    assert cli._read_input(None) == "stuff", "Command properly stripped and returned"
+
+
+def test_generate_prompt():
+    """
+    .
+    """
+
+    context = {}
+    manager = queue_state_manager.QueueStateManager(
+        None, multiprocessing.Manager(), None, None, None, context
+    )
+    manager.set_thread_count(4)
+    context["queue"].append("task")
+    context["completion_queue"].append("done")
+
+    assert cli._generate_prompt(manager) == InputPrompts.CLI_STATUS(1, 2, 4)

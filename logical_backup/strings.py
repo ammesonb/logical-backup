@@ -226,6 +226,12 @@ class InputPrompts(PrintableEnum):
         "Please provide a unique identifier for the device: "  # pragma: no mutate
     )
 
+    CLI_STATUS = lambda completed_count, action_count, thread_count: (  # pragma: no mutate
+        "[{0}/{1}:{2}]# ".format(  # pragma: no mutate
+            completed_count, action_count, thread_count  # pragma: no mutate
+        )  # pragma: no mutate
+    )
+
 
 class Info(PrintableEnum):
     """
