@@ -6,6 +6,6 @@ install:
   - pip install .
   - pip install codecov
 script:
-  - python -m pytest --cov=logical_backup tests
+  - python -m pytest -vv --cov-report term-missing --cov=logical_backup tests
 after_success:
   - codecov
