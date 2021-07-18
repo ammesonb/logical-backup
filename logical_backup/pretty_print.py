@@ -7,6 +7,7 @@ from enum import Enum
 
 CHECK_UNICODE = "\u2714"  # pragma: no mutate
 CROSS_UNICODE = "\u274c"  # pragma: no mutate
+CLEAR_LINE = "\033[K"
 INFO_UNICODE = u"\U0001F6C8"  # pragma: no mutate
 WARN_UNICODE = u"\U000026a0"  # pragma: no mutate
 BULLET = u"\U000025cb"  # pragma: no mutate
@@ -205,15 +206,20 @@ class PrettyStatusPrinter:
         self.__styles += styles
         return self
 
-    def print_message(self, to_overwrite: bool = False, result=None) -> None:
+    def print_message(
+        self, to_overwrite: bool = False, result=None, clear_line_first: bool = False
+    ) -> None:
         """
         Prints the message
         If to overwrite, will use a carriage return instead of newline
         Succeeded can also be specified, to pass through for formatting
+        Clear line will reset the line prior to printing - useful if you need multiple
+        states for a single primary message (e.g. exiting...phase1, exiting...phase2)
         """
         line_ending = "\r" if to_overwrite else self.__line_ending
         print(
-            self.__get_styled_message(result),
+            (CLEAR_LINE if clear_line_first else "")
+            + self.__get_styled_message(result),
             end=line_ending,
             flush=True,  # pragma: no mutate
         )

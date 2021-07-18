@@ -49,7 +49,7 @@ def get_device_serial(mount_point: str) -> str:
             ["grep", " disk/by-uuid/"],  # pragma: no mutate
             # pylint: disable=anomalous-backslash-in-string
             # This is a bash escape, not regex
-            ["sed", "s/.*by-uuid\///"],  # pragma: no mutate
+            ["sed", "s/.*by-uuid\\///"],  # pragma: no mutate
         ]  # pragma: no mutate
         output = process.run_piped_command(commands)
 

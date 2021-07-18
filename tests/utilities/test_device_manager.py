@@ -26,7 +26,7 @@ from logical_backup.utilities.device_manager import (
 
 # pylint: disable=unused-import
 from logical_backup.utilities.testing import counter_wrapper, auto_set_testing
-from logical_backup.strings import DeviceArguments, Configurations
+from logical_backup.strings import DeviceArguments, Configurations, Errors
 
 # pylint: disable=protected-access
 
@@ -939,3 +939,19 @@ def test_pick_device(monkeypatch):
         raise failure
     finally:
         manager.stop()
+
+
+def test_close_server(monkeypatch):
+    monkeypatch.setattr(db, "get_devices", lambda device=None: [])
+    monkeypatch.setattr(device, "get_device_space", lambda device_path=None: 0)
+
+    manager = DeviceManager(get_server_connection())
+    with raises(AttributeError) as err:
+        device_manager.close_server(manager)
+        assert str(err) == Errors.STOP_MANAGER_BEFORE_CLOSE, "Error message correct"
+
+    manager.stop()
+    device_manager.close_server(manager)
+    assert not os_path.exists(
+        str(DeviceArguments.SOCKET_PATH)
+    ), "Manager socket removed"

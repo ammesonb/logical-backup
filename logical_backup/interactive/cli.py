@@ -49,29 +49,35 @@ def run(start_time: int = None):
     START_TIME = start_time or time.time_ns()
 
     command_completion.set_completion()
-    context = _initialize_multiprocessing()
+    queue_manager = _initialize_multiprocessing()
 
     stop = False
     while not stop:
         # Remove dead executors, then add any needed to get back
         # to the desired parallelism
-        context.prune_dead_executors()
-        while context.thread_count > context.executor_count:
-            context.add_executor()
+        queue_manager.prune_dead_executors()
+        while queue_manager.thread_count > queue_manager.executor_count:
+            queue_manager.add_executor()
 
-        input_arguments = _read_input(context)
+        input_arguments = _read_input(queue_manager)
 
-        parsed = vars(
-            arguments.get_argument_parser(True).parse_args(shlex.split(input_arguments))
-        )
-        print(parsed)
+        try:
+            parsed = vars(
+                arguments.get_argument_parser(True).parse_args(
+                    shlex.split(input_arguments)
+                )
+            )
+        except:
+            continue
 
         if parsed["action"] == "exit":
             stop = True
         elif parsed["action"] in OPERATIONAL_COMMANDS:
             pass
         else:
-            context.enqueue_actions(_process_command_input(parsed, context))
+            queue_manager.enqueue_actions(_process_command_input(parsed, queue_manager))
+
+    queue_manager.exit()
 
 
 def _initialize_multiprocessing() -> QueueStateManager:
@@ -98,19 +104,21 @@ def _initialize_multiprocessing() -> QueueStateManager:
     return QueueStateManager(dev_manager, manager, sock, device_lock, queue_lock)
 
 
-def _read_input(context: QueueStateManager) -> str:
+def _read_input(queue_manager: QueueStateManager) -> str:
     """
     Reads input for REPL
     """
-    return input(_generate_prompt(context)).strip()
+    return input(_generate_prompt(queue_manager)).strip()
 
 
-def _generate_prompt(context: QueueStateManager) -> str:
+def _generate_prompt(queue_manager: QueueStateManager) -> str:
     """
     Input prompt to use for read step of REPL
     """
     return InputPrompts.CLI_STATUS(
-        context.completed_action_count, context.action_count, context.thread_count
+        queue_manager.completed_action_count,
+        queue_manager.action_count,
+        queue_manager.thread_count,
     )
 
 

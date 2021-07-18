@@ -7,8 +7,9 @@ import time
 from logical_backup.commands.actions.base_action import BaseAction
 from logical_backup.interactive.action_executor import ActionExecutor
 from logical_backup.interactive.queue_state_manager import QueueStateManager
+from logical_backup.utilities import device_manager
 from logical_backup.utilities.fake_lock import FakeLock
-from logical_backup.strings import Errors
+from logical_backup.strings import Errors, Info
 from logical_backup.utilities.testing import counter_wrapper
 
 
@@ -367,3 +368,58 @@ def test_reorder_queue(monkeypatch, capsys):
         "2",
         "3",
     ], "Queue entry swapped forwards"
+
+
+def test_exit(monkeypatch, capsys):
+    """
+    .
+    """
+
+    class FakeDevManager:
+        """
+      """
+
+        @counter_wrapper
+        def stop(self):
+            """
+          .
+          """
+
+    lock = FakeLock()
+    context = {}
+    queue = QueueStateManager(
+        FakeDevManager(), multiprocessing.Manager(), None, None, lock, context
+    )
+    monkeypatch.setattr(lock, "acquire", lambda self=None, block=True: False)
+
+    # pylint: disable=unused-argument
+    @counter_wrapper
+    def close_server(device_manager):
+        """
+        .
+        """
+
+    monkeypatch.setattr(device_manager, "close_server", close_server)
+
+    queue.exit()
+    printed = capsys.readouterr()
+
+    assert queue.thread_count == 0, "Threads set to zero"
+    assert queue.executor_count == 0, "All executors stopped"
+    assert FakeDevManager.stop.counter == 1, "Device manager stopped"
+    assert close_server.counter == 1, "Device manager server closed"
+
+    expected = (
+        # "\0ee[K  " + Info.EXITING("") + "\033[0m\r"
+        "\033[K  "
+        + Info.EXITING("Cleared threads, waiting for processing actions to complete")
+        + "\033[0m\r"
+        + "\033[K  "
+        + Info.EXITING("Device manager cleaning up")
+        + "\033[0m\r"
+        + "\033[K  "
+        + Info.EXITING("complete")
+        + "\033[0m\n"
+    )
+
+    assert printed.out == expected, "Exit message printed"

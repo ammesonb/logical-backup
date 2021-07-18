@@ -51,6 +51,12 @@ def test_run(monkeypatch):
             .
             """
 
+        @counter_wrapper
+        def exit(self):
+            """
+            .
+            """
+
     @counter_wrapper
     def fake_multiprocess():
         """
@@ -68,6 +74,7 @@ def test_run(monkeypatch):
     assert Context.prune_dead_executors.counter == 1, "Dead executors pruned"
     assert Context.add_executor.counter == 2, "Two executors added"
     assert Context.enqueue_actions.counter == 0, "No actions added yet"
+    assert Context.exit.counter == 1, "Exit is called"
 
     # pylint: disable=unused-argument
     @counter_wrapper
@@ -83,6 +90,7 @@ def test_run(monkeypatch):
     cli.run()
     assert Context.enqueue_actions.counter == 1, "Actions added"
     assert read_input_action.counter == 2, "Input read twice"
+    assert Context.exit.counter == 2, "Exit is called"
 
 
 def test_initialize_multiprocessing(monkeypatch):

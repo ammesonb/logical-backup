@@ -4,13 +4,14 @@ Contains state about the queues, executors, etc for parallel execution
 import multiprocessing
 from multiprocessing import synchronize
 import socket
+import time
 from typing import List
 
 from logical_backup.commands.actions.base_action import BaseAction
 from logical_backup.interactive.action_executor import ActionExecutor
 from logical_backup.utilities import device_manager
-from logical_backup.pretty_print import print_error
-from logical_backup.strings import Errors
+from logical_backup.pretty_print import print_error, PrettyStatusPrinter
+from logical_backup.strings import Errors, Info
 
 # pylint: disable=too-many-instance-attributes
 class QueueStateManager:
@@ -248,3 +249,24 @@ class QueueStateManager:
         Get a completed action from the queue
         """
         return self.__processed_actions[index]
+
+    def exit(self):
+        """
+        Gracefully allows all pending actions to complete and cleans up handles
+        """
+        self.set_thread_count(0)
+        PrettyStatusPrinter(
+            Info.EXITING("Cleared threads, waiting for processing actions to complete")
+        ).print_message(True, clear_line_first=True)
+        while len(self.__executors):
+            self.prune_dead_executors()
+            time.sleep(1)
+
+        PrettyStatusPrinter(Info.EXITING("Device manager cleaning up")).print_message(
+            True, clear_line_first=True
+        )
+        self.device_manager.stop()
+        device_manager.close_server(self.device_manager)
+        PrettyStatusPrinter(Info.EXITING("complete")).print_message(
+            clear_line_first=True
+        )

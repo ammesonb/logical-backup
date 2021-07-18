@@ -199,6 +199,11 @@ class Errors(PrintableEnum):
         "plus an index must be specified"  # pragma: no mutate
     )
 
+    STOP_MANAGER_BEFORE_CLOSE = (
+        "Can only close the server connection "  # pragma: no mutate
+        "if the manager is stopped!"  # pragma: no mutate
+    )
+
 
 class InputPrompts(PrintableEnum):
     """
@@ -354,6 +359,8 @@ class Info(PrintableEnum):
     COMMAND_CREATED_ACTIONS = lambda action_count: int(  # pragma: no mutate
         "Command created {0} actions".format(action_count)  # pragma: no mutate
     )
+
+    EXITING = lambda exit_action: f"Exiting...{exit_action}"  # pragma: no mutate
 
 
 class Commands(PrintableEnum):

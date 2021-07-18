@@ -3,6 +3,7 @@ Manages devices
 """
 import contextlib
 import multiprocessing
+import os
 import socket
 import time
 import uuid
@@ -10,7 +11,7 @@ import uuid
 from logical_backup.objects import Device
 from logical_backup import db
 from logical_backup.utilities import device, testing
-from logical_backup.strings import Configurations, DeviceArguments
+from logical_backup.strings import Configurations, DeviceArguments, Errors
 
 
 @contextlib.contextmanager
@@ -350,6 +351,12 @@ class DeviceManager:
         """
         self.__messages[txid].append(message)
 
+    def exit(self):
+        """
+        Close the socket
+        """
+        self.__socket.close()
+
 
 def format_message(command: DeviceArguments, parameters: list = None) -> str:
     """
@@ -390,7 +397,22 @@ def get_connection() -> tuple:
 
 
 def get_server_connection() -> socket.socket:
+    """
+    Creates a new bound connection to the server socket
+    """
     server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     server_sock.bind(str(DeviceArguments.SOCKET_PATH))
 
     return server_sock
+
+
+def close_server(device_manager: DeviceManager):
+    """
+    Cleans up the server socket
+    CAN ONLY USE IF STOPPED
+    """
+    if not device_manager.stopped:
+        raise AttributeError(Errors.STOP_MANAGER_BEFORE_CLOSE)
+
+    device_manager.exit()
+    os.unlink(str(DeviceArguments.SOCKET_PATH))
