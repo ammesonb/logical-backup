@@ -27,7 +27,7 @@ from logical_backup.pretty_print import (
     WARN_UNICODE,
     BULLET,
 )
-from logical_backup.strings import Commands, DeviceArguments, Errors, Info, InputPrompts
+from logical_backup.strings import Commands, Errors, Info, InputPrompts
 
 OPERATIONAL_COMMANDS = [
     str(Commands.REORDER),
@@ -73,7 +73,7 @@ def run(start_time: int = None):
         if parsed["action"] == "exit":
             stop = True
         elif parsed["action"] in OPERATIONAL_COMMANDS:
-            pass
+            _process_operational_input(parsed, queue_manager)
         else:
             queue_manager.enqueue_actions(_process_command_input(parsed, queue_manager))
 
@@ -138,26 +138,7 @@ def _process_operational_input(
     elif parsed_arguments["action"] == str(Commands.CLEAR):
         _clear_actions(parsed_arguments["values"], manager_context)
     elif parsed_arguments["action"] in [str(Commands.MESSAGES), str(Commands.STATUS)]:
-        args = parsed_arguments["values"]
-        if args:
-            if (
-                len(args) < 2
-                or args[0].lower() not in ["c", "q", "complete", "queued"]
-                or not args[1].isnumeric()
-            ):
-                print(str(Errors.INSUFFICIENT_STATUS_OPTIONS))
-                return
-
-            action = (
-                manager_context.get_completed_action(int(args[1]) - 1)
-                if args[0][0].lower() == "c"
-                else manager_context.get_queued_action(int(args[1]) - 1)
-            )
-            _print_action_details(action)
-        elif parsed_arguments["action"] == str(Commands.STATUS):
-            _print_summary(manager_context)
-        else:
-            print(str(Errors.INSUFFICIENT_STATUS_OPTIONS))
+        _parse_print_command(parsed_arguments, manager_context)
 
 
 def _set_thread_count(values: list, manager_context: QueueStateManager) -> None:
@@ -213,6 +194,34 @@ def _get_numbers_from_string(items: str) -> List[int]:
         all_indices.extend(range(start, stop))
 
     return all_indices
+
+
+def _parse_print_command(
+    parsed_arguments: dict, manager_context: QueueStateManager
+) -> None:
+    """
+    Determine what to print - a summary of statuses, messages from an action, etc
+    """
+    args = parsed_arguments["values"]
+    if args:
+        if (
+            len(args) < 2
+            or args[0].lower() not in ["c", "q", "complete", "queued"]
+            or not args[1].isnumeric()
+        ):
+            print(str(Errors.INSUFFICIENT_STATUS_OPTIONS))
+            return
+
+        action = (
+            manager_context.get_completed_action(int(args[1]) - 1)
+            if args[0][0].lower() == "c"
+            else manager_context.get_queued_action(int(args[1]) - 1)
+        )
+        _print_action_details(action)
+    elif parsed_arguments["action"] == str(Commands.STATUS):
+        _print_summary(manager_context)
+    else:
+        print(str(Errors.INSUFFICIENT_STATUS_OPTIONS))
 
 
 def _print_summary(manager_context: QueueStateManager) -> None:

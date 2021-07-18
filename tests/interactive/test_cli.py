@@ -3,16 +3,17 @@ Tests CLI functionality
 """
 import multiprocessing
 
-from logical_backup.strings import InputPrompts
+from logical_backup.interactive import cli, command_completion, queue_state_manager
+from logical_backup.pretty_print import PrettyStatusPrinter, Color
+from logical_backup.strings import Info, Errors, InputPrompts, Commands
 from logical_backup.utilities import device_manager
 from logical_backup.utilities.testing import counter_wrapper
-from logical_backup.interactive import cli, command_completion, queue_state_manager
 from tests.test_utility import patch_input
 
 
 # Pylint doesn't recognize the decorator adding the "counter" member
 # to the functions, so ignore that
-# pylint: disable=no-member
+# pylint: disable=no-member,protected-access
 def test_run(monkeypatch):
     """
     .
@@ -82,14 +83,23 @@ def test_run(monkeypatch):
         """
         Returns command first time, then exit
         """
-        return "add --file foo" if read_input_action.counter == 1 else "exit"
+        results = ["add --file foo", "invalid", str(Commands.CLEAR), "exit"]
+        return results[read_input_action.counter - 1]
+
+    @counter_wrapper
+    def process_operational_input(parsed: dict, queue_manager):
+        """
+        .
+        """
 
     monkeypatch.setattr(cli, "_read_input", read_input_action)
+    monkeypatch.setattr(cli, "_process_operational_input", process_operational_input)
     monkeypatch.setattr(cli, "_process_command_input", lambda parsed, context: [])
 
     cli.run()
     assert Context.enqueue_actions.counter == 1, "Actions added"
-    assert read_input_action.counter == 2, "Input read twice"
+    assert process_operational_input.counter == 1, "Operational command processed"
+    assert read_input_action.counter == 4, "Input read four times"
     assert Context.exit.counter == 2, "Exit is called"
 
 
@@ -112,6 +122,7 @@ def test_initialize_multiprocessing(monkeypatch):
         .
         """
 
+    # pylint: disable=too-few-public-methods
     class FakeManager:
         """
         .
@@ -120,6 +131,7 @@ def test_initialize_multiprocessing(monkeypatch):
         created = 0
         started = False
 
+        # pylint: disable=unused-argument
         def __init__(self, socket):
             """
             .
@@ -127,6 +139,9 @@ def test_initialize_multiprocessing(monkeypatch):
             self.created += 1
 
         def loop(self) -> None:
+            """
+            .
+            """
             self.started = True
 
     monkeypatch.setattr(multiprocessing, "set_start_method", mock_set_start_method)
@@ -147,6 +162,7 @@ def test_read_input(monkeypatch):
     .
     """
 
+    # pylint: disable=unused-argument
     def get_input(prompt: str) -> str:
         return " stuff \n"
 
@@ -171,3 +187,194 @@ def test_generate_prompt():
     context["completion_queue"].append("done")
 
     assert cli._generate_prompt(manager) == InputPrompts.CLI_STATUS(1, 2, 4)
+
+
+def test_process_operational_input(monkeypatch, capsys):
+    """
+    .
+    """
+    # pylint: disable=unused-argument
+    @counter_wrapper
+    def set_thread_count(*args, **kwargs):
+        """
+        .
+        """
+
+    @counter_wrapper
+    def reorder_queue(*args, **kwargs):
+        """
+        .
+        """
+
+    @counter_wrapper
+    def clear_actions(*args, **kwargs):
+        """
+        .
+        """
+
+    @counter_wrapper
+    def parse_print_command(*args, **kwargs):
+        """
+        .
+        """
+
+    monkeypatch.setattr(cli, "_set_thread_count", set_thread_count)
+    monkeypatch.setattr(cli, "_reorder_queue", reorder_queue)
+    monkeypatch.setattr(cli, "_clear_actions", clear_actions)
+    monkeypatch.setattr(cli, "_parse_print_command", parse_print_command)
+
+    cli._process_operational_input(
+        {"action": str(Commands.SET_THREADS), "values": {}}, None
+    )
+    assert set_thread_count.counter == 1, "Set threads called"
+    assert (
+        reorder_queue.counter + clear_actions.counter + parse_print_command.counter == 0
+    ), "No other functions called"
+
+    cli._process_operational_input(
+        {"action": str(Commands.REORDER), "values": {}}, None
+    )
+    assert reorder_queue.counter == 1, "Reorder queue called"
+    assert (
+        set_thread_count.counter + clear_actions.counter + parse_print_command.counter
+        == 1
+    ), "No other functions called"
+
+    cli._process_operational_input({"action": str(Commands.CLEAR), "values": {}}, None)
+    assert clear_actions.counter == 1, "Clear actions called"
+    assert (
+        set_thread_count.counter + reorder_queue.counter + parse_print_command.counter
+        == 2
+    ), "No other functions called"
+
+    cli._process_operational_input(
+        {"action": str(Commands.MESSAGES), "values": {}}, None
+    )
+    assert parse_print_command.counter == 1, "Print message called"
+    assert (
+        set_thread_count.counter + reorder_queue.counter + clear_actions.counter == 3
+    ), "No other functions called"
+
+    cli._process_operational_input({"action": str(Commands.STATUS), "values": {}}, None)
+    assert parse_print_command.counter == 2, "Print message called"
+    assert (
+        set_thread_count.counter + reorder_queue.counter + clear_actions.counter == 3
+    ), "No other functions called"
+
+    cli._process_operational_input({"action": str(Commands.HELP), "values": {}}, None)
+    printed = capsys.readouterr()
+    assert printed.out == str(Info.CLI_HELP) + "\n", "Correct output printed"
+    assert (
+        set_thread_count.counter
+        + reorder_queue.counter
+        + clear_actions.counter
+        + parse_print_command.counter
+        == 5
+    ), "No other functions called"
+
+
+def test_set_thread_count(monkeypatch, capsys):
+    """
+    .
+    """
+
+    # pylint: disable=too-few-public-methods
+    class FakeManager:
+        """
+        A fake queue state manager
+        """
+
+        @counter_wrapper
+        def set_thread_count(self, count: int):
+            """
+            .
+            """
+
+    cli._set_thread_count([], FakeManager())
+    printed = capsys.readouterr()
+    assert (
+        printed.out
+        == PrettyStatusPrinter(Errors.THREAD_COUNT_NUMERIC)
+        .with_specific_color(Color.ERROR)
+        .get_styled_message()
+    ), "Correct error message printed"
+    assert FakeManager.set_thread_count.counter == 0, "Thread count not set"
+
+    cli._set_thread_count(["abc"], FakeManager())
+    printed = capsys.readouterr()
+    assert (
+        printed.out
+        == PrettyStatusPrinter(Errors.THREAD_COUNT_NUMERIC)
+        .with_specific_color(Color.ERROR)
+        .get_styled_message()
+    ), "Correct error message printed"
+    assert FakeManager.set_thread_count.counter == 0, "Thread count not set"
+
+    cli._set_thread_count(["1abc2"], FakeManager())
+    printed = capsys.readouterr()
+    assert (
+        printed.out
+        == PrettyStatusPrinter(Errors.THREAD_COUNT_NUMERIC)
+        .with_specific_color(Color.ERROR)
+        .get_styled_message()
+    ), "Correct error message printed"
+    assert FakeManager.set_thread_count.counter == 0, "Thread count not set"
+
+    cli._set_thread_count(["123"], FakeManager())
+    printed = capsys.readouterr()
+    assert printed.out == "", "No errors printed"
+    assert FakeManager.set_thread_count.counter == 1, "Thread count set"
+
+
+def test_reorder_queue(monkeypatch, capsys):
+    """
+    .
+    """
+
+
+def test_clear_actions(monkeypatch, capsys):
+    """
+    .
+    """
+
+
+def test_get_numbers_from_string(monkeypatch, capsys):
+    """
+    .
+    """
+
+
+def test_parse_print_command(monkeypatch, capsys):
+    """
+    .
+    """
+
+
+def test_print_summary(monkeypatch, capsys):
+    """
+    .
+    """
+
+
+def test_make_processed_action_summary(monkeypatch, capsys):
+    """
+    .
+    """
+
+
+def test_print_action_details(monkeypatch, capsys):
+    """
+    .
+    """
+
+
+def test_process_command_input(monkeypatch, capsys):
+    """
+    .
+    """
+
+
+def test_print_command_results(monkeypatch, capsys):
+    """
+    .
+    """
