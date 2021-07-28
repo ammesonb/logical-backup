@@ -7,6 +7,7 @@ from logical_backup.interactive import cli, command_completion, queue_state_mana
 from logical_backup.pretty_print import PrettyStatusPrinter, Color
 from logical_backup.strings import Info, Errors, InputPrompts, Commands
 from logical_backup.utilities import device_manager
+from logical_backup.interactive.queue_state_manager import QueueStateManager
 from logical_backup.utilities.testing import counter_wrapper
 from tests.test_utility import patch_input
 
@@ -337,11 +338,96 @@ def test_clear_actions(monkeypatch, capsys):
     .
     """
 
+    class FakeQueueManager:
+        """
+      .
+      """
+
+        @counter_wrapper
+        def clear_completed_actions(self):
+            """
+          .
+          """
+
+        @counter_wrapper
+        def dequeue_actions(self, indices):
+            """
+          .
+          """
+
+    cli._clear_actions("abc", FakeQueueManager())
+
+    printed = capsys.readouterr()
+    assert (
+        printed.out
+        == PrettyStatusPrinter(Errors.INVALID_SOURCE_POSITION)
+        .with_specific_color(Color.ERROR)
+        .get_styled_message()
+    ), "Correct error message"
+    assert not FakeQueueManager.clear_completed_actions.counter, "No actions cleared"
+    assert not FakeQueueManager.dequeue_actions.counter, "No actions removed"
+
+    cli._clear_actions(None, FakeQueueManager())
+
+    assert FakeQueueManager.clear_completed_actions.counter == 1, "All actions cleared"
+    assert not FakeQueueManager.dequeue_actions.counter, "No actions removed"
+
+    cli._clear_actions("1,2-3,6,10-12", FakeQueueManager())
+
+    assert FakeQueueManager.clear_completed_actions.counter == 1, "All actions cleared"
+    assert FakeQueueManager.dequeue_actions.counter == 1, "Actions removed"
+
 
 def test_get_numbers_from_string(monkeypatch, capsys):
     """
     .
     """
+    assert cli._get_numbers_from_string("1,3,4,5") == [
+        1,
+        3,
+        4,
+        5,
+    ], "Comma-separated numbers correct"
+    assert cli._get_numbers_from_string("1,3-5") == [
+        1,
+        3,
+        4,
+        5,
+    ], "Numbers with range correct"
+    assert cli._get_numbers_from_string("1,3-5,6-8") == [
+        1,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+    ], "Numbers with dual range correct"
+    assert cli._get_numbers_from_string("1,3-5,7-9,11") == [
+        1,
+        3,
+        4,
+        5,
+        7,
+        8,
+        9,
+        11,
+    ], "Multi range and comma numbers"
+    assert cli._get_numbers_from_string("1-3,5,7-10,12,13,15-17") == [
+        1,
+        2,
+        3,
+        5,
+        7,
+        8,
+        9,
+        10,
+        12,
+        13,
+        15,
+        16,
+        17,
+    ], "Complex list correct"
 
 
 def test_parse_print_command(monkeypatch, capsys):

@@ -188,11 +188,13 @@ def _get_numbers_from_string(items: str) -> List[int]:
     ranged_indices = list(filter(lambda index: "-" in index, all_indices))
     # pylint: disable=expression-not-assigned
     [all_indices.remove(index) for index in ranged_indices]
+    all_indices = [int(i) for i in all_indices]
     for index in ranged_indices:
         start = int(index.split("-")[0])
         stop = int(index.split("-")[1]) + 1
         all_indices.extend(range(start, stop))
 
+    all_indices.sort()
     return all_indices
 
 
