@@ -142,6 +142,9 @@ def _process_operational_input(
 
 
 def _set_thread_count(values: list, manager_context: QueueStateManager) -> None:
+    """
+    Modify how many commands can be run in parallel
+    """
     if not values or not values[0].isnumeric():
         print_error(str(Errors.THREAD_COUNT_NUMERIC))
     else:
@@ -149,6 +152,12 @@ def _set_thread_count(values: list, manager_context: QueueStateManager) -> None:
 
 
 def _reorder_queue(positions: list, manager_context: QueueStateManager) -> None:
+    """
+    Change the order of things in the queue
+    Indices specified will start from "1"
+
+    Positions contains a string of "from" locations and a single "to" location
+    """
     if len(positions) < 2:
         print_error(str(Errors.INSUFFICIENT_REORDER_POSITIONS))
     elif not re.match(r"^[0-9,\-]+$", positions[0]):
@@ -165,11 +174,15 @@ def _reorder_queue(positions: list, manager_context: QueueStateManager) -> None:
             else int(positions[1])
         )
         manager_context.move_queue_entries(
-            _get_numbers_from_string(positions), destination
+            _get_numbers_from_string(positions[0]), destination
         )
 
 
 def _clear_actions(positions: list, manager_context: QueueStateManager) -> None:
+    """
+    Remove one or more actions from the list
+    By default removes only completed actions, unless one or more indices is specified
+    """
     if not positions:
         manager_context.clear_completed_actions()
     elif re.match(r"^[0-9,\-]+$", positions):

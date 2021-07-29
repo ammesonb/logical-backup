@@ -331,6 +331,65 @@ def test_reorder_queue(monkeypatch, capsys):
     """
     .
     """
+    cli._reorder_queue("", None)
+    printed = capsys.readouterr()
+    assert (
+        printed.out
+        == PrettyStatusPrinter(Errors.INSUFFICIENT_REORDER_POSITIONS)
+        .with_specific_color(Color.ERROR)
+        .get_styled_message()
+    ), "Error is correct"
+
+    cli._reorder_queue([123], None)
+    printed = capsys.readouterr()
+    assert (
+        printed.out
+        == PrettyStatusPrinter(Errors.INSUFFICIENT_REORDER_POSITIONS)
+        .with_specific_color(Color.ERROR)
+        .get_styled_message()
+    ), "Error is correct"
+
+    cli._reorder_queue(["abc", "123"], None)
+    printed = capsys.readouterr()
+    assert (
+        printed.out
+        == PrettyStatusPrinter(Errors.INVALID_SOURCE_POSITION)
+        .with_specific_color(Color.ERROR)
+        .get_styled_message()
+    ), "Error is correct"
+
+    class FakeQueueManager:
+        """
+        .
+        """
+
+        # pylint: disable=no-unused-argument
+        @counter_wrapper
+        def move_queue_entries(self, *args, **kwargs):
+            """
+            .
+            """
+
+        @property
+        def queue_length(self):
+            """
+            .
+            """
+
+    cli._reorder_queue(["123", "234"], FakeQueueManager())
+    printed = capsys.readouterr()
+    assert printed.out == "", "No error"
+    assert FakeQueueManager.move_queue_entries.counter == 1, "Queue entries moved"
+
+    cli._reorder_queue(["123", "top"], FakeQueueManager())
+    printed = capsys.readouterr()
+    assert printed.out == "", "No error"
+    assert FakeQueueManager.move_queue_entries.counter == 2, "Queue entries moved"
+
+    cli._reorder_queue(["123", "bottom"], FakeQueueManager())
+    printed = capsys.readouterr()
+    assert printed.out == "", "No error"
+    assert FakeQueueManager.move_queue_entries.counter == 3, "Queue entries moved"
 
 
 def test_clear_actions(monkeypatch, capsys):
