@@ -276,6 +276,7 @@ def readable_duration(seconds: int) -> str:
     seconds -= hours * 3600
     minutes = int(seconds / 60)
     seconds -= minutes * 60
+    seconds = round(seconds, 1)
 
     time_string = ""
     if days:

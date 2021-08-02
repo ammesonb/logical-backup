@@ -2,13 +2,15 @@
 Tests CLI functionality
 """
 import multiprocessing
+import time
 
 from logical_backup.interactive import cli, command_completion, queue_state_manager
-from logical_backup.pretty_print import PrettyStatusPrinter, Color
+from logical_backup.pretty_print import PrettyStatusPrinter, Color, Format
 from logical_backup.strings import Info, Errors, InputPrompts, Commands
 from logical_backup.utilities import device_manager
 from logical_backup.interactive.queue_state_manager import QueueStateManager
 from logical_backup.utilities.testing import counter_wrapper
+from logical_backup.utilities.fake_lock import FakeLock
 from tests.test_utility import patch_input
 
 
@@ -494,11 +496,156 @@ def test_parse_print_command(monkeypatch, capsys):
     .
     """
 
+    # pylint: disable=too-few-public-methods
+    class FakeManager:
+        """
+        .
+        """
+
+        # pylint: disable=unused-argument
+        @counter_wrapper
+        def get_completed_action(self, index):
+            """
+            .
+            """
+
+        @counter_wrapper
+        def get_queued_action(self, index):
+            """
+            .
+            """
+
+    @counter_wrapper
+    def print_action(*args, **kwargs):
+        """
+        .
+        """
+
+    monkeypatch.setattr(cli, "_print_action_details", print_action)
+
+    @counter_wrapper
+    def print_summary(*args, **kwargs):
+        """
+        .
+        """
+
+    monkeypatch.setattr(cli, "_print_summary", print_summary)
+
+    # This action wouldn't actually get routed to this function, but will emulate other
+    # invalid argument combinations, to check this error
+    cli._parse_print_command({"action": "unknown", "values": ["foo"]}, FakeManager())
+    printed = capsys.readouterr()
+    assert (
+        printed.out == str(Errors.INSUFFICIENT_STATUS_OPTIONS) + "\n"
+    ), "Correct error prints"
+
+    cli._parse_print_command({"action": "messages", "values": ["foo"]}, FakeManager())
+    printed = capsys.readouterr()
+    assert (
+        printed.out == str(Errors.INSUFFICIENT_STATUS_OPTIONS) + "\n"
+    ), "Correct error prints"
+
+    cli._parse_print_command(
+        {"action": "messages", "values": ["m", "2"]}, FakeManager()
+    )
+    printed = capsys.readouterr()
+    assert (
+        printed.out == str(Errors.INSUFFICIENT_STATUS_OPTIONS) + "\n"
+    ), "Correct error prints"
+
+    cli._parse_print_command(
+        {"action": "messages", "values": ["m", "2"]}, FakeManager()
+    )
+    printed = capsys.readouterr()
+    assert (
+        printed.out == str(Errors.INSUFFICIENT_STATUS_OPTIONS) + "\n"
+    ), "Correct error prints"
+
+    cli._parse_print_command(
+        {"action": "messages", "values": ["c", "a"]}, FakeManager()
+    )
+    printed = capsys.readouterr()
+    assert (
+        printed.out == str(Errors.INSUFFICIENT_STATUS_OPTIONS) + "\n"
+    ), "Correct error prints"
+
+    assert not print_action.counter, "No action details printed"
+    assert not FakeManager.get_completed_action.counter, "No completed actions fetched"
+    assert not FakeManager.get_queued_action.counter, "No queued actions fetched"
+
+    cli._parse_print_command(
+        {"action": "messages", "values": ["c", "1"]}, FakeManager()
+    )
+    printed = capsys.readouterr()
+    assert printed.out == "", "No error message"
+
+    assert FakeManager.get_completed_action.counter == 1, "Completed action fetched"
+    assert print_action.counter == 1, "Action details printed"
+    assert not FakeManager.get_queued_action.counter, "No queued actions fetched"
+
+    cli._parse_print_command(
+        {"action": "messages", "values": ["q", "2"]}, FakeManager()
+    )
+    printed = capsys.readouterr()
+    assert printed.out == "", "No error message"
+
+    assert FakeManager.get_completed_action.counter == 1, "Completed action fetched"
+    assert print_action.counter == 2, "Action details printed"
+    assert FakeManager.get_queued_action.counter == 1, "Queued action fetched"
+
+    cli._parse_print_command({"action": "status", "values": ["q", "2"]}, FakeManager())
+    printed = capsys.readouterr()
+    assert printed.out == "", "No error message"
+    assert print_summary.counter == 1, "Summary printed"
+
 
 def test_print_summary(monkeypatch, capsys):
     """
     .
     """
+
+    class FakeManager:
+        queue_lock = FakeLock()
+        completed_actions = ["1", "2"]
+        queued_action_names = ["3"]
+        average_action_ns = 75000000000
+
+    @counter_wrapper
+    def print_processed_action(action):
+        """
+        .
+        """
+        return action
+
+    monkeypatch.setattr(cli, "_make_processed_action_summary", print_processed_action)
+
+    cli._print_summary(FakeManager(), time.time_ns() - 150000000000)
+    printed = capsys.readouterr()
+
+    assert printed.out == "\n".join(
+        [
+            str(Format.BOLD.value),
+            "Actions completed/in progress: 2/3 (66.67%)",
+            "Time elapsed so far: 2 minutes, 30.0 seconds",
+            "Average completion time: 1 minute, 15.0 seconds",
+            "Projected ETA (using average): 1 minute, 15 seconds",
+            str(Format.END.value),
+            "",
+            "-" * 80,
+            "",
+            f"{Format.BOLD.value}Processed actions:{Format.END.value}",
+            "",
+            "1",
+            "2",
+            "",
+            "-" * 80,
+            "",
+            f"{Format.BOLD.value}Pending actions:{Format.END.value}",
+            "",
+            "1. 3",
+            "",
+        ]
+    ), "Correct output printed"
 
 
 def test_make_processed_action_summary(monkeypatch, capsys):

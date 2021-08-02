@@ -218,7 +218,7 @@ def _parse_print_command(
     Determine what to print - a summary of statuses, messages from an action, etc
     """
     args = parsed_arguments["values"]
-    if args:
+    if args and parsed_arguments["action"] == str(Commands.MESSAGES):
         if (
             len(args) < 2
             or args[0].lower() not in ["c", "q", "complete", "queued"]
@@ -234,12 +234,12 @@ def _parse_print_command(
         )
         _print_action_details(action)
     elif parsed_arguments["action"] == str(Commands.STATUS):
-        _print_summary(manager_context)
+        _print_summary(manager_context, START_TIME)
     else:
         print(str(Errors.INSUFFICIENT_STATUS_OPTIONS))
 
 
-def _print_summary(manager_context: QueueStateManager) -> None:
+def _print_summary(manager_context: QueueStateManager, start_time: int) -> None:
     """
     Prints summary of all actions so far
     """
@@ -248,7 +248,7 @@ def _print_summary(manager_context: QueueStateManager) -> None:
         completed_actions = manager_context.completed_actions
         average_time_seconds = manager_context.average_action_ns / 1000000000
 
-    elapsed_time = (time.time_ns() - START_TIME) / 1000000000
+    elapsed_time = (time.time_ns() - start_time) / 1000000000
     # Leave precision loss to end, since half a second times a thousand actions
     # is a signficant amount of time
     naive_eta = readable_duration(int(average_time_seconds * len(queued_actions)))
@@ -256,9 +256,9 @@ def _print_summary(manager_context: QueueStateManager) -> None:
     total_completed = len(completed_actions)
     action_count = total_completed + len(queued_actions)
 
-    print(Format.BOLD)
+    print(Format.BOLD.value)
     print(
-        "Actions completed/in progress: {0}/{1} ({2})".format(
+        "Actions completed/in progress: {0}/{1} ({2}%)".format(
             total_completed,
             action_count,
             round(total_completed / action_count * 100, 2),
@@ -269,13 +269,13 @@ def _print_summary(manager_context: QueueStateManager) -> None:
         "Average completion time: {0}".format(readable_duration(average_time_seconds))
     )
     print("Projected ETA (using average): {0}".format(naive_eta))
-    print(Format.END)
+    print(Format.END.value)
 
     print("")
     print("-" * 80)
     print("")
 
-    print("{0}Processed actions:{1}".format(Format.BOLD, Format.END))
+    print(f"{Format.BOLD.value}Processed actions:{Format.END.value}")
     print("")
     for action in completed_actions:
         print(_make_processed_action_summary(action))
@@ -284,7 +284,7 @@ def _print_summary(manager_context: QueueStateManager) -> None:
     print("-" * 80)
     print("")
 
-    print("{0}Pending actions:{1}".format(Format.BOLD, Format.END))
+    print(f"{Format.BOLD.value}Pending actions:{Format.END.value}")
     print("")
     idx = 1
     for action in queued_actions:
