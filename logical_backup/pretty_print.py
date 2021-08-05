@@ -3,7 +3,7 @@ Some pretty-printing stuff
 """
 from __future__ import annotations
 
-from enum import Enum
+from logical_backup.utilities.printable_enum import PrintableEnum
 
 CHECK_UNICODE = "\u2714"  # pragma: no mutate
 CROSS_UNICODE = "\u274c"  # pragma: no mutate
@@ -13,7 +13,7 @@ WARN_UNICODE = u"\U000026a0"  # pragma: no mutate
 BULLET = u"\U000025cb"  # pragma: no mutate
 
 
-class Color(Enum):
+class Color(PrintableEnum):
     """
     Contains foreground colors for the command line
     """
@@ -30,7 +30,7 @@ class Color(Enum):
     WHITE = "\033[95m"  # pragma: no mutate
 
 
-class Background(Enum):
+class Background(PrintableEnum):
     """
     Contains background colors for the command line
     """
@@ -45,7 +45,7 @@ class Background(Enum):
     WHITE = "\033[47m"  # pragma: no mutate
 
 
-class Format(Enum):
+class Format(PrintableEnum):
     """
     Contains text formatting options
     """

@@ -3,9 +3,19 @@ Tests CLI functionality
 """
 import multiprocessing
 import time
+from typing import Optional, List
 
 from logical_backup.interactive import cli, command_completion, queue_state_manager
-from logical_backup.pretty_print import PrettyStatusPrinter, Color, Format
+from logical_backup.pretty_print import (
+    PrettyStatusPrinter,
+    Color,
+    Format,
+    CROSS_UNICODE,
+    CHECK_UNICODE,
+    BULLET,
+    INFO_UNICODE,
+    WARN_UNICODE,
+)
 from logical_backup.strings import Info, Errors, InputPrompts, Commands
 from logical_backup.utilities import device_manager
 from logical_backup.interactive.queue_state_manager import QueueStateManager
@@ -624,23 +634,23 @@ def test_print_summary(monkeypatch, capsys):
 
     assert printed.out == "\n".join(
         [
-            str(Format.BOLD.value),
+            str(Format.BOLD),
             "Actions completed/in progress: 2/3 (66.67%)",
             "Time elapsed so far: 2 minutes, 30.0 seconds",
             "Average completion time: 1 minute, 15.0 seconds",
             "Projected ETA (using average): 1 minute, 15 seconds",
-            str(Format.END.value),
+            str(Format.END),
             "",
             "-" * 80,
             "",
-            f"{Format.BOLD.value}Processed actions:{Format.END.value}",
+            f"{Format.BOLD}Processed actions:{Format.END}",
             "",
             "1",
             "2",
             "",
             "-" * 80,
             "",
-            f"{Format.BOLD.value}Pending actions:{Format.END.value}",
+            f"{Format.BOLD}Pending actions:{Format.END}",
             "",
             "1. 3",
             "",
@@ -653,11 +663,116 @@ def test_make_processed_action_summary(monkeypatch, capsys):
     .
     """
 
+    # pylint: disable=too-few-public-methods
+    class Action:
+        success: None
+        messages: []
+        errors: []
+
+        def __init__(
+            self,
+            name: str,
+            success: Optional[bool] = None,
+            messages: Optional[List[str]] = [],
+            errors: Optional[List[str]] = [],
+        ):
+            """
+            .
+            """
+            self.name = name
+            self.success = success
+            self.messages = messages
+            self.errors = errors
+
+        def __str__(self) -> str:
+            """
+            .
+            """
+            return self.name
+
+    output = cli._make_processed_action_summary(Action("name", None, ["abc"]))
+    assert output == str(Format.END).join(
+        [
+            Color.MAGENTA + BULLET,
+            " name",
+            f"  ({Color.BLUE}{INFO_UNICODE} 1{Format.END} : "
+            f"{Color.ERROR}{WARN_UNICODE} 0)",
+        ]
+    ), "Pending action summary correct"
+
+    output = cli._make_processed_action_summary(
+        Action("name", False, ["abc"], ["def", "ghi"])
+    )
+    assert output == str(Format.END).join(
+        [
+            Color.ERROR + CROSS_UNICODE,
+            " name",
+            f"  ({Color.BLUE}{INFO_UNICODE} 1{Format.END} : "
+            f"{Color.ERROR}{WARN_UNICODE} 2)",
+        ]
+    ), "Failed action summary correct"
+
+    output = cli._make_processed_action_summary(
+        Action("name", True, ["abc", "def"], [])
+    )
+    assert output == str(Format.END).join(
+        [
+            Color.GREEN + CHECK_UNICODE,
+            " name",
+            f"  ({Color.BLUE}{INFO_UNICODE} 2{Format.END} : "
+            f"{Color.ERROR}{WARN_UNICODE} 0)",
+        ]
+    ), "Completed action summary correct"
+
 
 def test_print_action_details(monkeypatch, capsys):
     """
     .
     """
+    # pylint: disable=too-few-public-methods
+    class FakeAction:
+        """
+        .
+        """
+
+        def __init__(
+            self,
+            name: str,
+            started: Optional[bool] = False,
+            status: Optional[str] = None,
+            logs: List[str] = [],
+        ):
+            self.name = name
+            self.started = started
+            self.success = status
+            self.logs = logs
+
+        def __str__(self) -> str:
+            """
+            .
+            """
+            return self.name
+
+    cli._print_action_details(FakeAction("queue"))
+    assert (
+        capsys.readouterr().out == "Action: queue\nStatus: Queued\n"
+    ), "Expected output correct"
+
+    cli._print_action_details(FakeAction("queue", True, None, ["abc", "def"]))
+    assert (
+        capsys.readouterr().out
+        == "Action: queue\nStatus: In progress\n\nMessages:\nabc\ndef\n"
+    ), "Expected output correct"
+
+    cli._print_action_details(FakeAction("queue", True, False, []))
+    assert (
+        capsys.readouterr().out == "Action: queue\nStatus: Failed\n"
+    ), "Expected output correct"
+
+    cli._print_action_details(FakeAction("queue", True, True, ["foo"]))
+    assert (
+        capsys.readouterr().out == "Action: queue\nStatus: Complete\n\nMessages:\nfoo\n"
+    ), "Expected output correct"
 
 
 def test_process_command_input(monkeypatch, capsys):

@@ -256,7 +256,7 @@ def _print_summary(manager_context: QueueStateManager, start_time: int) -> None:
     total_completed = len(completed_actions)
     action_count = total_completed + len(queued_actions)
 
-    print(Format.BOLD.value)
+    print(Format.BOLD)
     print(
         "Actions completed/in progress: {0}/{1} ({2}%)".format(
             total_completed,
@@ -269,13 +269,13 @@ def _print_summary(manager_context: QueueStateManager, start_time: int) -> None:
         "Average completion time: {0}".format(readable_duration(average_time_seconds))
     )
     print("Projected ETA (using average): {0}".format(naive_eta))
-    print(Format.END.value)
+    print(Format.END)
 
     print("")
     print("-" * 80)
     print("")
 
-    print(f"{Format.BOLD.value}Processed actions:{Format.END.value}")
+    print(f"{Format.BOLD}Processed actions:{Format.END}")
     print("")
     for action in completed_actions:
         print(_make_processed_action_summary(action))
@@ -284,7 +284,7 @@ def _print_summary(manager_context: QueueStateManager, start_time: int) -> None:
     print("-" * 80)
     print("")
 
-    print(f"{Format.BOLD.value}Pending actions:{Format.END.value}")
+    print(f"{Format.BOLD}Pending actions:{Format.END}")
     print("")
     idx = 1
     for action in queued_actions:
@@ -297,24 +297,16 @@ def _make_processed_action_summary(action: BaseAction) -> str:
     Makes a pretty formatted string with details about a processed action
     """
     prefix = (
-        (Color.GREEN + CROSS_UNICODE)
+        (Color.GREEN + CHECK_UNICODE)
         if action.success
-        else (Color.ERROR + CHECK_UNICODE)
+        else (Color.ERROR + CROSS_UNICODE)
         if action.success is not None
         else (Color.MAGENTA + BULLET)
     )
-    body = str(action)
+    body = " " + str(action)
     postfix = (
-        "({info_color}{info_unicode} {info_count}{end_format}:"  # pragma: no mutate
-        "{error_color}{error_unicode} {error_count})"  # pragma: no mutate
-    ).format(
-        info_color=Color.BLUE,
-        info_unicode=INFO_UNICODE,
-        info_count=len(action.messages),
-        end_format=Format.END,
-        error_color=Color.ERROR,
-        error_unicode=WARN_UNICODE,
-        error_count=len(action.errors),
+        f"  ({Color.BLUE}{INFO_UNICODE} {len(action.messages)}{Format.END} :"
+        f" {Color.ERROR}{WARN_UNICODE} {len(action.errors)})"
     )
 
     return str(Format.END).join([prefix, body, postfix])
@@ -327,16 +319,18 @@ def _print_action_details(action: BaseAction) -> None:
     print("Action: {0}".format(str(action)))
     print(
         "Status: {0}".format(
-            "Completed"
+            "Complete"
+            if action.success
+            else "Failed"
             if action.success is not None
             else "In progress"
             if action.started
             else "Queued"
         )
     )
-    if action.started:
+    if action.started and len(action.logs):
         print("")
-        print("{0}Messages:{1}".format(Format.BOLD, Format.END))
+        print("Messages:")
         # pylint: disable=expression-not-assigned
         [print(str(message)) for message in action.logs]
 
