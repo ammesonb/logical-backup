@@ -38,7 +38,7 @@ class TextBuffer:
 
         self.row_data_start = TEXT_OFFSET + len(self.headers)
 
-        self.loop = False
+        self.loop = True
 
     def show(self):
         """
@@ -52,14 +52,17 @@ class TextBuffer:
         self.screen.keypad(True)
 
         self.screen_height, self.screen_width = self.screen.getmaxyx()
+        # The number of rows HIDDEN, which will need scrolling to show
         # Scrollable height is:
         self.scrollable_height = (
             # Number of rows less the size of the screen
             # (no scrolling if it fills the screen)
             len(self.rows)
             - self.screen_height
-            # Plus the offset from the top,
+            # Add BACK to the amount needing scrolling:
+            # the text offset from the top
             + TEXT_OFFSET
+            # How many headers are shown
             + len(self.headers)
             # Plus twice the width of the border
             + BORDER_WIDTH * 2
@@ -91,11 +94,11 @@ class TextBuffer:
 
         self.refresh()
 
-        while not self.loop:
+        while self.loop:
             character = self.screen.getch()
             # For q and enter, exit
             if character in [ord("q"), curses.KEY_ENTER]:
-                self.loop = True
+                self.loop = False
             # pylint: disable=bad-continuation
             # Scroll the pad if scrolling is enabled, stays in bounds of data,
             # and either vi bindings or arrow keys used
@@ -116,7 +119,7 @@ class TextBuffer:
                 self.current_pad_row += 1
                 self.pad.scroll(1)
 
-            # Refresh, to ensure updated state
+            # Refresh to ensure updated state
             self.refresh()
 
         self.exit()
