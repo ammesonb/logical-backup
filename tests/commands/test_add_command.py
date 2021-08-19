@@ -191,19 +191,21 @@ def test_validate_device_adding(monkeypatch):
     monkeypatch.setattr(CommandValidator, "device_exists", lambda self: False)
     monkeypatch.setattr(CommandValidator, "device_writeable", lambda self: False)
 
-    command = AddCommand(None, None, None, None)
+    command = AddCommand({}, None, None, None)
     config = command._validate_device(empty_config)
     assert (
         not config.adding_device
     ), "Should be adding device, but fail since nonexistent"
     assert not config.to_specific_device, "Not for a specific device, since adding"
-    assert command.errors == [Errors.DEVICE_PATH_NOT_MOUNTED], "Device path not mounted"
+    assert command.errors == [
+        Errors.DEVICE_PATH_NOT_MOUNTED(None)
+    ], "Device path not mounted"
 
     monkeypatch.setattr(CommandValidator, "device_exists", lambda self: True)
     monkeypatch.setattr(CommandValidator, "device_writeable", lambda self: False)
     monkeypatch.setattr(CommandValidator, "get_device", lambda self: "/test")
 
-    command = AddCommand(None, None, None, None)
+    command = AddCommand({}, None, None, None)
     config = command._validate_device(empty_config)
     assert config.adding_device, "Should be adding device"
     assert not config.to_specific_device, "Not for a specific device, since adding"
@@ -214,7 +216,7 @@ def test_validate_device_adding(monkeypatch):
     monkeypatch.setattr(CommandValidator, "device_exists", lambda self: True)
     monkeypatch.setattr(CommandValidator, "device_writeable", lambda self: True)
 
-    command = AddCommand(None, None, None, None)
+    command = AddCommand({}, None, None, None)
     config = command._validate_device(empty_config)
     assert config.adding_device, "Should be adding device"
     assert not config.to_specific_device, "Not for a specific device, since adding"
@@ -233,17 +235,19 @@ def test_validate_specific_device(monkeypatch):
     monkeypatch.setattr(CommandValidator, "device_exists", lambda self: False)
     monkeypatch.setattr(CommandValidator, "device_writeable", lambda self: False)
 
-    command = AddCommand(None, None, None, None)
+    command = AddCommand({}, None, None, None)
     config = command._validate_device(make_file_config())
     assert not config.adding_device, "Not adding a new device"
     assert not config.to_specific_device, "Is a specific device, but invalid"
-    assert command.errors == [Errors.DEVICE_PATH_NOT_MOUNTED], "Device path not mounted"
+    assert command.errors == [
+        Errors.DEVICE_PATH_NOT_MOUNTED(None)
+    ], "Device path not mounted"
 
     monkeypatch.setattr(CommandValidator, "device_exists", lambda self: True)
     monkeypatch.setattr(CommandValidator, "device_writeable", lambda self: False)
     monkeypatch.setattr(CommandValidator, "get_device", lambda self: "/test")
 
-    command = AddCommand(None, None, None, None)
+    command = AddCommand({}, None, None, None)
     config = command._validate_device(make_file_config())
     assert not config.adding_device, "Not adding a new device"
     assert not config.to_specific_device, "Is a specific device, but invalid"
@@ -254,13 +258,13 @@ def test_validate_specific_device(monkeypatch):
     monkeypatch.setattr(CommandValidator, "device_exists", lambda self: True)
     monkeypatch.setattr(CommandValidator, "device_writeable", lambda self: True)
 
-    command = AddCommand(None, None, None, None)
+    command = AddCommand({}, None, None, None)
     config = command._validate_device(make_file_config())
     assert not config.adding_device, "Not adding a new device"
     assert config.to_specific_device, "Is a specific device, but invalid"
     assert not command.errors, "Adding file to device is valid"
 
-    command = AddCommand(None, None, None, None)
+    command = AddCommand({}, None, None, None)
     config = command._validate_device(AddConfig(adding_folder=True))
     assert not config.adding_device, "Not adding a new device"
     assert config.to_specific_device, "Is a specific device, but invalid"

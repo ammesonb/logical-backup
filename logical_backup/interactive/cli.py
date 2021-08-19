@@ -4,6 +4,7 @@ CLI for interactive mode
 import multiprocessing
 import re
 import shlex
+import signal
 import socket
 import threading
 import time
@@ -59,7 +60,12 @@ def run(start_time: int = None):
         while queue_manager.thread_count > queue_manager.executor_count:
             queue_manager.add_executor()
 
-        input_arguments = _read_input(queue_manager)
+        try:
+            input_arguments = _read_input(queue_manager)
+        except KeyboardInterrupt:
+            print("")
+            print("Type 'exit' to quit")
+            continue
 
         try:
             parsed = vars(
@@ -89,6 +95,8 @@ def _initialize_multiprocessing() -> QueueStateManager:
     # Must explicitly be passed in to work
     multiprocessing.set_start_method("spawn")
 
+    original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
     manager = multiprocessing.Manager()
     # Pylint incorrectly thinks Lock doesn't exist on the manager
     # pylint: disable=no-member
@@ -100,6 +108,8 @@ def _initialize_multiprocessing() -> QueueStateManager:
     dev_manager = device_manager.DeviceManager(sock)
     manager_thread = threading.Thread(target=dev_manager.loop)
     manager_thread.start()
+
+    signal.signal(signal.SIGINT, original_sigint_handler)
 
     return QueueStateManager(dev_manager, manager, sock, device_lock, queue_lock)
 
@@ -232,7 +242,10 @@ def _parse_print_command(
             if args[0][0].lower() == "c"
             else manager_context.get_queued_action(int(args[1]) - 1)
         )
-        _print_action_details(action)
+        if action:
+            _print_action_details(action)
+        else:
+            print_error(Errors.NO_SUCH_ACTION)
     elif parsed_arguments["action"] == str(Commands.STATUS):
         _print_summary(manager_context, START_TIME)
     else:
@@ -243,10 +256,10 @@ def _print_summary(manager_context: QueueStateManager, start_time: int) -> None:
     """
     Prints summary of all actions so far
     """
-    with manager_context.queue_lock:
-        queued_actions = manager_context.queued_action_names
-        completed_actions = manager_context.completed_actions
-        average_time_seconds = manager_context.average_action_ns / 1000000000
+    queued_actions = manager_context.queued_action_names
+    completed_actions = manager_context.completed_actions
+    average_ns = manager_context.average_action_ns
+    average_time_seconds = (average_ns or 99999999999999) / 1000000000
 
     elapsed_time = (time.time_ns() - start_time) / 1000000000
     # Leave precision loss to end, since half a second times a thousand actions
@@ -261,7 +274,7 @@ def _print_summary(manager_context: QueueStateManager, start_time: int) -> None:
         "Actions completed/in progress: {0}/{1} ({2}%)".format(
             total_completed,
             action_count,
-            round(total_completed / action_count * 100, 2),
+            round(total_completed / action_count * 100, 2) if action_count else 100,
         )
     )
     print("Time elapsed so far: {0}".format(readable_duration(elapsed_time)))
@@ -352,7 +365,7 @@ def _process_command_input(
 
     actions = command.actions
     _print_command_results(command, actions)
-    return actions
+    return actions or []
 
 
 def _print_command_results(command: BaseCommand, actions: List[BaseAction]) -> None:

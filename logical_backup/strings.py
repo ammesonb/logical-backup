@@ -177,7 +177,7 @@ class Errors(PrintableEnum):
         "Command is not valid: '{0}'".format(command)  # pragma: no mutate
     )
 
-    FAILED_TO_CREATE_ACTIONS = "Command failed to create actions"  # pragma: no mutate
+    FAILED_TO_CREATE_ACTIONS = "Command failed to create actions: "  # pragma: no mutate
 
     THREAD_COUNT_NUMERIC = (
         "Thread count must be present and numeric"  # pragma: no mutate
@@ -203,6 +203,8 @@ class Errors(PrintableEnum):
         "Can only close the server connection "  # pragma: no mutate
         "if the manager is stopped!"  # pragma: no mutate
     )
+
+    NO_SUCH_ACTION = "The requested action does not exist"
 
 
 class InputPrompts(PrintableEnum):

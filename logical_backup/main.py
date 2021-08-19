@@ -113,7 +113,7 @@ def __validate_arguments(arguments: dict) -> bool:
     # and registered in the database
     if arguments["device"]:
         path_exists = path_exists and path.ismount(arguments["device"])
-        if arguments["action"] != Commands.ADD:
+        if arguments["action"] != str(Commands.ADD):
             path_exists = path_exists and [
                 device
                 for device in devices

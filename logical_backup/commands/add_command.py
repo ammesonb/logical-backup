@@ -114,7 +114,9 @@ class AddCommand(BaseCommand):
             if not self._validator.device_exists():
                 # Should set this here since device may not exist for files/folders
                 config.to_specific_device = False
-                self._add_error(Errors.DEVICE_PATH_NOT_MOUNTED)
+                self._add_error(
+                    Errors.DEVICE_PATH_NOT_MOUNTED(self._validator.get_device())
+                )
             elif not self._validator.device_writeable():
                 config.to_specific_device = False
                 self._add_error(

@@ -28,7 +28,7 @@ class FakeLock:
         """
         self.release()
 
-    def acquire(self, block: bool = True):
+    def acquire(self, block: bool = True, timeout: float = 0):
         """
         Acquire lock
         """

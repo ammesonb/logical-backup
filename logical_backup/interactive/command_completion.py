@@ -38,6 +38,14 @@ command_parameters = {
 }
 
 
+def _append_slash_to_directory(path: str) -> str:
+    """
+    Checks if path is a directory, and if so, appends a slash
+    Makes for easier auto-completion of file system directories
+    """
+    return path + ("/" if os_path.isdir(path) else "")
+
+
 def _get_files(text: str) -> list:
     """
     Match a file input
@@ -95,6 +103,8 @@ def match_input(text: str, state: int) -> list:
             options = _get_folders(path)
         elif detail == "--device":
             options = _get_device(path)
+
+        options = [_append_slash_to_directory(path) for path in options]
 
     return None if state >= len(options) else options[state]
 

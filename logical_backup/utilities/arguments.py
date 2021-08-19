@@ -48,7 +48,6 @@ def get_argument_parser(interactive: bool = False) -> argparse.ArgumentParser:
                 str(Commands.EXIT),
             ]
         )
-        parser.add_argument("values", nargs="*", default=[])
     else:
         actions.append(str(Commands.INTERACTIVE))
 
@@ -86,5 +85,9 @@ def get_argument_parser(interactive: bool = False) -> argparse.ArgumentParser:
         help=str(Info.ARGUMENT_THREADS_HELP),
         required=False,
     )
+
+    # this has to be last, otherwise it's not picked up correctly
+    if interactive:
+        parser.add_argument("values", nargs="*", default=[])
 
     return parser

@@ -124,13 +124,17 @@ class QueueStateManager:
         """
         with self.queue_lock:
             return (
-                sum(
-                    [
-                        action.completion_nanoseconds
-                        for action in self.__processed_actions
-                    ]
+                (
+                    sum(
+                        [
+                            action.completion_nanoseconds
+                            for action in self.__processed_actions
+                        ]
+                    )
+                    / self.completed_action_count
                 )
-                / self.completed_action_count
+                if self.completed_action_count
+                else None
             )
 
     @property
@@ -242,13 +246,17 @@ class QueueStateManager:
         """
         Get a pending action
         """
-        return self.__action_queue[index]
+        return self.__action_queue[index] if index < len(self.__action_queue) else None
 
     def get_completed_action(self, index: int) -> BaseAction:
         """
         Get a completed action from the queue
         """
-        return self.__processed_actions[index]
+        return (
+            self.__processed_actions[index]
+            if index < len(self.__processed_actions)
+            else None
+        )
 
     def exit(self):
         """

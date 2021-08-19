@@ -39,23 +39,30 @@ class ActionExecutor(multiprocessing.Process):
         """
         Get next action off the top of the queue
         """
-        with self.__queue_lock:
-            return self.__queue.pop(0) if self.__queue else None
+        entry = None
+        if self.__queue_lock.acquire(True, 0.1):
+            entry = self.__queue.pop(0) if self.__queue else None
+            self.__queue_lock.release()
+
+        return entry
 
     def run(self):
         """
         Run loop for the process
         """
         while True:
-            # If thread count modified while running, and this task
-            # surpasses count of threads, gracefully exit
-            if self.__context["thread_count"] < self.__number:
-                break
+            try:
+                # If thread count modified while running, and this task
+                # surpasses count of threads, gracefully exit
+                if self.__context["thread_count"] < self.__number:
+                    break
 
-            task = self._get_action()
-            if task:
-                task.process()
-                self.__completion_queue.append(task)
+                task = self._get_action()
+                if task:
+                    task.process()
+                    self.__completion_queue.append(task)
 
-            else:
-                time.sleep(0.5)
+                else:
+                    time.sleep(0.5)
+            except KeyboardInterrupt:
+                pass

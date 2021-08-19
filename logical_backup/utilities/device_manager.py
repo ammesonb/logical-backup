@@ -400,6 +400,9 @@ def get_server_connection() -> socket.socket:
     """
     Creates a new bound connection to the server socket
     """
+    if os.path.exists(str(DeviceArguments.SOCKET_PATH)):
+        os.unlink(str(DeviceArguments.SOCKET_PATH))
+
     server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     server_sock.bind(str(DeviceArguments.SOCKET_PATH))
 
