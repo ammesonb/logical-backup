@@ -6,7 +6,9 @@ from __future__ import annotations
 from multiprocessing import synchronize
 import socket
 import time
+from typing import List
 
+from logical_backup.commands.actions.base_action import BaseAction
 from logical_backup.commands.command_validator import CommandValidator
 from logical_backup.utilities.message import Message
 from logical_backup.utilities.device_manager import DeviceManager
@@ -69,7 +71,7 @@ class BaseCommand:
         """
         self.__errors.append(Message(error, time.time()))
 
-    def _create_actions(self, config: Config) -> list:
+    def _create_actions(self, config: Config) -> None:
         """
         Creates the component actions needing to be completed for this command
         """
@@ -83,7 +85,7 @@ class BaseCommand:
         return bool(self._actions)
 
     @property
-    def actions(self) -> list:
+    def actions(self) -> List[BaseAction]:
         """
         Return the actions needed to run to complete this command
         """
@@ -94,21 +96,21 @@ class BaseCommand:
         return self._actions
 
     @property
-    def errors(self) -> list:
+    def errors(self) -> List[str]:
         """
         Get errors that occurred
         """
         return [error.message for error in self.__errors]
 
     @property
-    def messages(self) -> list:
+    def messages(self) -> List[str]:
         """
         Recorded messages
         """
         return [message.message for message in self.__messages]
 
     @property
-    def logs(self) -> list:
+    def logs(self) -> List[str]:
         """
         Show timestamped logs of events
         """

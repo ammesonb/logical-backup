@@ -34,7 +34,7 @@ def test_help():
     """
     Test help is printed and exits normally
     """
-    result = process.run_command(["python3", "logical_backup_script.py", "-h"])
+    result = process.run_command(["python", "logical_backup_script.py", "-h"])
     assert result["exit_code"] == 0, "Result should pass for help flag"
     assert "usage: logical_backup_script.py" in result["stdout"].decode(
         "utf-8"
@@ -46,7 +46,7 @@ def test_missing_action():
     """
     Test missing the action
     """
-    result = process.run_command(["python3", "logical_backup_script.py"])
+    result = process.run_command(["python", "logical_backup_script.py"])
     assert result["exit_code"] == 2, "Result should fail if missing the acton"
 
 
@@ -54,9 +54,7 @@ def test_unrecognized_action():
     """
     Test an action which isn't in the command set
     """
-    result = process.run_command(
-        ["python3", "logical_backup_script.py", "unrecognized"]
-    )
+    result = process.run_command(["python", "logical_backup_script.py", "unrecognized"])
     assert result["exit_code"] == 2, "Result should fail if the action is unrecognized"
 
 
@@ -122,7 +120,8 @@ def test_check_devices(capsys, monkeypatch):
 
     monkeypatch.setattr(os.path, "ismount", lambda path: path == MOCK_FILE)
     mock_devices(
-        monkeypatch, [device1],
+        monkeypatch,
+        [device1],
     )
     __check_devices(arguments)
     output = capsys.readouterr()
@@ -131,7 +130,8 @@ def test_check_devices(capsys, monkeypatch):
     ), "All devices found did not print expected message"
 
     mock_devices(
-        monkeypatch, [device1, device2],
+        monkeypatch,
+        [device1, device2],
     )
     patch_input(monkeypatch, main, lambda message: "n")
 
@@ -188,7 +188,13 @@ def test_parse_arguments():
     expected["device"] = "/foo"
     assert parsed == expected, "Verify folder on device should match"
 
-    parsed = main.__parse_arguments(["update", "--folder", "/home/foo/test",])
+    parsed = main.__parse_arguments(
+        [
+            "update",
+            "--folder",
+            "/home/foo/test",
+        ]
+    )
     expected["action"] = "update"
     expected["folder"] = "/home/foo/test"
     expected["device"] = None

@@ -18,7 +18,6 @@ from logical_backup.pretty_print import (
 )
 from logical_backup.strings import Info, Errors, InputPrompts, Commands
 from logical_backup.utilities import device_manager
-from logical_backup.interactive.queue_state_manager import QueueStateManager
 from logical_backup.utilities.testing import counter_wrapper
 from logical_backup.utilities.fake_lock import FakeLock
 from tests.test_utility import patch_input
@@ -286,7 +285,7 @@ def test_process_operational_input(monkeypatch, capsys):
     ), "No other functions called"
 
 
-def test_set_thread_count(monkeypatch, capsys):
+def test_set_thread_count(capsys):
     """
     .
     """
@@ -339,7 +338,7 @@ def test_set_thread_count(monkeypatch, capsys):
     assert FakeManager.set_thread_count.counter == 1, "Thread count set"
 
 
-def test_reorder_queue(monkeypatch, capsys):
+def test_reorder_queue(capsys):
     """
     .
     """
@@ -375,7 +374,7 @@ def test_reorder_queue(monkeypatch, capsys):
         .
         """
 
-        # pylint: disable=no-unused-argument
+        # pylint: disable=unused-argument
         @counter_wrapper
         def move_queue_entries(self, *args, **kwargs):
             """
@@ -404,27 +403,27 @@ def test_reorder_queue(monkeypatch, capsys):
     assert FakeQueueManager.move_queue_entries.counter == 3, "Queue entries moved"
 
 
-def test_clear_actions(monkeypatch, capsys):
+def test_clear_actions(capsys):
     """
     .
     """
 
     class FakeQueueManager:
         """
-      .
-      """
+        .
+        """
 
         @counter_wrapper
         def clear_completed_actions(self):
             """
-          .
-          """
+            .
+            """
 
         @counter_wrapper
         def dequeue_actions(self, indices):
             """
-          .
-          """
+            .
+            """
 
     cli._clear_actions("abc", FakeQueueManager())
 
@@ -449,7 +448,7 @@ def test_clear_actions(monkeypatch, capsys):
     assert FakeQueueManager.dequeue_actions.counter == 1, "Actions removed"
 
 
-def test_get_numbers_from_string(monkeypatch, capsys):
+def test_get_numbers_from_string():
     """
     .
     """
@@ -518,13 +517,17 @@ def test_parse_print_command(monkeypatch, capsys):
             """
             .
             """
+            return None if self.get_completed_action.counter == 1 else True
 
+        # pylint: disable=no-self-use,unused-argument
         @counter_wrapper
         def get_queued_action(self, index):
             """
             .
             """
+            return True
 
+    # pylint: disable=unused-argument
     @counter_wrapper
     def print_action(*args, **kwargs):
         """
@@ -533,6 +536,7 @@ def test_parse_print_command(monkeypatch, capsys):
 
     monkeypatch.setattr(cli, "_print_action_details", print_action)
 
+    # pylint: disable=unused-argument
     @counter_wrapper
     def print_summary(*args, **kwargs):
         """
@@ -587,9 +591,20 @@ def test_parse_print_command(monkeypatch, capsys):
         {"action": "messages", "values": ["c", "1"]}, FakeManager()
     )
     printed = capsys.readouterr()
-    assert printed.out == "", "No error message"
+    assert (
+        printed.out
+        == PrettyStatusPrinter(str(Errors.NO_SUCH_ACTION))
+        .with_specific_color(Color.ERROR)
+        .get_styled_message()
+    ), "Error printed if action is missing"
 
-    assert FakeManager.get_completed_action.counter == 1, "Completed action fetched"
+    cli._parse_print_command(
+        {"action": "messages", "values": ["c", "1"]}, FakeManager()
+    )
+    printed = capsys.readouterr()
+    assert printed.out == "", "No error printed"
+
+    assert FakeManager.get_completed_action.counter == 2, "Completed action fetched"
     assert print_action.counter == 1, "Action details printed"
     assert not FakeManager.get_queued_action.counter, "No queued actions fetched"
 
@@ -599,7 +614,7 @@ def test_parse_print_command(monkeypatch, capsys):
     printed = capsys.readouterr()
     assert printed.out == "", "No error message"
 
-    assert FakeManager.get_completed_action.counter == 1, "Completed action fetched"
+    assert FakeManager.get_completed_action.counter == 2, "Completed action fetched"
     assert print_action.counter == 2, "Action details printed"
     assert FakeManager.get_queued_action.counter == 1, "Queued action fetched"
 
@@ -614,7 +629,12 @@ def test_print_summary(monkeypatch, capsys):
     .
     """
 
+    # pylint: disable=too-few-public-methods
     class FakeManager:
+        """
+        .
+        """
+
         queue_lock = FakeLock()
         completed_actions = ["1", "2"]
         queued_action_names = ["3"]
@@ -658,31 +678,36 @@ def test_print_summary(monkeypatch, capsys):
     ), "Correct output printed"
 
 
-def test_make_processed_action_summary(monkeypatch, capsys):
+def test_make_processed_action_summary():
     """
     .
     """
 
     # pylint: disable=too-few-public-methods
     class Action:
+        """
+        .
+        """
+
         success: None
         messages: []
         errors: []
 
+        # pylint: disable=bad-continuation
         def __init__(
             self,
             name: str,
             success: Optional[bool] = None,
-            messages: Optional[List[str]] = [],
-            errors: Optional[List[str]] = [],
+            messages: Optional[List[str]] = None,
+            errors: Optional[List[str]] = None,
         ):
             """
             .
             """
             self.name = name
             self.success = success
-            self.messages = messages
-            self.errors = errors
+            self.messages = messages or []
+            self.errors = errors or []
 
         def __str__(self) -> str:
             """
@@ -725,7 +750,7 @@ def test_make_processed_action_summary(monkeypatch, capsys):
     ), "Completed action summary correct"
 
 
-def test_print_action_details(monkeypatch, capsys):
+def test_print_action_details(capsys):
     """
     .
     """
@@ -735,17 +760,18 @@ def test_print_action_details(monkeypatch, capsys):
         .
         """
 
+        # pylint: disable=bad-continuation
         def __init__(
             self,
             name: str,
             started: Optional[bool] = False,
             status: Optional[str] = None,
-            logs: List[str] = [],
+            logs: List[str] = None,
         ):
             self.name = name
             self.started = started
             self.success = status
-            self.logs = logs
+            self.logs = logs or []
 
         def __str__(self) -> str:
             """
@@ -775,13 +801,13 @@ def test_print_action_details(monkeypatch, capsys):
     ), "Expected output correct"
 
 
-def test_process_command_input(monkeypatch, capsys):
+def test_process_command_input():
     """
     .
     """
 
 
-def test_print_command_results(monkeypatch, capsys):
+def test_print_command_results():
     """
     .
     """

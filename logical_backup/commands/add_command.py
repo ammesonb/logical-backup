@@ -6,8 +6,11 @@ import socket
 from typing import Optional
 
 from logical_backup.commands.base_command import BaseCommand, Config
+from logical_backup.commands.actions import AddFileAction
 from logical_backup import db
-from logical_backup.utilities import files
+from logical_backup.db import DatabaseError
+
+from logical_backup.utilities import files, device as device_util
 from logical_backup.pretty_print import readable_bytes
 from logical_backup.objects import File
 from logical_backup.utilities import device_manager
@@ -137,23 +140,20 @@ class AddCommand(BaseCommand):
         config = self._validate_folder(config)
         return self._validate_device(config)
 
-    def _create_actions(self, config: AddConfig) -> list:
+    def _create_actions(self, config: AddConfig) -> None:
         """
         Figures out what needs to happen
         """
-        actions = []
         if config.adding_file:
             file_obj = self._make_file_object(self._validator.get_file(), config)
             if file_obj:
-                actions.append(file_obj)
+                self._actions.append(AddFileAction(file_obj))
 
         if config.adding_folder:
             pass
 
         if config.adding_device:
-            pass
-
-        return actions
+            self._add_device(self._validator.get_device())
 
     def _make_file_object(self, file_path: str, config: AddConfig) -> Optional[File]:
         """
@@ -174,43 +174,12 @@ class AddCommand(BaseCommand):
             Info.FILE_SIZE_OUTPUT_AT(file_path, readable_bytes(file_size))
         )
 
-        selected_device_path = None
-        if config.to_specific_device:
-            device_path = self._validator.get_device()
-
-            selected_device_path = self._check_device(device_path, file_size)
-            if not selected_device_path:
-                return None
-
-        else:
-            self._add_message(str(Info.AUTO_SELECT_DEVICE))
-            device_manager.send_message(
-                [DeviceArguments.COMMAND_GET_DEVICE, file_size],
-                self._device_manager_socket,
-                self._device_manager_lock,
-            )
-            result = self._device_manager_socket.recv(
-                Configurations.MAX_MESSAGE_SIZE
-            ).decode()
-            if str(DeviceArguments.RESPONSE_SUBSTITUTE) not in result:
-                self._add_error(
-                    Errors.INVALID_COMMAND(
-                        device_manager.format_message(
-                            DeviceArguments.COMMAND_GET_DEVICE, [str(file_size)]
-                        )
-                    )
-                )
-                # pylint: disable=expression-not-assigned
-                [
-                    self._add_error(error)
-                    for error in self._device_manager.errors(self.txid)
-                ]
-                return None
-
-            selected_device_path = result.strip().replace(
-                DeviceArguments.RESPONSE_SUBSTITUTE + DeviceArguments.COMMAND_DELIMITER,
-                "",
-            )
+        selected_device_path = self._get_device_path(
+            file_size,
+            self._validator.get_device() if config.to_specific_device else None,
+        )
+        if not selected_device_path:
+            return None
 
         file_obj = File()
         file_obj.set_properties(files.create_backup_name(file_path), file_path, "")
@@ -226,6 +195,49 @@ class AddCommand(BaseCommand):
         file_obj.device_name = selected_device.device_name
 
         return file_obj
+
+    def _get_device_path(
+        self, needed_size: int, specific_path: Optional[str]
+    ) -> Optional[str]:
+        """
+        Get the device path for the file/folders
+        """
+        if specific_path:
+            selected_device_path = self._check_device(specific_path, needed_size)
+            if not selected_device_path:
+                return None
+
+        else:
+            self._add_message(str(Info.AUTO_SELECT_DEVICE))
+            device_manager.send_message(
+                [DeviceArguments.COMMAND_GET_DEVICE, needed_size],
+                self._device_manager_socket,
+                self._device_manager_lock,
+            )
+            result = self._device_manager_socket.recv(
+                Configurations.MAX_MESSAGE_SIZE
+            ).decode()
+            if str(DeviceArguments.RESPONSE_SUBSTITUTE) not in result:
+                self._add_error(
+                    Errors.INVALID_COMMAND(
+                        device_manager.format_message(
+                            DeviceArguments.COMMAND_GET_DEVICE, [str(needed_size)]
+                        )
+                    )
+                )
+                # pylint: disable=expression-not-assigned
+                [
+                    self._add_error(error)
+                    for error in self._device_manager.errors(self.txid)
+                ]
+                return None
+
+            selected_device_path = result.strip().replace(
+                DeviceArguments.RESPONSE_SUBSTITUTE + DeviceArguments.COMMAND_DELIMITER,
+                "",
+            )
+
+        return selected_device_path
 
     def _check_device(
         self, device_path: str, file_size: int, lock_acquired: bool = False
@@ -291,3 +303,59 @@ class AddCommand(BaseCommand):
             self._device_manager_lock.release()
 
         return response
+
+    def _add_device(self, mount_point: str):
+        """
+        Add a device to the database
+        """
+        device_name = input(InputPrompts.DEVICE_NAME)
+        identifier = device_util.get_device_serial(mount_point)
+        identifier_type = DEVICE_SERIAL
+        if not identifier:
+            identifier = device_util.get_device_uuid(mount_point)
+            identifier_type = SYSTEM_UUID
+
+        if not identifier:
+            identifier = input(InputPrompts.DEVICE_IDENTIFIER)
+            identifier_type = USER_SPECIFIED
+
+        save_message = (
+            PrettyStatusPrinter(Info.SAVING_DEVICE)
+            .with_custom_result(2, False)
+            .with_message_postfix_for_result(2, Errors.UNRECOGNIZED_DEVICE_IDENTIFIER)
+            .with_custom_result(3, False)
+            .with_message_postfix_for_result(3, Errors.DEVICE_NAME_TAKEN)
+            .with_custom_result(4, False)
+            .with_message_postfix_for_result(4, Errors.DEVICE_MOUNT_POINT_USED)
+            .with_custom_result(5, False)
+            .with_message_postfix_for_result(5, Errors.DEVICE_SERIAL_USED)
+            .with_custom_result(6, False)
+            .with_message_postfix_for_result(6, Errors.DEVICE_UNKNOWN_ERROR)
+            .with_custom_result(7, False)
+            .with_message_postfix_for_result(7, Errors.DEVICE_SUPER_UNKNOWN_ERROR)
+            .with_custom_result(DeviceArguments.RESPONSE_INVALID, False)
+            # TODO: what is the command here?
+            .with_message_postfix_for_result(
+                DeviceArguments.RESPONSE_INVALID, Errors.INVALID_COMMAND()
+            )
+        )
+
+        device_manager.send_message(
+            [
+                DeviceArguments.COMMAND_ADD_DEVICE,
+                device_name,
+                mount_point,
+                identifier_type,
+                identifier,
+            ],
+            self._device_manager_socket,
+            self._device_manager_lock,
+        )
+        result = self._device_manager_socket.recv(
+            Configurations.MAX_MESSAGE_SIZE
+        ).decode()
+
+        if result == DatabaseError.SUCCESS:
+            self._add_message(save_message.get_styled_message(True))
+        else:
+            self._add_error(save_message.get_styled_message(result))

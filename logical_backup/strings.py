@@ -233,10 +233,12 @@ class InputPrompts(PrintableEnum):
         "Please provide a unique identifier for the device: "  # pragma: no mutate
     )
 
-    CLI_STATUS = lambda completed_count, action_count, thread_count: (  # pragma: no mutate
-        "[{0}/{1}:{2}]# ".format(  # pragma: no mutate
-            completed_count, action_count, thread_count  # pragma: no mutate
-        )  # pragma: no mutate
+    CLI_STATUS = (
+        lambda completed_count, action_count, thread_count: (  # pragma: no mutate
+            "[{0}/{1}:{2}]# ".format(  # pragma: no mutate
+                completed_count, action_count, thread_count  # pragma: no mutate
+            )  # pragma: no mutate
+        )
     )
 
 
@@ -361,6 +363,9 @@ class Info(PrintableEnum):
     COMMAND_CREATED_ACTIONS = lambda action_count: int(  # pragma: no mutate
         "Command created {0} actions".format(action_count)  # pragma: no mutate
     )
+    COMMAND_COMPLETED = (
+        "Command completed without requiring additional actions"  # pramga: no mutate
+    )
 
     EXITING = lambda exit_action: f"Exiting...{exit_action}"  # pragma: no mutate
 
@@ -438,6 +443,7 @@ class DeviceArguments(PrintableEnum):
     COMMAND_HELLO = "hello"  # pragma: no mutate
     COMMAND_GET_DEVICE = "get-device"  # pragma: no mutate
     COMMAND_CHECK_DEVICE = "check-device"  # pragma: no mutate
+    COMMAND_ADD_DEVICE = "add-device"  # pragma: no mutate
     COMMAND_STOP = "stop"  # pragma: no mutate
 
     RESPONSE_OK = "ok"  # pragma: no mutate
@@ -445,6 +451,7 @@ class DeviceArguments(PrintableEnum):
     RESPONSE_PARTIAL = "partial"  # pragma: no mutate
     RESPONSE_UNRESOLVABLE = "unresolvable"  # pragma: no mutate
     RESPONSE_INVALID = "invalid"  # pragma: no mutate
+    RESPONSE_ADDED = "added"  # pragma: no mutate
 
     ERROR_INSUFFICIENT_PARAMETERS = lambda command: (
         "Insufficient parameters for command {0}".format(command)  # pragma: no mutate

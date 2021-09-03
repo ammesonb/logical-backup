@@ -374,7 +374,9 @@ def _print_command_results(command: BaseCommand, actions: List[BaseAction]) -> N
     """
     if command.has_actions:
         PrettyStatusPrinter(Info.COMMAND_CREATED_ACTIONS(len(actions))).print_complete()
-    else:
+    elif len(command.errors):
         PrettyStatusPrinter(Errors.FAILED_TO_CREATE_ACTIONS).print_complete(False)
         for log in command.logs:
             print("- " + log)
+    else:
+        PrettyStatusPrinter(str(Info.COMMAND_COMPLETED)).print_completed()

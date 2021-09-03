@@ -63,7 +63,14 @@ def patch_connection(monkeypatch):
     """
     Sets device manager get connection to a no-op for tests
     """
-    monkeypatch.setattr(device_manager, "get_connection", lambda: (None, None,))
+    monkeypatch.setattr(
+        device_manager,
+        "get_connection",
+        lambda: (
+            None,
+            None,
+        ),
+    )
 
 
 # pylint: disable=bad-continuation,too-many-arguments
@@ -321,12 +328,15 @@ def test_create_actions(monkeypatch):
     monkeypatch.setattr(CommandValidator, "get_file", lambda self: "test")
 
     command = AddCommand(None, None, None, None)
-    assert len(command._create_actions(file_config)) == 0, "No actions if no file made"
+    command._create_actions(file_config)
+    assert len(command._actions) == 0, "No actions if no file made"
 
     monkeypatch.setattr(
         AddCommand, "_make_file_object", lambda self, path, config: "abc"
     )
-    assert command._create_actions(file_config) == ["abc"], "Action returned"
+    command._create_actions(file_config)
+    assert len(command._actions) == 1, "One action returned"
+    assert command._actions[0].file_obj == "abc", "Expected action returned"
 
 
 def test_make_file_object_quick_fails(monkeypatch):
@@ -417,7 +427,7 @@ def test_make_file_object_any_device(monkeypatch):
 
     fail_socket = FakeSocket(str(DeviceArguments.RESPONSE_INVALID).encode())
     fail_manager = FakeDeviceManager(errors=["Bad command", "Invalid file size"])
-    command = AddCommand(None, fail_manager, fail_socket, None, "test-txid")
+    command = AddCommand(None, fail_manager, fail_socket, FakeLock(), "test-txid")
     assert command._make_file_object("/test", config) is None, "Error returned"
     assert (
         str(Info.AUTO_SELECT_DEVICE) in command.messages
@@ -444,7 +454,7 @@ def test_make_file_object_any_device(monkeypatch):
     # Ensure device 2 is skipped, since no match
     monkeypatch.setattr(db, "get_devices", lambda dev=None: [device2, device1])
 
-    command = AddCommand(None, success_manager, success_socket, None, "test-txid")
+    command = AddCommand(None, success_manager, success_socket, FakeLock(), "test-txid")
     file_obj = command._make_file_object("/test", config)
     assert not command.errors, "No errors added"
     assert file_obj.device == device1, "Device 1 selected"

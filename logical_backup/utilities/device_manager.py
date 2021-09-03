@@ -10,6 +10,7 @@ import uuid
 
 from logical_backup.objects import Device
 from logical_backup import db
+from logical_backup.db import DatabaseError
 from logical_backup.utilities import device, testing
 from logical_backup.strings import Configurations, DeviceArguments, Errors
 
@@ -77,9 +78,7 @@ class DeviceManager:
 
         devices = db.get_devices()
         for dev in devices:
-            dev.available_space = device.get_device_space(dev.device_path)
-            dev.allocated_space = 0
-            self.__devices[dev.device_path] = dev
+            self._add_device(dev)
 
     def _accept_connection(self) -> None:
         """
@@ -186,6 +185,8 @@ class DeviceManager:
             self._check_device_space(txid, parts, connection)
         elif parts[0] == str(DeviceArguments.COMMAND_GET_DEVICE):
             self._pick_device(txid, parts, connection)
+        elif parts[0] == str(DeviceArguments.COMMAND_ADD_DEVICE):
+            self._add_device(txid, parts[1:], connection)
         else:
             connection.send(str(DeviceArguments.RESPONSE_INVALID).encode())
             self._add_error(txid, DeviceArguments.ERROR_UNKNOWN_COMMAND(message))
@@ -293,6 +294,34 @@ class DeviceManager:
 
         if not found_device:
             connection.send(str(DeviceArguments.RESPONSE_UNRESOLVABLE).encode())
+
+    def _add_new_device(
+        self, txid: str, message_parts: list, connection: socket.socket
+    ) -> None:
+        """
+        Add a new device to the manager
+        """
+        if len(message_parts) != 4:
+            connection.send(str(DeviceArguments.RESPONSE_INVALID).encode())
+        else:
+            device = Device()
+            device.set(*message_parts)
+            result = db.add_device(device)
+
+            if result == DatabaseErorr.SUCCESS:
+                self._add_device(device)
+
+            connection.send(str(result).encode())
+
+    def _add_device(self, device_to_add: Device):
+        """
+        Add an existing device to the manager tracking system
+        """
+        device_to_add.available_space = device.get_device_space(
+            device_to_add.device_path
+        )
+        device_to_add.allocated_space = 0
+        self.__devices[device_to_add.device_path] = device_to_add
 
     def errors(self, txid: str) -> list:
         """
