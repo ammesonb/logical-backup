@@ -11,10 +11,17 @@ from logical_backup import db
 from logical_backup.db import DatabaseError
 
 from logical_backup.utilities import files, device as device_util
-from logical_backup.pretty_print import readable_bytes
+from logical_backup.pretty_print import readable_bytes, PrettyStatusPrinter
 from logical_backup.objects import File
+from logical_backup.objects.device import DEVICE_SERIAL, SYSTEM_UUID, USER_SPECIFIED
 from logical_backup.utilities import device_manager
-from logical_backup.strings import Errors, Info, DeviceArguments, Configurations
+from logical_backup.strings import (
+    Errors,
+    Info,
+    InputPrompts,
+    DeviceArguments,
+    Configurations,
+)
 
 
 # pylint: disable=too-few-public-methods
@@ -321,6 +328,7 @@ class AddCommand(BaseCommand):
 
         save_message = (
             PrettyStatusPrinter(Info.SAVING_DEVICE)
+            .with_message_postfix_for_result(True, Info.DEVICE_SAVED(mount_point))
             .with_custom_result(2, False)
             .with_message_postfix_for_result(2, Errors.UNRECOGNIZED_DEVICE_IDENTIFIER)
             .with_custom_result(3, False)
@@ -334,9 +342,14 @@ class AddCommand(BaseCommand):
             .with_custom_result(7, False)
             .with_message_postfix_for_result(7, Errors.DEVICE_SUPER_UNKNOWN_ERROR)
             .with_custom_result(DeviceArguments.RESPONSE_INVALID, False)
-            # TODO: what is the command here?
             .with_message_postfix_for_result(
-                DeviceArguments.RESPONSE_INVALID, Errors.INVALID_COMMAND()
+                DeviceArguments.RESPONSE_INVALID,
+                Errors.INVALID_COMMAND(
+                    device_manager.format_message(
+                        DeviceArguments.COMMAND_ADD_DEVICE,
+                        [device_name, mount_point, identifier_type, identifier],
+                    )
+                ),
             )
         )
 
@@ -355,7 +368,7 @@ class AddCommand(BaseCommand):
             Configurations.MAX_MESSAGE_SIZE
         ).decode()
 
-        if result == DatabaseError.SUCCESS:
+        if result == str(DatabaseError.SUCCESS.value):
             self._add_message(save_message.get_styled_message(True))
         else:
-            self._add_error(save_message.get_styled_message(result))
+            self._add_error(save_message.get_styled_message(int(result)))

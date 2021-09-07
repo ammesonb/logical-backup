@@ -233,12 +233,10 @@ class InputPrompts(PrintableEnum):
         "Please provide a unique identifier for the device: "  # pragma: no mutate
     )
 
-    CLI_STATUS = (
-        lambda completed_count, action_count, thread_count: (  # pragma: no mutate
-            "[{0}/{1}:{2}]# ".format(  # pragma: no mutate
-                completed_count, action_count, thread_count  # pragma: no mutate
-            )  # pragma: no mutate
-        )
+    CLI_STATUS = lambda completed_count, action_count, thread_count: (  # pragma: no mutate
+        "[{0}/{1}:{2}]# ".format(  # pragma: no mutate
+            completed_count, action_count, thread_count  # pragma: no mutate
+        )  # pragma: no mutate
     )
 
 
@@ -268,6 +266,7 @@ class Info(PrintableEnum):
     )
 
     SAVING_DEVICE = "Saving device"  # pragma: no mutate
+    DEVICE_SAVED = lambda mount: f"Saved new device: {mount}"  # pragma: no mutate
     COPYING_FILE = lambda path: "Copying file {0}" + path  # pragma: no mutate
     SAVING_FILE_TO_DB = "Saving file record to DB"  # pragma: no mutate
     FILE_SAVED = lambda path: "File backed up: " + path  # pragma: no mutate

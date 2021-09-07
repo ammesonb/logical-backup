@@ -386,10 +386,13 @@ def test_exit(monkeypatch, capsys):
           """
 
     lock = FakeLock()
-    context = {}
+    manager = multiprocessing.Manager()
     queue = QueueStateManager(
-        FakeDevManager(), multiprocessing.Manager(), None, None, lock, context
+        FakeDevManager(), manager, None, None, lock, manager.dict()
     )
+    queue.add_executor()
+    assert queue.executor_count == 1, "Executor added"
+
     monkeypatch.setattr(lock, "acquire", lambda self=None, block=True: False)
 
     # pylint: disable=unused-argument
@@ -399,7 +402,14 @@ def test_exit(monkeypatch, capsys):
         .
         """
 
+    # pylint: disable=unused-argument
+    def sleep(seconds):
+        """
+        .
+        """
+
     monkeypatch.setattr(device_manager, "close_server", close_server)
+    monkeypatch.setattr(time, "sleep", sleep)
 
     queue.exit()
     printed = capsys.readouterr()
@@ -408,6 +418,7 @@ def test_exit(monkeypatch, capsys):
     assert queue.executor_count == 0, "All executors stopped"
     assert FakeDevManager.stop.counter == 1, "Device manager stopped"
     assert close_server.counter == 1, "Device manager server closed"
+    assert not queue.executor_count, "Executors removed"
 
     expected = (
         # "\0ee[K  " + Info.EXITING("") + "\033[0m\r"

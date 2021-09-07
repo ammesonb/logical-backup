@@ -9,7 +9,7 @@ from logical_backup.commands.add_command import AddConfig
 from logical_backup.commands.command_validator import CommandValidator
 from logical_backup import db
 from logical_backup.objects import Device
-from logical_backup.utilities import device_manager, files
+from logical_backup.utilities import device_manager, files, device as device_utils
 from logical_backup.utilities.fake_lock import FakeLock
 
 from logical_backup.pretty_print import readable_bytes
@@ -64,12 +64,7 @@ def patch_connection(monkeypatch):
     Sets device manager get connection to a no-op for tests
     """
     monkeypatch.setattr(
-        device_manager,
-        "get_connection",
-        lambda: (
-            None,
-            None,
-        ),
+        device_manager, "get_connection", lambda: (None, None,),
     )
 
 
@@ -321,11 +316,21 @@ def test_create_actions(monkeypatch):
     .
     """
     file_config = AddConfig(adding_file=True)
+    device_config = AddConfig(adding_device=True)
+
+    # pylint: disable=unused-argument
+    @counter_wrapper
+    def add_device(*args, **kwargs):
+        """
+        .
+        """
 
     monkeypatch.setattr(
         AddCommand, "_make_file_object", lambda self, path, config: None
     )
-    monkeypatch.setattr(CommandValidator, "get_file", lambda self: "test")
+    monkeypatch.setattr(CommandValidator, "get_file", lambda self: "test_file")
+    monkeypatch.setattr(CommandValidator, "get_device", lambda self: "test_dev")
+    monkeypatch.setattr(AddCommand, "_add_device", add_device)
 
     command = AddCommand(None, None, None, None)
     command._create_actions(file_config)
@@ -337,6 +342,9 @@ def test_create_actions(monkeypatch):
     command._create_actions(file_config)
     assert len(command._actions) == 1, "One action returned"
     assert command._actions[0].file_obj == "abc", "Expected action returned"
+
+    command._create_actions(device_config)
+    assert add_device.counter == 1, "Device added"
 
 
 def test_make_file_object_quick_fails(monkeypatch):
@@ -585,3 +593,111 @@ def test_check_device_substitution(monkeypatch):
         Info.DEVICE_SUBSTITUTED("/device", "/device2"),
         str(Info.CHECKING_DEVICE),
     ], "Messages added"
+
+
+def test_add_device(monkeypatch):
+    """
+    .
+    """
+
+    # pylint: disable=unused-argument
+    @counter_wrapper
+    def new_input(*args, **kwargs):
+        """
+        .
+        """
+        return ["", "name", "name", "name", "uuid-123"][new_input.counter]
+
+    patch_input(monkeypatch, commands, new_input)
+
+    # pylint: disable=unused-argument
+    @counter_wrapper
+    def send_message(*args, **kwargs):
+        """
+        .
+        """
+
+    monkeypatch.setattr(device_manager, "send_message", send_message)
+
+    # pylint: disable=unused-argument
+    @counter_wrapper
+    def get_serial(mount_point: str):
+        """
+        .
+        """
+        return "123" if get_serial.counter < 2 else None
+
+    # pylint: disable=unused-argument
+    @counter_wrapper
+    def get_uuid(mount_point: str):
+        """
+        .
+        """
+        return "123" if get_uuid.counter < 2 else None
+
+    monkeypatch.setattr(device_utils, "get_device_serial", get_serial)
+    monkeypatch.setattr(device_utils, "get_device_uuid", get_uuid)
+
+    class FakeSocket:
+        """
+        .
+        """
+
+        def __init__(self, response: str):
+            self.response = response
+
+        def recv(self, size: int) -> str:
+            """
+            Return the response
+            """
+            return self.response.encode()
+
+    command = AddCommand(
+        {"action": "add", "device": "/device"},
+        None,
+        FakeSocket(str(db.DatabaseError.SUCCESS.value)),
+        FakeLock(),
+        "123",
+    )
+    command._add_device("/device")
+    assert not command.errors, "No errors"
+    assert get_serial.counter == 1, "Serial returned"
+    assert not get_uuid.counter, "No UUID checked"
+    assert (
+        len(command.messages) == 1
+        and Info.DEVICE_SAVED("/device") in command.messages[0]
+    ), "Expected messages present"
+
+    command = AddCommand(
+        {"action": "add", "device": "/device"},
+        None,
+        FakeSocket(str(6)),
+        FakeLock(),
+        "123",
+    )
+    command._add_device("/device")
+
+    assert not command.messages, "No messages"
+    assert get_serial.counter == 2, "Serial checked"
+    assert get_uuid.counter == 1, "UUID returned"
+    assert (
+        len(command.errors) == 1
+        and str(Errors.DEVICE_UNKNOWN_ERROR) in command.errors[0]
+    ), "Expected errors present"
+
+    command = AddCommand(
+        {"action": "add", "device": "/device"},
+        None,
+        FakeSocket(str(3)),
+        FakeLock(),
+        "123",
+    )
+    command._add_device("/device")
+
+    assert not command.messages, "No messages"
+    assert get_serial.counter == 3, "Serial checked"
+    assert get_uuid.counter == 2, "UUID checked"
+    assert (
+        len(command.errors) == 1 and str(Errors.DEVICE_NAME_TAKEN) in command.errors[0]
+    ), "Expected errors present"
+    assert new_input.counter == 4, "Input checked expected times"

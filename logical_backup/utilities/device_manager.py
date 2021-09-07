@@ -308,10 +308,10 @@ class DeviceManager:
             device.set(*message_parts)
             result = db.add_device(device)
 
-            if result == DatabaseErorr.SUCCESS:
+            if result == DatabaseError.SUCCESS:
                 self._add_device(device)
 
-            connection.send(str(result).encode())
+            connection.send(str(result.value).encode())
 
     def _add_device(self, device_to_add: Device):
         """
@@ -429,7 +429,7 @@ def get_server_connection() -> socket.socket:
     """
     Creates a new bound connection to the server socket
     """
-    if os.path.exists(str(DeviceArguments.SOCKET_PATH)):
+    if os.path.exists(str(DeviceArguments.SOCKET_PATH)):  # pragma: no cover
         os.unlink(str(DeviceArguments.SOCKET_PATH))
 
     server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

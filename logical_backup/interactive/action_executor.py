@@ -64,5 +64,5 @@ class ActionExecutor(multiprocessing.Process):
 
                 else:
                     time.sleep(0.5)
-            except KeyboardInterrupt:
+            except KeyboardInterrupt:  # pragma: no cover
                 pass

@@ -266,6 +266,7 @@ class QueueStateManager:
         PrettyStatusPrinter(
             Info.EXITING("Cleared threads, waiting for processing actions to complete")
         ).print_message(True, clear_line_first=True)
+
         while len(self.__executors):
             self.prune_dead_executors()
             time.sleep(1)

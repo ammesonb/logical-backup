@@ -62,7 +62,7 @@ def run(start_time: int = None):
 
         try:
             input_arguments = _read_input(queue_manager)
-        except KeyboardInterrupt:
+        except KeyboardInterrupt:  # pragma: no cover
             print("")
             print("Type 'exit' to quit")
             continue
