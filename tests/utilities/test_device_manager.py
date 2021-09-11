@@ -426,15 +426,30 @@ def test_process_message(monkeypatch):
     @counter_wrapper
     # pylint: disable=unused-argument
     def mock_device_space(txid, parts, connection):
+        """
+        .
+        """
         return None
 
     @counter_wrapper
     # pylint: disable=unused-argument
     def mock_pick_device(txid, parts, connection):
+        """
+        .
+        """
+        return None
+
+    @counter_wrapper
+    # pylint: disable=unused-argument
+    def mock_add_device(txid, parts, connection):
+        """
+        .
+        """
         return None
 
     monkeypatch.setattr(manager, "_check_device_space", mock_device_space)
     monkeypatch.setattr(manager, "_pick_device", mock_pick_device)
+    monkeypatch.setattr(manager, "_add_new_device", mock_add_device)
 
     message = str(DeviceArguments.COMMAND_DELIMITER).join(
         [str(DeviceArguments.COMMAND_CHECK_DEVICE), "123", "foo"]
@@ -451,6 +466,14 @@ def test_process_message(monkeypatch):
     assert mock_pick_device.counter == 1, "Pick device called"
 
     client_sock, txid = get_connection()
+
+    message = str(DeviceArguments.COMMAND_DELIMITER).join(
+        [str(DeviceArguments.COMMAND_ADD_DEVICE), "/device"]
+    )
+    manager._process_message("", message, None)
+    assert mock_device_space.counter == 1, "Device space not called again"
+    assert mock_pick_device.counter == 1, "Pick device not called again"
+    assert mock_add_device.counter == 1, "Add device called"
 
     accept_thread = threading.Thread(target=manager._accept_connection)
     accept_thread.start()
@@ -955,3 +978,71 @@ def test_close_server(monkeypatch):
     assert not os_path.exists(
         str(DeviceArguments.SOCKET_PATH)
     ), "Manager socket removed"
+
+
+def test_add_new_device(monkeypatch):
+    """
+    .
+    """
+
+    class FakeSocket:
+        """
+        .
+        """
+
+        counter = 0
+
+        def send(self, message: bytes):
+            """
+            .
+            """
+            expected = [str(DeviceArguments.RESPONSE_INVALID), "4", "0"]
+            assert (
+                message == expected[self.counter].encode()
+            ), "Expected message provided"
+            self.counter += 1
+
+    socket = FakeSocket()
+
+    # pylint: disable=unused-argument
+    @counter_wrapper
+    def db_add_device(device: Device):
+        """
+        .
+        """
+        return (
+            db.DatabaseError.INVALID_IDENTIFIER_TYPE
+            if db_add_device.counter == 1
+            else db.DatabaseError.SUCCESS
+        )
+
+    # pylint: disable=unused-argument
+    @counter_wrapper
+    def manager_add_device(device: Device):
+        """
+        .
+        """
+
+    monkeypatch.setattr(db, "add_device", db_add_device)
+
+    monkeypatch.setattr(db, "get_devices", lambda device=None: [])
+    monkeypatch.setattr(device, "get_device_space", lambda device_path=None: 0)
+
+    manager = DeviceManager(get_server_connection())
+    monkeypatch.setattr(manager, "_add_device", manager_add_device)
+
+    manager._add_new_device("123abc", ["invalid", "argument", "count"], socket)
+    assert not db_add_device.counter, "Device not attempted to add to DB"
+    assert not manager_add_device.counter, "Device not attempted to add to manager"
+
+    manager._add_new_device(
+        "123abc", ["device", "/device", "Device Serial", "ABC123"], socket
+    )
+    assert db_add_device.counter == 1, "Attempted to add device to DB"
+    assert not manager_add_device.counter, "Device not attempted to add to manager"
+
+    manager._add_new_device(
+        "123abc", ["device", "/device", "Device Serial", "ABC123"], socket
+    )
+    assert db_add_device.counter == 2, "Attempted to add device to DB again"
+    assert manager_add_device.counter == 1, "Device added to manager"

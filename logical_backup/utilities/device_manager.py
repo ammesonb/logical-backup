@@ -186,7 +186,7 @@ class DeviceManager:
         elif parts[0] == str(DeviceArguments.COMMAND_GET_DEVICE):
             self._pick_device(txid, parts, connection)
         elif parts[0] == str(DeviceArguments.COMMAND_ADD_DEVICE):
-            self._add_device(txid, parts[1:], connection)
+            self._add_new_device(txid, parts[1:], connection)
         else:
             connection.send(str(DeviceArguments.RESPONSE_INVALID).encode())
             self._add_error(txid, DeviceArguments.ERROR_UNKNOWN_COMMAND(message))
