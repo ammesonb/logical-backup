@@ -60,6 +60,9 @@ class Errors(PrintableEnum):
     FAILED_ADD_FILE_DB = lambda path: (
         "Failed to record file in database: {0}".format(path)  # pragma: no mutate
     )
+    FAILED_ADD_FOLDER_DB = lambda path: (
+        "Failed to record folder in database: {0}".format(path)  # pragma: no mutate
+    )
 
     NONEXISTENT_FOLDER = "Folder path does not exist!"  # pragma: no mutate
     FOLDER_ALREADY_ADDED = "Folder already added!"  # pragma: no mutate
@@ -239,6 +242,8 @@ class InputPrompts(PrintableEnum):
         )  # pragma: no mutate
     )
 
+    PROCESS_COMMAND_ANYWAYS = "Continue anyways? (y/N) "  # pragma: no mutate
+
 
 class Info(PrintableEnum):
     """
@@ -270,11 +275,18 @@ class Info(PrintableEnum):
     COPYING_FILE = lambda path: "Copying file {0}" + path  # pragma: no mutate
     SAVING_FILE_TO_DB = "Saving file record to DB"  # pragma: no mutate
     FILE_SAVED = lambda path: "File backed up: " + path  # pragma: no mutate
+    SAVING_FOLDER_TO_DB = "Saving folder record to DB"  # pragma: no mutate
+    FOLDER_SAVED = lambda path: "Folder metadata saved: " + path  # pragma: no mutate
 
     COPYING_FILE_DEVICE = "Copying file to new device"  # pragma: no mutate
 
     VALIDATE_FILE_REMOVAL = "Validating file removal"  # pragma: no mutate
     FILE_REMOVED = "File removed"  # pragma: no mutate
+
+    ADD_FOLDER_CHECK_ERROR_LOG = (
+        "Files may exceed available space on the device(s) - "  # pragma: no mutate
+        "check there are no errors using the `status` command"  # pragma: no mutate
+    )
 
     PROGRAM_DESCRIPTION = (
         "Back up and restore files across multiple hard drives\n\n"  # pragma: no mutate
@@ -357,6 +369,9 @@ class Info(PrintableEnum):
 
     ADD_FILE_NAME = lambda file_path: (  # pragma: no mutate
         "Adding file: " + os_path.basename(file_path)  # pragma: no mutate
+    )
+    ADD_FOLDER_NAME = lambda folder_path: (  # pragma: no mutate
+        "Adding folder: " + os_path.basename(folder_path)  # pragma: no mutate
     )
 
     COMMAND_CREATED_ACTIONS = lambda action_count: (  # pragma: no mutate

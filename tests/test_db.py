@@ -452,3 +452,12 @@ def test_update_file_device():
     assert (
         db.update_file_device("/test/foo", "/bar") == DatabaseError.SUCCESS
     ), "File device updates"
+
+
+def test_folder_exists():
+    initialize_database()
+    f = Folder()
+    f.set("/test-folder", "755", "user", "group")
+    assert db.add_folder(f), "Folder added"
+    assert not db.folder_exists("/none"), "Folder does not exist"
+    assert db.folder_exists("/test-folder"), "Folder exists"

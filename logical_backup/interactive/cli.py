@@ -363,22 +363,21 @@ def _process_command_input(
             manager_context.device_mgr_lock,
         )
 
-    actions = command.actions
     _print_command_results(command)
-    return actions or []
+
+    actions = command.actions or []
+    if command.errors:
+        if input(str(InputPrompts.PROCESS_COMMAND_ANYWAYS)).lower() != "y":
+            actions = []
+
+    return actions
 
 
 def _print_command_results(command: BaseCommand) -> None:
     """
     Outputs details of success or failure to create actions from a command
     """
-    if command.has_actions:
-        PrettyStatusPrinter(
-            Info.COMMAND_CREATED_ACTIONS(len(command.actions))
-        ).with_message_postfix_for_result(True, "").with_ellipsis(
-            False
-        ).print_complete()
-    elif len(command.errors):
+    if len(command.errors):
         PrettyStatusPrinter(
             Errors.FAILED_TO_CREATE_ACTIONS
         ).with_message_postfix_for_result(False, "").with_ellipsis(
@@ -388,6 +387,12 @@ def _print_command_results(command: BaseCommand) -> None:
         )
         for log in command.logs:
             print("- " + log)
+    elif command.has_actions:
+        PrettyStatusPrinter(
+            Info.COMMAND_CREATED_ACTIONS(len(command.actions))
+        ).with_message_postfix_for_result(True, "").with_ellipsis(
+            False
+        ).print_complete()
     else:
         PrettyStatusPrinter(str(Info.COMMAND_COMPLETED)).with_ellipsis(
             False

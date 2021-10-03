@@ -457,6 +457,28 @@ def remove_file(path: str) -> bool:
         )
 
 
+def folder_exists(folder_path: str) -> bool:
+    """
+    Check if a folder already exists
+
+    Parameters
+    ----------
+    folder_path : str
+        Folder path to check
+
+    Returns
+    -------
+    bool
+        True if folder exists
+    """
+    with SQLiteCursor() as cursor:
+        cursor.execute(
+            "SELECT 1 " "FROM   tblFolder " "WHERE  FolderPath = ?", (folder_path,)
+        )
+        result = cursor.fetchone()
+        return bool(result)
+
+
 def add_folder(folder: Folder) -> bool:
     """
     Adds a folder to the DB

@@ -6,13 +6,13 @@ import socket
 from typing import Optional
 
 from logical_backup.commands.base_command import BaseCommand, Config
-from logical_backup.commands.actions import AddFileAction
+from logical_backup.commands.actions import AddFileAction, AddFolderAction
 from logical_backup import db
 from logical_backup.db import DatabaseError
 
 from logical_backup.utilities import files, device as device_util
 from logical_backup.pretty_print import readable_bytes, PrettyStatusPrinter
-from logical_backup.objects import File
+from logical_backup.objects import File, Folder
 from logical_backup.objects.device import DEVICE_SERIAL, SYSTEM_UUID, USER_SPECIFIED
 from logical_backup.utilities import device_manager
 from logical_backup.strings import (
@@ -157,7 +157,25 @@ class AddCommand(BaseCommand):
                 self._actions.append(AddFileAction(file_obj))
 
         if config.adding_folder:
-            pass
+            PrettyStatusPrinter(str(Info.ADD_FOLDER_CHECK_ERROR_LOG)).print_message()
+
+            folder_path = self._validator.get_folder()
+
+            # The specified folder is not listed in the recursive path check
+            this_folder = self._make_folder_object(folder_path)
+            if this_folder:
+                self._actions.append(AddFolderAction(this_folder))
+
+            # Add every subfolder and file
+            result = files.list_entries_in_directory(folder_path)
+            for folder in result.folders:
+                folder_obj = self._make_folder_object(folder)
+                self._actions.append(AddFolderAction(folder_obj))
+
+            for file_path in result.files:
+                file_obj = self._make_file_object(file_path, config)
+                if file_obj:
+                    self._actions.append(AddFileAction(file_obj))
 
         if config.adding_device:
             self._add_device(self._validator.get_device())
@@ -310,6 +328,24 @@ class AddCommand(BaseCommand):
             self._device_manager_lock.release()
 
         return response
+
+    def _make_folder_object(self, folder_path: str) -> Optional[Folder]:
+        """
+        Creates a folder object based on a path
+        """
+        if db.folder_exists(folder_path):
+            self._add_error(Errors.FOLDER_ALREADY_ADDED_AT(folder_path))
+            return None
+
+        try:
+            security_details = files.get_file_security(folder_path)
+        except PermissionError:
+            self._add_error(Errors.CANNOT_READ_FILE_AT(folder_path))
+            return None
+
+        folder = Folder()
+        folder.set(folder_path, **security_details)
+        return folder
 
     def _add_device(self, mount_point: str):
         """

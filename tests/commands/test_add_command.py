@@ -311,11 +311,12 @@ def test_validate(monkeypatch):
     assert validate_device.counter == 1, "Device validation called once"
 
 
-def test_create_actions(monkeypatch):
+def test_create_actions(monkeypatch, capsys):
     """
     .
     """
     file_config = AddConfig(adding_file=True)
+    folder_config = AddConfig(adding_folder=True)
     device_config = AddConfig(adding_device=True)
 
     # pylint: disable=unused-argument
@@ -329,6 +330,7 @@ def test_create_actions(monkeypatch):
         AddCommand, "_make_file_object", lambda self, path, config: None
     )
     monkeypatch.setattr(CommandValidator, "get_file", lambda self: "test_file")
+    monkeypatch.setattr(CommandValidator, "get_folder", lambda self: "test_folder")
     monkeypatch.setattr(CommandValidator, "get_device", lambda self: "test_dev")
     monkeypatch.setattr(AddCommand, "_add_device", add_device)
 
@@ -342,6 +344,31 @@ def test_create_actions(monkeypatch):
     command._create_actions(file_config)
     assert len(command._actions) == 1, "One action returned"
     assert command._actions[0].file_obj == "abc", "Expected action returned"
+
+    # pylint: disable=unused-argument
+    def entries(path: str):
+        """
+        Fake entries listing for a directory
+        """
+        return files.DirectoryEntries(files=["abc", "def"], folders=["a", "b", "c"])
+
+    monkeypatch.setattr(files, "list_entries_in_directory", entries)
+    monkeypatch.setattr(AddCommand, "_make_folder_object", lambda self, path: "def")
+
+    command._create_actions(folder_config)
+    assert len(command._actions) == 7, "Six actions added (including root folder)"
+    assert command._actions[1].folder_obj == "def", "Root folder added first"
+    assert [action.folder_obj for action in command._actions[2:5]] == [
+        "def"
+    ] * 3, "Expected folder actions returned"
+    assert [action.file_obj for action in command._actions[5:]] == [
+        "abc"
+    ] * 2, "Expected file actions returned"
+
+    printed = capsys.readouterr()
+    assert (
+        str(Info.ADD_FOLDER_CHECK_ERROR_LOG) in printed.out
+    ), "Add folder warning printed"
 
     command._create_actions(device_config)
     assert add_device.counter == 1, "Device added"
@@ -701,3 +728,44 @@ def test_add_device(monkeypatch):
         len(command.errors) == 1 and str(Errors.DEVICE_NAME_TAKEN) in command.errors[0]
     ), "Expected errors present"
     assert new_input.counter == 4, "Input checked expected times"
+
+
+def test_make_folder(monkeypatch):
+    """
+    .
+    """
+    command = AddCommand(None, None, None, None)
+
+    monkeypatch.setattr(db, "folder_exists", lambda folder_path: True)
+
+    assert (
+        command._make_folder_object("/test") is None
+    ), "No folder returned if already backed up"
+    assert command.errors == [Errors.FOLDER_ALREADY_ADDED_AT("/test")], "Error added"
+
+    monkeypatch.setattr(db, "folder_exists", lambda folder_path: False)
+
+    def raise_error(path: str):
+        raise PermissionError("Cannot access folder")
+
+    monkeypatch.setattr(files, "get_file_security", raise_error)
+
+    assert (
+        command._make_folder_object("/test") is None
+    ), "No folder returned for permission issue"
+    assert command.errors == [
+        Errors.FOLDER_ALREADY_ADDED_AT("/test"),
+        Errors.CANNOT_READ_FILE_AT("/test"),
+    ], "Error added"
+
+    monkeypatch.setattr(
+        files,
+        "get_file_security",
+        lambda path: {"permissions": 755, "owner": "user", "group": "group"},
+    )
+
+    folder = command._make_folder_object("/test")
+    assert folder, "Folder object created"
+    assert folder.folder_permissions == 755, "Permissions correct"
+    assert folder.folder_owner == "user", "User correct"
+    assert folder.folder_group == "group", "Group correct"
