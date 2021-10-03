@@ -364,19 +364,31 @@ def _process_command_input(
         )
 
     actions = command.actions
-    _print_command_results(command, actions)
+    _print_command_results(command)
     return actions or []
 
 
-def _print_command_results(command: BaseCommand, actions: List[BaseAction]) -> None:
+def _print_command_results(command: BaseCommand) -> None:
     """
     Outputs details of success or failure to create actions from a command
     """
     if command.has_actions:
-        PrettyStatusPrinter(Info.COMMAND_CREATED_ACTIONS(len(actions))).print_complete()
+        PrettyStatusPrinter(
+            Info.COMMAND_CREATED_ACTIONS(len(command.actions))
+        ).with_message_postfix_for_result(True, "").with_ellipsis(
+            False
+        ).print_complete()
     elif len(command.errors):
-        PrettyStatusPrinter(Errors.FAILED_TO_CREATE_ACTIONS).print_complete(False)
+        PrettyStatusPrinter(
+            Errors.FAILED_TO_CREATE_ACTIONS
+        ).with_message_postfix_for_result(False, "").with_ellipsis(
+            False
+        ).print_complete(
+            False
+        )
         for log in command.logs:
             print("- " + log)
     else:
-        PrettyStatusPrinter(str(Info.COMMAND_COMPLETED)).print_completed()
+        PrettyStatusPrinter(str(Info.COMMAND_COMPLETED)).with_ellipsis(
+            False
+        ).print_message()

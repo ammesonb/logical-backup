@@ -369,6 +369,15 @@ def test_reorder_queue(capsys):
         .get_styled_message()
     ), "Error is correct"
 
+    cli._reorder_queue(["123", "bad"], None)
+    printed = capsys.readouterr()
+    assert (
+        printed.out
+        == PrettyStatusPrinter(Errors.INVALID_DESTINATION_POSITION)
+        .with_specific_color(Color.ERROR)
+        .get_styled_message()
+    ), "Error is correct"
+
     class FakeQueueManager:
         """
         .
@@ -807,7 +816,62 @@ def test_process_command_input():
     """
 
 
-def test_print_command_results():
+def test_print_command_results(capsys):
     """
     .
     """
+
+    class Command:
+        """
+        Fake command
+        """
+
+        def __init__(self, actions: List[str] = None, errors: List[str] = None):
+            self.actions = actions or []
+            self.errors = errors or []
+
+        @property
+        def has_actions(self) -> bool:
+            """
+            If the command has actions
+            """
+            return len(self.actions) > 0
+
+        @property
+        def logs(self) -> List[str]:
+            """
+            Command logs
+            """
+            return self.errors + ["log"]
+
+    actions_command = Command(["abc", "def"])
+
+    cli._print_command_results(actions_command)
+    printed = capsys.readouterr()
+    assert printed.out == PrettyStatusPrinter(
+        Info.COMMAND_CREATED_ACTIONS(2)
+    ).with_message_postfix_for_result(True, "").with_ellipsis(False).get_styled_message(
+        True
+    ), "Message printed action count"
+
+    errors_command = Command(errors=["issue", "problem"])
+    cli._print_command_results(errors_command)
+    printed = capsys.readouterr()
+    assert (
+        printed.out
+        == PrettyStatusPrinter(Errors.FAILED_TO_CREATE_ACTIONS)
+        .with_message_postfix_for_result(False, "")
+        .with_ellipsis(False)
+        .get_styled_message(False)
+        + "- issue\n- problem\n- log\n"
+    ), "Failed messages print correctly"
+
+    completed_command = Command()
+    cli._print_command_results(completed_command)
+    printed = capsys.readouterr()
+    assert (
+        printed.out
+        == PrettyStatusPrinter(Info.COMMAND_COMPLETED)
+        .with_ellipsis(False)
+        .get_styled_message()
+    ), "Command completed results print"

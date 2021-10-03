@@ -359,7 +359,7 @@ class Info(PrintableEnum):
         "Adding file: " + os_path.basename(file_path)  # pragma: no mutate
     )
 
-    COMMAND_CREATED_ACTIONS = lambda action_count: int(  # pragma: no mutate
+    COMMAND_CREATED_ACTIONS = lambda action_count: (  # pragma: no mutate
         "Command created {0} actions".format(action_count)  # pragma: no mutate
     )
     COMMAND_COMPLETED = (

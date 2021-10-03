@@ -82,7 +82,7 @@ class BaseCommand:
         """
         Check if there are actions created
         """
-        return bool(self._actions)
+        return len(self._actions) > 0
 
     @property
     def actions(self) -> List[BaseAction]:
