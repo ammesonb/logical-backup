@@ -1,6 +1,6 @@
 pytest==6.2.5
 argparse==1.4.0
-pytest-cov==2.12.1
+pytest-cov==3.0.0
 black==21.8b0
 pre-commit==2.14.1
 pylint==2.10.2
