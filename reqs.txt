@@ -5,4 +5,4 @@ black==22.10.0
 pre-commit==2.20.0
 pylint==2.15.3
 texttable==1.6.4
-psutil==5.9.1
+psutil==5.9.2
