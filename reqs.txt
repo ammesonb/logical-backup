@@ -3,6 +3,6 @@ argparse==1.4.0
 pytest-cov==7.0.0
 black==25.12.0
 pre-commit==4.5.1
-pylint==3.2.2
+pylint==4.0.4
 texttable==1.7.0
 psutil==5.9.8
